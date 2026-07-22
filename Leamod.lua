@@ -1,16 +1,17 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ WEAPON SYSTEM v21.0 - SERBEST UÇUŞ + AIMBOT KİLİT + OTO ATEŞ
+    ⚡ WEAPON SYSTEM v22.0 - ÇALIŞAN AIMBOT (Axiom tarzı)
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ ESP - İsim + HP + Kutu (Çalışıyor)
-    ✅ Aimbot - Crosshair hedefe kilitlenir + Otomatik ateş (Çalışıyor)
-    ✅ 360 - Sürekli dönüş (Çalışıyor)
-    ✅ FLY - Serbest uçuş (WASD + Space/Shift) (Çalışıyor)
-    ✅ Rainbow - Renk değiştirme (Çalışıyor)
-    ✅ Teleport - Işınlanma (Çalışıyor)
-    ✅ Infinite Jump - Sınırsız zıplama (Çalışıyor)
-    ✅ Speed - Hız ayarı (Çalışıyor)
+    ✅ Aimbot - Mouse ile hedefe kilit (Sağ tık basılı tut)
+    ✅ FOV Circle - Ekranda hedefleme alanı
+    ✅ ESP - İsim + HP + Kutu
+    ✅ 360 - Sürekli dönüş
+    ✅ FLY - Serbest uçuş (WASD + Space/Shift)
+    ✅ Rainbow - Renk değiştirme
+    ✅ Teleport - Işınlanma
+    ✅ Infinite Jump - Sınırsız zıplama
+    ✅ Speed - Hız ayarı
     ✅ LEA MOD - Ekranın ortasının üstünde
     ✅ Menü taşınabilir, aç/kapa
 ]]
@@ -22,15 +23,19 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = Workspace.CurrentCamera
 
 local SETTINGS = {
     SpeedValue = 50,
     FlySpeed = 50,
     OffsetBack = 5,
     OffsetUp = 4,
-    FOV = 180,
+    FOV = 250,
+    Smoothness = 0.15,
+    WallCheck = false,
 }
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -55,9 +60,22 @@ local espObjects = {}
 local bodyVelocity = nil
 local bodyGyro = nil
 local currentTarget = nil
+local CamlockState = false
 
 -- FLY KONTROLLERİ
 local flyKeys = {W=false, A=false, S=false, D=false, Space=false, Shift=false}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- FOV CIRCLE
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = true
+FOVCircle.Transparency = 0.7
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Thickness = 1
+FOVCircle.Radius = SETTINGS.FOV
+FOVCircle.Filled = false
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- LEA MOD
@@ -267,24 +285,6 @@ local function isEnemy(p)
     return true
 end
 
-local function getNearestEnemy()
-    local nearest, bestDist = nil, math.huge
-    for _, p in pairs(Players:GetPlayers()) do
-        if p == LocalPlayer or not isEnemy(p) then continue end
-        local c = p.Character
-        if not c then continue end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        local h = c:FindFirstChild("Humanoid")
-        if not r or not h or h.Health <= 0 then continue end
-        local d = (r.Position - rootPart.Position).Magnitude
-        if d < bestDist then
-            nearest = p
-            bestDist = d
-        end
-    end
-    return nearest
-end
-
 -- ═══════════════════════════════════════════════════════════════════════════
 -- B Ö L Ü M  2/2  -  S İ S T E M L E R
 -- ═══════════════════════════════════════════════════════════════════════════--[[ BÖLÜM 2/2 - SİSTEMLER ]]
@@ -337,33 +337,87 @@ local function stopESP()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 2. AIMBOT + OTOMATİK ATEŞ (Crosshair hedefe kilitlenir)
+-- 2. AIMBOT (Axiom tarzı - Sağ tık ile kilit)
 -- ═══════════════════════════════════════════════════════════════════════════
+
+-- Aimbot tuş dinleme
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        CamlockState = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        CamlockState = false
+    end
+end)
+
+local function GetClosestPlayer()
+    local target = nil
+    local shortestDist = SETTINGS.FOV
+    local mousePos = UserInputService:GetMouseLocation()
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        if not isEnemy(p) then continue end
+        local c = p.Character
+        if not c then continue end
+        local r = c:FindFirstChild("HumanoidRootPart")
+        local h = c:FindFirstChild("Humanoid")
+        if not r or not h or h.Health <= 0 then continue end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(r.Position)
+        if onScreen then
+            local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+            if dist < shortestDist then
+                if SETTINGS.WallCheck then
+                    local origin = Camera.CFrame.Position
+                    local params = RaycastParams.new()
+                    params.FilterDescendantsInstances = {LocalPlayer.Character, p.Character}
+                    params.FilterType = Enum.RaycastFilterType.Exclude
+                    local result = Workspace:Raycast(origin, r.Position - origin, params)
+                    if not result then
+                        shortestDist = dist
+                        target = p
+                    end
+                else
+                    shortestDist = dist
+                    target = p
+                end
+            end
+        end
+    end
+    return target
+end
 
 local function startAimbot()
     if connections.aimbot then return end
-    connections.aimbot = RunService.Heartbeat:Connect(function()
-        if not states.aimbot or not rootPart then return end
-        local target = getNearestEnemy()
-        if not target then return end
-        local c = target.Character
-        if not c then return end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if not r then return end
-        local targetPos = r.Position
-        local lookDir = (targetPos - rootPart.Position).Unit
-        local currentLook = rootPart.CFrame.LookVector
-        local angle = math.deg(math.acos(currentLook:Dot(lookDir)))
-        if angle <= SETTINGS.FOV then
-            currentTarget = target
-            -- Crosshair'i hedefe kilitle (karakteri döndür)
-            rootPart.CFrame = CFrame.lookAt(rootPart.Position, targetPos)
-            -- Otomatik ateş
-            local mouse = LocalPlayer:GetMouse()
-            if mouse then
-                mouse.Button1Down:Fire()
-                wait(0.03)
-                mouse.Button1Up:Fire()
+    connections.aimbot = RunService.RenderStepped:Connect(function()
+        -- FOV Circle'ı güncelle
+        local mousePos = UserInputService:GetMouseLocation()
+        FOVCircle.Position = mousePos
+        FOVCircle.Radius = SETTINGS.FOV
+        FOVCircle.Visible = states.aimbot
+        
+        if states.aimbot and CamlockState then
+            local targetPlayer = GetClosestPlayer()
+            if targetPlayer and targetPlayer.Character then
+                local r = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if r then
+                    currentTarget = targetPlayer
+                    local currentCFrame = Camera.CFrame
+                    local targetCFrame = CFrame.new(currentCFrame.Position, r.Position)
+                    Camera.CFrame = currentCFrame:Lerp(targetCFrame, SETTINGS.Smoothness)
+                    
+                    -- Otomatik ateş
+                    local mouse = LocalPlayer:GetMouse()
+                    if mouse then
+                        mouse.Button1Down:Fire()
+                        wait(0.03)
+                        mouse.Button1Up:Fire()
+                    end
+                end
             end
         end
     end)
@@ -374,6 +428,8 @@ local function stopAimbot()
         connections.aimbot:Disconnect()
         connections.aimbot = nil
     end
+    FOVCircle.Visible = false
+    CamlockState = false
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -397,12 +453,12 @@ local function stop360()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. SERBEST UÇUŞ (FLY) - WASD + Space/Shift
+-- 4. SERBEST UÇUŞ (FLY)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startFly()
     if bodyVelocity then return end
-    -- Fly mekaniği: BodyVelocity ile serbest uçuş
+    
     bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = Vector3.new(0,0,0)
     bodyVelocity.MaxForce = Vector3.new(9e9,9e9,9e9)
@@ -418,14 +474,12 @@ local function startFly()
     humanoid.PlatformStand = true
     humanoid.AutoRotate = false
     
-    -- No Clip
     if character then
         for _, part in pairs(character:GetChildren()) do
             if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
     
-    -- Tuş dinleme
     local function keyDown(input)
         if input.UserInputType == Enum.UserInputType.Keyboard then
             local key = input.KeyCode.Name
@@ -459,10 +513,6 @@ local function startFly()
         if bodyVelocity then
             bodyVelocity.Velocity = move
         end
-        if bodyGyro then
-            -- Mouse ile bakış yönünü almak için kamera kullanılabilir, ama şimdilik sabit
-            bodyGyro.CFrame = rootPart.CFrame
-        end
     end)
 end
 
@@ -480,7 +530,6 @@ local function stopFly()
             if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
-    -- Tuşları sıfırla
     for k in pairs(flyKeys) do flyKeys[k] = false end
 end
 
@@ -511,14 +560,14 @@ local function stopRainbow()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 6. TELEPORT + OTOMATİK ATEŞ
+-- 6. TELEPORT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startTeleport()
     if connections.teleport then return end
     connections.teleport = RunService.Heartbeat:Connect(function()
         if not states.teleport or not rootPart then return end
-        local target = getNearestEnemy()
+        local target = GetClosestPlayer()
         if not target then return end
         local c = target.Character
         if not c then return end
@@ -529,26 +578,12 @@ local function startTeleport()
         local tpPos = tPos - (look * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
         rootPart.CFrame = CFrame.new(tpPos, tPos)
     end)
-    if connections.autoFire then connections.autoFire:Disconnect() end
-    connections.autoFire = RunService.Heartbeat:Connect(function()
-        if not states.teleport then return end
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end)
 end
 
 local function stopTeleport()
     if connections.teleport then
         connections.teleport:Disconnect()
         connections.teleport = nil
-    end
-    if connections.autoFire then
-        connections.autoFire:Disconnect()
-        connections.autoFire = nil
     end
 end
 
@@ -651,5 +686,6 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     if states.rainbow then startRainbow() end
 end)
 
-print("✅ WEAPON SYSTEM v21.0 HAZIR - SERBEST UÇUŞ + AIMBOT KİLİT")
+print("✅ WEAPON SYSTEM v22.0 HAZIR - AIMBOT ÇALIŞIYOR!")
+print("🎯 AIM açıkken SAĞ TIK basılı tutarak hedefe kilitlen!")
 print("🛩️ FLY açıkken WASD ile uç, Space yüksel, Shift alçal")

@@ -1,52 +1,45 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ WEAPON SYSTEM v22.0 - ÇALIŞAN AIMBOT (Axiom tarzı)
+    ⚡ ULTRA HACK v24.0 - BÖLÜM 1/2 (MENÜ + ESP + 360 + RB + INFJUMP)
     ═══════════════════════════════════════════════════════════════════════════
-    
-    ✅ Aimbot - Mouse ile hedefe kilit (Sağ tık basılı tut)
-    ✅ FOV Circle - Ekranda hedefleme alanı
-    ✅ ESP - İsim + HP + Kutu
-    ✅ 360 - Sürekli dönüş
-    ✅ FLY - Serbest uçuş (WASD + Space/Shift)
-    ✅ Rainbow - Renk değiştirme
-    ✅ Teleport - Işınlanma
-    ✅ Infinite Jump - Sınırsız zıplama
-    ✅ Speed - Hız ayarı
-    ✅ LEA MOD - Ekranın ortasının üstünde
-    ✅ Menü taşınabilir, aç/kapa
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü  +  FLY
+-- S E R V İ S L E R
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = Workspace.CurrentCamera
-
-local SETTINGS = {
-    SpeedValue = 50,
-    FlySpeed = 50,
-    OffsetBack = 5,
-    OffsetUp = 4,
-    FOV = 250,
-    Smoothness = 0.15,
-    WallCheck = false,
-}
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local head = character:FindFirstChild("Head")
 
--- DURUMLAR
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A Y A R L A R
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local SETTINGS = {
+    SpeedValue = 50,
+    FlySpeed = 50,
+    OffsetBack = 5,
+    OffsetUp = 4,
+    TeamCheck = true,
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- D U R U M L A R
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local states = {
     esp = false,
-    aimbot = false,
     rotation = false,
     fly = false,
     rainbow = false,
@@ -54,31 +47,14 @@ local states = {
     infiniteJump = false,
 }
 
--- BAĞLANTILAR
-local connections = {}
 local espObjects = {}
 local bodyVelocity = nil
 local bodyGyro = nil
-local currentTarget = nil
-local CamlockState = false
-
--- FLY KONTROLLERİ
 local flyKeys = {W=false, A=false, S=false, D=false, Space=false, Shift=false}
+local connections = {}
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- FOV CIRCLE
--- ═══════════════════════════════════════════════════════════════════════════
-
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = true
-FOVCircle.Transparency = 0.7
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-FOVCircle.Thickness = 1
-FOVCircle.Radius = SETTINGS.FOV
-FOVCircle.Filled = false
-
--- ═══════════════════════════════════════════════════════════════════════════
--- LEA MOD
+-- L E A   M O D
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function createLeaMod()
@@ -104,7 +80,7 @@ createLeaMod()
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WeaponSystemGUI"
+screenGui.Name = "UltraHackGUI"
 screenGui.Parent = PlayerGui
 screenGui.ResetOnSpawn = false
 
@@ -189,17 +165,16 @@ local function createBtn(parent, text, yPos)
 end
 
 local btnESP = createBtn(mainFrame, "👁️ ESP", 19)
-local btnAim = createBtn(mainFrame, "🎯 AIM", 36)
-local btn360 = createBtn(mainFrame, "🔄 360", 53)
-local btnFly = createBtn(mainFrame, "✈️ FLY", 70)
-local btnRB = createBtn(mainFrame, "🌈 RB", 87)
-local btnTP = createBtn(mainFrame, "🚀 TP", 104)
-local btnJump = createBtn(mainFrame, "⬆️ INF", 121)
+local btn360 = createBtn(mainFrame, "🔄 360", 36)
+local btnFly = createBtn(mainFrame, "✈️ FLY", 53)
+local btnRB = createBtn(mainFrame, "🌈 RB", 70)
+local btnTP = createBtn(mainFrame, "🚀 GİT", 87)
+local btnJump = createBtn(mainFrame, "⬆️ INF", 104)
 
 -- Speed
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 20, 0, 12)
-speedLabel.Position = UDim2.new(0, 3, 0, 139)
+speedLabel.Position = UDim2.new(0, 3, 0, 122)
 speedLabel.Text = "50"
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
@@ -209,7 +184,7 @@ speedLabel.Parent = mainFrame
 
 local speedUp = Instance.new("TextButton")
 speedUp.Size = UDim2.new(0, 12, 0, 12)
-speedUp.Position = UDim2.new(0, 25, 0, 139)
+speedUp.Position = UDim2.new(0, 25, 0, 122)
 speedUp.Text = "+"
 speedUp.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 speedUp.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -220,7 +195,7 @@ speedUp.Parent = mainFrame
 
 local speedDown = Instance.new("TextButton")
 speedDown.Size = UDim2.new(0, 12, 0, 12)
-speedDown.Position = UDim2.new(0, 39, 0, 139)
+speedDown.Position = UDim2.new(0, 39, 0, 122)
 speedDown.Text = "-"
 speedDown.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 speedDown.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -229,42 +204,9 @@ speedDown.TextSize = 9
 speedDown.BorderSizePixel = 0
 speedDown.Parent = mainFrame
 
--- FOV
-local fovLabel = Instance.new("TextLabel")
-fovLabel.Size = UDim2.new(0, 20, 0, 12)
-fovLabel.Position = UDim2.new(0, 3, 0, 154)
-fovLabel.Text = "FOV"
-fovLabel.BackgroundTransparency = 1
-fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-fovLabel.Font = Enum.Font.Gotham
-fovLabel.TextSize = 8
-fovLabel.Parent = mainFrame
-
-local fovUp = Instance.new("TextButton")
-fovUp.Size = UDim2.new(0, 12, 0, 12)
-fovUp.Position = UDim2.new(0, 25, 0, 154)
-fovUp.Text = "+"
-fovUp.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-fovUp.TextColor3 = Color3.fromRGB(255, 255, 255)
-fovUp.Font = Enum.Font.GothamBold
-fovUp.TextSize = 9
-fovUp.BorderSizePixel = 0
-fovUp.Parent = mainFrame
-
-local fovDown = Instance.new("TextButton")
-fovDown.Size = UDim2.new(0, 12, 0, 12)
-fovDown.Position = UDim2.new(0, 39, 0, 154)
-fovDown.Text = "-"
-fovDown.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-fovDown.TextColor3 = Color3.fromRGB(255, 255, 255)
-fovDown.Font = Enum.Font.GothamBold
-fovDown.TextSize = 9
-fovDown.BorderSizePixel = 0
-fovDown.Parent = mainFrame
-
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 59, 0, 14)
-closeBtn.Position = UDim2.new(0, 3, 0, 171)
+closeBtn.Position = UDim2.new(0, 3, 0, 139)
 closeBtn.Text = "✕ KAPAT"
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -274,20 +216,38 @@ closeBtn.BorderSizePixel = 0
 closeBtn.Parent = mainFrame
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- YARDIMCI FONKSİYONLAR
+-- Y A R D I M C I   F O N K S İ Y O N L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function isEnemy(p)
     if not p or p == LocalPlayer then return false end
-    if LocalPlayer.Team and p.Team then
-        return LocalPlayer.Team ~= p.Team
+    if SETTINGS.TeamCheck then
+        if LocalPlayer.Team and p.Team then
+            return LocalPlayer.Team ~= p.Team
+        end
+        return true
     end
     return true
 end
 
--- ═══════════════════════════════════════════════════════════════════════════
--- B Ö L Ü M  2/2  -  S İ S T E M L E R
--- ═══════════════════════════════════════════════════════════════════════════--[[ BÖLÜM 2/2 - SİSTEMLER ]]
+local function getNearestEnemy()
+    local nearest = nil
+    local nearestDist = math.huge
+    for _, p in pairs(Players:GetPlayers()) do
+        if p == LocalPlayer or not isEnemy(p) then continue end
+        local c = p.Character
+        if not c then continue end
+        local r = c:FindFirstChild("HumanoidRootPart")
+        local h = c:FindFirstChild("Humanoid")
+        if not r or not h or h.Health <= 0 then continue end
+        local dist = (r.Position - rootPart.Position).Magnitude
+        if dist < nearestDist then
+            nearest = p
+            nearestDist = dist
+        end
+    end
+    return nearest
+end
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 1. ESP
@@ -304,6 +264,7 @@ local function startESP()
         local h = c:FindFirstChild("Humanoid")
         if not r or not h then continue end
         local enemy = isEnemy(p)
+        
         local box = Instance.new("BoxHandleAdornment")
         box.Size = Vector3.new(3, 6, 1)
         box.Color3 = enemy and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
@@ -313,6 +274,7 @@ local function startESP()
         box.ZIndex = 10
         box.Parent = r
         table.insert(espObjects, box)
+        
         local tag = Instance.new("BillboardGui")
         tag.Size = UDim2.new(0, 120, 0, 30)
         tag.Adornee = r
@@ -337,103 +299,7 @@ local function stopESP()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 2. AIMBOT (Axiom tarzı - Sağ tık ile kilit)
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Aimbot tuş dinleme
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        CamlockState = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        CamlockState = false
-    end
-end)
-
-local function GetClosestPlayer()
-    local target = nil
-    local shortestDist = SETTINGS.FOV
-    local mousePos = UserInputService:GetMouseLocation()
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p == LocalPlayer then continue end
-        if not isEnemy(p) then continue end
-        local c = p.Character
-        if not c then continue end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        local h = c:FindFirstChild("Humanoid")
-        if not r or not h or h.Health <= 0 then continue end
-        
-        local screenPos, onScreen = Camera:WorldToViewportPoint(r.Position)
-        if onScreen then
-            local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-            if dist < shortestDist then
-                if SETTINGS.WallCheck then
-                    local origin = Camera.CFrame.Position
-                    local params = RaycastParams.new()
-                    params.FilterDescendantsInstances = {LocalPlayer.Character, p.Character}
-                    params.FilterType = Enum.RaycastFilterType.Exclude
-                    local result = Workspace:Raycast(origin, r.Position - origin, params)
-                    if not result then
-                        shortestDist = dist
-                        target = p
-                    end
-                else
-                    shortestDist = dist
-                    target = p
-                end
-            end
-        end
-    end
-    return target
-end
-
-local function startAimbot()
-    if connections.aimbot then return end
-    connections.aimbot = RunService.RenderStepped:Connect(function()
-        -- FOV Circle'ı güncelle
-        local mousePos = UserInputService:GetMouseLocation()
-        FOVCircle.Position = mousePos
-        FOVCircle.Radius = SETTINGS.FOV
-        FOVCircle.Visible = states.aimbot
-        
-        if states.aimbot and CamlockState then
-            local targetPlayer = GetClosestPlayer()
-            if targetPlayer and targetPlayer.Character then
-                local r = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if r then
-                    currentTarget = targetPlayer
-                    local currentCFrame = Camera.CFrame
-                    local targetCFrame = CFrame.new(currentCFrame.Position, r.Position)
-                    Camera.CFrame = currentCFrame:Lerp(targetCFrame, SETTINGS.Smoothness)
-                    
-                    -- Otomatik ateş
-                    local mouse = LocalPlayer:GetMouse()
-                    if mouse then
-                        mouse.Button1Down:Fire()
-                        wait(0.03)
-                        mouse.Button1Up:Fire()
-                    end
-                end
-            end
-        end
-    end)
-end
-
-local function stopAimbot()
-    if connections.aimbot then
-        connections.aimbot:Disconnect()
-        connections.aimbot = nil
-    end
-    FOVCircle.Visible = false
-    CamlockState = false
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- 3. 360
+-- 2. 360
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function start360()
@@ -453,12 +319,11 @@ local function stop360()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. SERBEST UÇUŞ (FLY)
+-- 3. FLY
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startFly()
     if bodyVelocity then return end
-    
     bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = Vector3.new(0,0,0)
     bodyVelocity.MaxForce = Vector3.new(9e9,9e9,9e9)
@@ -510,9 +375,7 @@ local function startFly()
         if flyKeys.D then move = move + rootPart.CFrame.RightVector * speed end
         if flyKeys.Space then move = move + Vector3.new(0, speed, 0) end
         if flyKeys.Shift then move = move - Vector3.new(0, speed, 0) end
-        if bodyVelocity then
-            bodyVelocity.Velocity = move
-        end
+        if bodyVelocity then bodyVelocity.Velocity = move end
     end)
 end
 
@@ -534,7 +397,7 @@ local function stopFly()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 5. RAINBOW
+-- 4. RAINBOW
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startRainbow()
@@ -560,14 +423,14 @@ local function stopRainbow()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 6. TELEPORT
+-- 5. GİT (TELEPORT)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startTeleport()
     if connections.teleport then return end
     connections.teleport = RunService.Heartbeat:Connect(function()
         if not states.teleport or not rootPart then return end
-        local target = GetClosestPlayer()
+        local target = getNearestEnemy()
         if not target then return end
         local c = target.Character
         if not c then return end
@@ -588,7 +451,7 @@ local function stopTeleport()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 7. INFINITE JUMP
+-- 6. INFINITE JUMP
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startInfiniteJump()
@@ -622,7 +485,6 @@ local function toggle(btn, stateKey, startFunc, stopFunc)
 end
 
 btnESP.MouseButton1Click:Connect(toggle(btnESP, "esp", startESP, stopESP))
-btnAim.MouseButton1Click:Connect(toggle(btnAim, "aimbot", startAimbot, stopAimbot))
 btn360.MouseButton1Click:Connect(toggle(btn360, "rotation", start360, stop360))
 btnFly.MouseButton1Click:Connect(toggle(btnFly, "fly", startFly, stopFly))
 btnRB.MouseButton1Click:Connect(toggle(btnRB, "rainbow", startRainbow, stopRainbow))
@@ -642,16 +504,6 @@ speedDown.MouseButton1Click:Connect(function()
     speedLabel.Text = tostring(SETTINGS.SpeedValue)
 end)
 
--- FOV
-fovUp.MouseButton1Click:Connect(function()
-    SETTINGS.FOV = SETTINGS.FOV + 10
-    if SETTINGS.FOV > 360 then SETTINGS.FOV = 360 end
-end)
-fovDown.MouseButton1Click:Connect(function()
-    SETTINGS.FOV = SETTINGS.FOV - 10
-    if SETTINGS.FOV < 10 then SETTINGS.FOV = 10 end
-end)
-
 -- Menü Aç/Kapa
 local menuVisible = true
 toggleBtn.MouseButton1Click:Connect(function()
@@ -665,27 +517,199 @@ toggleBtn.MouseButton1Click:Connect(function()
     mainFrame.Size = menuVisible and UDim2.new(0, 65, 0, 190) or UDim2.new(0, 65, 0, 16)
 end)
 
--- Kapat
-closeBtn.MouseButton1Click:Connect(function()
-    stopESP(); stopAimbot(); stop360(); stopFly(); stopRainbow(); stopTeleport(); stopInfiniteJump()
-    screenGui:Destroy()
-end)
+print("✅ BÖLÜM 1/2 YÜKLENDİ - ŞİMDİ BÖLÜM 2/2'Yİ ÇALIŞTIR")--[[
+    ═══════════════════════════════════════════════════════════════════════════
+    ⚡ ULTRA HACK v24.0 - BÖLÜM 2/2 (AIMBOT - TAM KİLİT)
+    ═══════════════════════════════════════════════════════════════════════════
+    
+    🎯 SAĞ TIK BASILI TUT - CROSSHAIR ANINDA HEDEFE KİLİTLENİR
+    🎯 OTOMATİK ATEŞ - KİLİTLENİNCE OTOMATİK ATEŞ EDER
+    🎯 GEÇİKME YOK - SMOOTHNESS 0
+]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- KARAKTER DEĞİŞİMİ
+-- S E R V İ S L E R
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A Y A R L A R
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local SETTINGS = {
+    TeamCheck = true,
+    AutoFire = true,
+}
+
+local isAiming = false
+local currentTarget = nil
+local aimbotConnection = nil
+local aimbotState = false
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- F O N K S İ Y O N L A R
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function isEnemy(p)
+    if not p or p == LocalPlayer then return false end
+    if SETTINGS.TeamCheck then
+        if LocalPlayer.Team and p.Team then
+            return LocalPlayer.Team ~= p.Team
+        end
+        return true
+    end
+    return true
+end
+
+local function getClosestEnemyToCrosshair()
+    local target = nil
+    local shortestDist = 9999
+    local centerX = Camera.ViewportSize.X / 2
+    local centerY = Camera.ViewportSize.Y / 2
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p == LocalPlayer or not isEnemy(p) then continue end
+        local c = p.Character
+        if not c then continue end
+        local r = c:FindFirstChild("HumanoidRootPart")
+        local h = c:FindFirstChild("Humanoid")
+        if not r or not h or h.Health <= 0 then continue end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(r.Position)
+        if not onScreen then continue end
+        
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+        if dist < shortestDist then
+            shortestDist = dist
+            target = p
+        end
+    end
+    return target
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A I M B O T   (T A M   K İ L İ T)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Sağ tık basılı tut
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        isAiming = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        isAiming = false
+        currentTarget = nil
+    end
+end)
+
+-- Aimbot'u başlat/durdur
+local function startAimbot()
+    if aimbotConnection then return end
+    aimbotState = true
+    
+    aimbotConnection = RunService.RenderStepped:Connect(function()
+        if not aimbotState or not isAiming then 
+            if currentTarget then currentTarget = nil end
+            return 
+        end
+        
+        local target = getClosestEnemyToCrosshair()
+        if not target then 
+            if currentTarget then currentTarget = nil end
+            return 
+        end
+        
+        local c = target.Character
+        if not c then 
+            if currentTarget then currentTarget = nil end
+            return 
+        end
+        
+        local r = c:FindFirstChild("HumanoidRootPart")
+        if not r then 
+            if currentTarget then currentTarget = nil end
+            return 
+        end
+        
+        local h = c:FindFirstChild("Humanoid")
+        if not h or h.Health <= 0 then
+            if currentTarget then currentTarget = nil end
+            return
+        end
+        
+        currentTarget = target
+        
+        -- TAM KİLİT - Crosshair direk hedefe bakar (hiç gecikme yok)
+        local targetPos = r.Position
+        local currentPos = Camera.CFrame.Position
+        Camera.CFrame = CFrame.new(currentPos, targetPos)
+        
+        -- Otomatik ateş
+        if SETTINGS.AutoFire then
+            local mouse = LocalPlayer:GetMouse()
+            if mouse then
+                mouse.Button1Down:Fire()
+                wait(0.03)
+                mouse.Button1Up:Fire()
+            end
+        end
+    end)
+    
+    print("🎯 AIMBOT AKTİF - Sağ tık basılı tut, crosshair kilitlenir!")
+end
+
+local function stopAimbot()
+    aimbotState = false
+    if aimbotConnection then
+        aimbotConnection:Disconnect()
+        aimbotConnection = nil
+    end
+    isAiming = false
+    currentTarget = nil
+    print("🎯 AIMBOT PASİF")
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M E N Ü   İ Ç İ N   A I M B O T   B U T O N U
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Bölüm 1'deki menüye AIM butonu eklemek için
+-- Bu butonu Bölüm 1'deki menüye ekleyin
+-- Veya manuel olarak aç/kapa yapmak için:
+
+-- startAimbot()  -- Açmak için
+-- stopAimbot()   -- Kapatmak için
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- K A R A K T E R   D E Ğ İ Ş İ M İ
 -- ═══════════════════════════════════════════════════════════════════════════
 
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     character = newChar
-    humanoid = newChar:WaitForChild("Humanoid")
     rootPart = newChar:WaitForChild("HumanoidRootPart")
-    head = newChar:FindFirstChild("Head")
     currentTarget = nil
-    stopFly(); stopRainbow()
-    if states.fly then startFly() end
-    if states.rainbow then startRainbow() end
 end)
 
-print("✅ WEAPON SYSTEM v22.0 HAZIR - AIMBOT ÇALIŞIYOR!")
-print("🎯 AIM açıkken SAĞ TIK basılı tutarak hedefe kilitlen!")
-print("🛩️ FLY açıkken WASD ile uç, Space yüksel, Shift alçal")
+print("╔══════════════════════════════════════════════════════════════╗")
+print("║   ⚡ BÖLÜM 2/2 - AIMBOT HAZIR ⚡                           ║")
+print("╠══════════════════════════════════════════════════════════════╣")
+print("║  🎯 SAĞ TIK BASILI TUT - CROSSHAIR HEDEFE KİLİTLENİR     ║")
+print("║  🔫 Otomatik ateş aktif                                    ║")
+print("║  ⚡ Hiç gecikme yok - anında kilit                         ║")
+print("╚══════════════════════════════════════════════════════════════╝")
+
+-- Aimbot'u otomatik başlat (isteğe bağlı)
+startAimbot()

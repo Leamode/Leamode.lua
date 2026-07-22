@@ -1,21 +1,17 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ FLY AIMLOCK v5.0 - FULL KİLİT (FOV 180)
+    ⚡ FLY AIMLOCK v6.0 - UZAKTAN KİLİT + FLY TAKİP
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ GİT butonu - en yakın düşmana fly ile yapışır
-    ✅ Hedefin arka üstüne sabitlenir (2.5 geri, 3 yukarı)
-    ✅ Duvarları yok sayar (geçer gider)
-    ✅ Adam nereye giderse takip eder
+    ✅ GİT basınca fly ile adama doğru uçar
+    ✅ Adamın arkasının 5 geri - 4 yukarısına sabitlenir (uzak)
+    ✅ Tam ekran kilit - FOV 180
+    ✅ Hiç yumuşaklık yok - anında kilit
+    ✅ BodyGyro ile sürekli hedefe bakar
+    ✅ Adam nereye giderse fly ile takip eder
     ✅ Ölene kadar kilitli kalır
     ✅ Ölünce otomatik yeni hedef bulur
-    ✅ Takım kontrolü (kendi takımına gitmez)
-    ✅ FOV 180 - tüm ekran kilit (anında tam kilit)
-    ✅ KAPAT butonu
-    ✅ Menü sağ köşede küçük
-    ✅ Hedef bilgileri (isim, HP, mesafe)
-    ✅ Kill counter
-    ✅ BodyGyro ile tam kilit
+    ✅ Takım kontrolü
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -23,13 +19,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local SETTINGS = {
-    OffsetBack = 2.5,              -- Hedefin arkasından kaç stud geride
-    OffsetUp = 3,                  -- Hedefin kaç stud yukarısında
-    FlySpeed = 70,                 -- Uçuş hızı
-    MaxDistance = 500,             -- Maksimum hedef alma mesafesi
-    TeamCheck = true,              -- Takım kontrolü açık/kapalı
-    WallIgnore = true,             -- Duvarları yok say
-    AutoSwitch = true,             -- Ölünce otomatik hedef değiştir
+    OffsetBack = 5,               -- Hedefin arkasından 5 stud geride
+    OffsetUp = 4,                 -- Hedefin 4 stud yukarısında
+    FlySpeed = 80,                -- Uçuş hızı
+    MaxDistance = 500,            -- Maksimum hedef alma mesafesi
+    TeamCheck = true,             -- Takım kontrolü
+    AutoSwitch = true,            -- Ölünce otomatik hedef değiştir
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +44,6 @@ local flyConnection = nil
 local bodyVelocity = nil
 local bodyGyro = nil
 local lastTargetHealth = 100
-local targetDied = false
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- M E N Ü   (Sağ köşe - küçük)
@@ -60,7 +54,6 @@ screenGui.Name = "FlyAimlockGUI"
 screenGui.Parent = player.PlayerGui
 screenGui.ResetOnSpawn = false
 
--- Ana çerçeve
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 75, 0, 120)
 mainFrame.Position = UDim2.new(1, -85, 0, 10)
@@ -71,7 +64,6 @@ mainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
 mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
--- Başlık
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 18)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -82,7 +74,6 @@ titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 12
 titleLabel.Parent = mainFrame
 
--- Çizgi
 local line = Instance.new("Frame")
 line.Size = UDim2.new(1, -10, 0, 1)
 line.Position = UDim2.new(0, 5, 0, 20)
@@ -90,7 +81,6 @@ line.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
 line.BackgroundTransparency = 0.5
 line.Parent = mainFrame
 
--- Durum
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -4, 0, 14)
 statusLabel.Position = UDim2.new(0, 2, 0, 23)
@@ -102,7 +92,6 @@ statusLabel.TextSize = 10
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = mainFrame
 
--- Hedef ismi
 local targetNameLabel = Instance.new("TextLabel")
 targetNameLabel.Size = UDim2.new(1, -4, 0, 14)
 targetNameLabel.Position = UDim2.new(0, 2, 0, 39)
@@ -114,7 +103,6 @@ targetNameLabel.TextSize = 9
 targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 targetNameLabel.Parent = mainFrame
 
--- HP
 local hpLabel = Instance.new("TextLabel")
 hpLabel.Size = UDim2.new(1, -4, 0, 14)
 hpLabel.Position = UDim2.new(0, 2, 0, 55)
@@ -126,7 +114,6 @@ hpLabel.TextSize = 9
 hpLabel.TextXAlignment = Enum.TextXAlignment.Left
 hpLabel.Parent = mainFrame
 
--- Mesafe
 local distLabel = Instance.new("TextLabel")
 distLabel.Size = UDim2.new(1, -4, 0, 14)
 distLabel.Position = UDim2.new(0, 2, 0, 71)
@@ -138,7 +125,6 @@ distLabel.TextSize = 9
 distLabel.TextXAlignment = Enum.TextXAlignment.Left
 distLabel.Parent = mainFrame
 
--- Kill sayacı
 local killLabel = Instance.new("TextLabel")
 killLabel.Size = UDim2.new(1, -4, 0, 14)
 killLabel.Position = UDim2.new(0, 2, 0, 87)
@@ -150,7 +136,6 @@ killLabel.TextSize = 10
 killLabel.TextXAlignment = Enum.TextXAlignment.Left
 killLabel.Parent = mainFrame
 
--- GİT Butonu
 local gitButton = Instance.new("TextButton")
 gitButton.Size = UDim2.new(0, 35, 0, 22)
 gitButton.Position = UDim2.new(0, 2, 0, 103)
@@ -162,7 +147,6 @@ gitButton.TextSize = 14
 gitButton.BorderSizePixel = 0
 gitButton.Parent = mainFrame
 
--- KAPAT Butonu
 local closeButton = Instance.new("TextButton")
 closeButton.Size = UDim2.new(0, 30, 0, 22)
 closeButton.Position = UDim2.new(0, 41, 0, 103)
@@ -178,12 +162,8 @@ closeButton.Parent = mainFrame
 -- F O N K S İ Y O N L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Takım kontrolü
 local function isEnemy(targetPlayer)
-    if not targetPlayer or targetPlayer == player then 
-        return false 
-    end
-    
+    if not targetPlayer or targetPlayer == player then return false end
     if SETTINGS.TeamCheck then
         if player.Team and targetPlayer.Team then
             return player.Team ~= targetPlayer.Team
@@ -193,42 +173,26 @@ local function isEnemy(targetPlayer)
     return true
 end
 
--- En yakın düşmanı bul (gelişmiş)
 local function getNearestEnemy()
     local nearest = nil
     local nearestDist = math.huge
-    local players = game.Players:GetPlayers()
     
-    for _, otherPlayer in pairs(players) do
-        if otherPlayer == player then 
-            continue 
-        end
-        
-        if not isEnemy(otherPlayer) then
-            continue
-        end
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer == player then continue end
+        if not isEnemy(otherPlayer) then continue end
         
         local otherChar = otherPlayer.Character
-        if not otherChar then 
-            continue 
-        end
+        if not otherChar then continue end
         
         local otherRoot = otherChar:FindFirstChild("HumanoidRootPart")
         local otherHumanoid = otherChar:FindFirstChild("Humanoid")
         
-        if not otherRoot or not otherHumanoid then 
-            continue 
-        end
-        
-        if otherHumanoid.Health <= 0 then
+        if not otherRoot or not otherHumanoid or otherHumanoid.Health <= 0 then
             continue
         end
         
         local dist = (otherRoot.Position - rootPart.Position).Magnitude
-        
-        if dist > SETTINGS.MaxDistance then
-            continue
-        end
+        if dist > SETTINGS.MaxDistance then continue end
         
         if dist < nearestDist then
             nearest = otherPlayer
@@ -239,16 +203,9 @@ local function getNearestEnemy()
     return nearest
 end
 
--- Fly oluştur
 local function createFly()
-    if bodyVelocity then 
-        bodyVelocity:Destroy() 
-        bodyVelocity = nil
-    end
-    if bodyGyro then 
-        bodyGyro:Destroy() 
-        bodyGyro = nil
-    end
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
     
     bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -266,21 +223,17 @@ local function createFly()
     humanoid.AutoRotate = false
 end
 
--- Fly yok et
 local function destroyFly()
-    if bodyVelocity then 
-        bodyVelocity:Destroy() 
-        bodyVelocity = nil
-    end
-    if bodyGyro then 
-        bodyGyro:Destroy() 
-        bodyGyro = nil
-    end
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
     humanoid.PlatformStand = false
     humanoid.AutoRotate = true
 end
 
--- Hedefe yapış (fly ile) - TAM KİLİT
+-- ═══════════════════════════════════════════════════════════════════════════
+-- HEDEFE YAPIŞ - FLY + TAM KİLİT
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local function attachToTarget(targetPlayer)
     if not targetPlayer then
         statusLabel.Text = "⚠️"
@@ -301,7 +254,6 @@ local function attachToTarget(targetPlayer)
         return false
     end
     
-    -- Önceki hedefi temizle
     if flyConnection then
         flyConnection:Disconnect()
         flyConnection = nil
@@ -309,27 +261,19 @@ local function attachToTarget(targetPlayer)
     
     currentTarget = targetPlayer
     lastTargetHealth = targetHumanoid.Health
-    targetDied = false
     
-    -- Fly oluştur
     createFly()
     isActive = true
     isRunning = true
     
-    -- Buton görünümünü güncelle
     gitButton.Text = "⏹"
     gitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     statusLabel.Text = "🔴"
-    
-    -- Hedef bilgilerini güncelle
     targetNameLabel.Text = targetPlayer.Name
     hpLabel.Text = "HP: " .. math.floor(targetHumanoid.Health)
     hpLabel.TextColor3 = targetHumanoid.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     
-    local dist = (targetRoot.Position - rootPart.Position).Magnitude
-    distLabel.Text = math.floor(dist) .. "m"
-    
-    -- ═══════ FLY DÖNGÜSÜ - TAM KİLİT ═══════
+    -- ═══════ FLY + KİLİT DÖNGÜSÜ ═══════
     flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not isActive or not isRunning or not currentTarget then
             destroyFly()
@@ -391,11 +335,10 @@ local function attachToTarget(targetPlayer)
             return
         end
         
-        -- KILL CHECK - Öldü mü?
+        -- KILL CHECK
         if targetHumanoid.Health <= 0 then
             killCount = killCount + 1
             killLabel.Text = "💀 " .. killCount
-            targetDied = true
             
             if SETTINGS.AutoSwitch then
                 statusLabel.Text = "🔄"
@@ -442,12 +385,12 @@ local function attachToTarget(targetPlayer)
             hpLabel.TextColor3 = targetHumanoid.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
         end
         
-        -- HEDEFİN ARKA ÜSTÜNE GİT
+        -- ═══════ HEDEFİN ARKA ÜSTÜ (5 geri - 4 yukarı) ═══════
         local targetPos = targetRoot.Position
         local lookVector = targetRoot.CFrame.LookVector
         local targetPosition = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
         
-        -- UÇUŞ - DUVARLARI YOK SAYAR
+        -- FLY - duvarları yok sayar
         local direction = (targetPosition - rootPart.Position)
         local distance = direction.Magnitude
         
@@ -463,24 +406,21 @@ local function attachToTarget(targetPlayer)
             end
         end
         
-        -- ═══════ TAM KİLİT - FOV 180 (anında hedefe bak) ═══════
+        -- ═══════ TAM KİLİT - ANINDA HEDEFE BAK ═══════
         if bodyGyro then
-            -- Direkt hedefe bak - hiç yumuşaklık yok
+            -- Direkt hedefe bak - hiç yumuşaklık yok, anında kilit
             bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, targetRoot.Position)
         end
         
-        -- Mesafeyi güncelle
+        -- Mesafe
         local currentDist = (targetRoot.Position - rootPart.Position).Magnitude
         distLabel.Text = math.floor(currentDist) .. "m"
-        
-        -- Durum rengi
         statusLabel.Text = currentDist < 10 and "🟢" or "🟡"
     end)
     
     return true
 end
 
--- Durdur
 local function stopAll()
     isActive = false
     isRunning = false
@@ -497,10 +437,9 @@ local function stopAll()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- B U T O N   İ Ş L E V L E R İ
+-- B U T O N L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- GİT Butonu
 gitButton.MouseButton1Click:Connect(function()
     if isActive then
         stopAll()
@@ -530,18 +469,15 @@ gitButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- KAPAT Butonu
 closeButton.MouseButton1Click:Connect(function()
     stopAll()
     screenGui:Destroy()
-    print("✅ Fly Aimlock kapatıldı")
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- E T K İ N L İ K   Y A K A L A Y I C I L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Karakter değişimi
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = newChar:WaitForChild("Humanoid")
@@ -556,7 +492,6 @@ player.CharacterAdded:Connect(function(newChar)
     end
 end)
 
--- Oyuncu çıkışı
 game.Players.PlayerRemoving:Connect(function(plr)
     if currentTarget == plr then
         statusLabel.Text = "👋"
@@ -574,18 +509,12 @@ game.Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════
--- B A Ş L A N G I Ç   M E S A J I
--- ═══════════════════════════════════════════════════════════════════════════
-
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║        ⚡ FLY AIMLOCK v5.0 - TAM KİLİT ⚡                  ║")
+print("║     ⚡ FLY AIMLOCK v6.0 - UZAK KİLİT + FLY ⚡              ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  ▶ GİT bas - düşmanın arka üstüne yapış                    ║")
-print("║  🧱 Duvarları yok sayar - deler geçer                      ║")
-print("║  🎯 FOV 180 - TAM EKRAN KİLİT (anında)                     ║")
-print("║  👁️  Otomatik takip - hiç yumuşaklık yok                  ║")
+print("║  ▶ GİT bas - fly ile adama uçar                            ║")
+print("║  📍 5 geri - 4 yukarı sabitlenir (uzak)                    ║")
+print("║  🎯 Tam kilit - anında hedefe bakar                        ║")
+print("║  🧱 Duvarları yok sayar                                    ║")
 print("║  💀 Ölünce otomatik yeni hedef                             ║")
-print("║  🛡️  Takım kontrolü aktif                                  ║")
-print("║  📊 Kill sayacı aktif                                      ║")
 print("╚══════════════════════════════════════════════════════════════╝")

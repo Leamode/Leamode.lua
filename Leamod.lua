@@ -1,232 +1,209 @@
 --[[
-    ═══════════════════════════════════════════════════════════════
-    GELİŞMİŞ GİT BUTONLU AİMLOCK + TAKIM + DUVAR + KILL CHECK
-    ═══════════════════════════════════════════════════════════════
+    ═══════════════════════════════════════════════════════════════════════════
+    ⚡ FLY AIMLOCK v5.0 - FULL KİLİT (FOV 180)
+    ═══════════════════════════════════════════════════════════════════════════
     
-    ÖZELLİKLER:
-    ✅ GİT butonu - en yakın düşmana ışınlanma
-    ✅ Hedefin arka üstüne sabitlenme (2.5 geri, 3 yukarı)
-    ✅ Hedefe bakma (aimlock)
-    ✅ Takım kontrolü - kendi takımına gitmez
-    ✅ Duvar kontrolü - duvar arkasındakini hedeflemez
-    ✅ Kill check - ölünce otomatik sonraki hedefe geçer
-    ✅ KAPAT butonu - scripti tamamen kapatır
-    ✅ Arayüz - durum göstergesi, hedef ismi
-    ✅ Hata yönetimi - karakter ölümü, oyuncu çıkışı
-    ✅ Ayarlanabilir mesafe ve hassasiyet
+    ✅ GİT butonu - en yakın düşmana fly ile yapışır
+    ✅ Hedefin arka üstüne sabitlenir (2.5 geri, 3 yukarı)
+    ✅ Duvarları yok sayar (geçer gider)
+    ✅ Adam nereye giderse takip eder
+    ✅ Ölene kadar kilitli kalır
+    ✅ Ölünce otomatik yeni hedef bulur
+    ✅ Takım kontrolü (kendi takımına gitmez)
+    ✅ FOV 180 - tüm ekran kilit (anında tam kilit)
+    ✅ KAPAT butonu
+    ✅ Menü sağ köşede küçük
+    ✅ Hedef bilgileri (isim, HP, mesafe)
+    ✅ Kill counter
+    ✅ BodyGyro ile tam kilit
 ]]
 
--- ═══════════════════════════════════════════════════ AYARLAR ═══════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A Y A R L A R
+-- ═══════════════════════════════════════════════════════════════════════════
 
 local SETTINGS = {
-    MaxDistance = 200,              -- Maksimum hedef alma mesafesi
-    TargetOffsetBack = 2.5,         -- Hedefin arkasından ne kadar uzakta duralım
-    TargetOffsetUp = 3,             -- Hedefin ne kadar yukarısında duralım
-    CheckInterval = 0.1,            -- Kontrol aralığı (saniye)
-    AutoRotateSpeed = 10,           -- Dönüş hızı (1-10 arası)
-    WallCheckEnabled = true,        -- Duvar kontrolü açık/kapalı
-    TeamCheckEnabled = true,        -- Takım kontrolü açık/kapalı
-    KillCheckEnabled = true,        -- Kill check açık/kapalı
+    OffsetBack = 2.5,              -- Hedefin arkasından kaç stud geride
+    OffsetUp = 3,                  -- Hedefin kaç stud yukarısında
+    FlySpeed = 70,                 -- Uçuş hızı
+    MaxDistance = 500,             -- Maksimum hedef alma mesafesi
+    TeamCheck = true,              -- Takım kontrolü açık/kapalı
+    WallIgnore = true,             -- Duvarları yok say
+    AutoSwitch = true,             -- Ölünce otomatik hedef değiştir
 }
 
--- ═══════════════════════════════════════════════════ BAŞLANGIÇ ═══════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════
+-- B A Ş L A N G I Ç
+-- ═══════════════════════════════════════════════════════════════════════════
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
 
--- ═══════════════════════════════════════════════════ GUI OLUŞTUR ═══════════════════════════════════════════════════
+local killCount = 0
+local currentTarget = nil
+local isActive = false
+local isRunning = false
+local flyConnection = nil
+local bodyVelocity = nil
+local bodyGyro = nil
+local lastTargetHealth = 100
+local targetDied = false
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M E N Ü   (Sağ köşe - küçük)
+-- ═══════════════════════════════════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AimlockGUI"
+screenGui.Name = "FlyAimlockGUI"
 screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
 
--- Animasyonlu arka plan
+-- Ana çerçeve
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 220, 0, 170)
-mainFrame.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.Size = UDim2.new(0, 75, 0, 120)
+mainFrame.Position = UDim2.new(1, -85, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 mainFrame.BackgroundTransparency = 0.15
 mainFrame.BorderSizePixel = 1
-mainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+mainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
 mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
 -- Başlık
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Size = UDim2.new(1, 0, 0, 18)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.Text = "⚡ AIMLOCK v2.0"
+titleLabel.Text = "⚡KİLİT"
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
+titleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 18
+titleLabel.TextSize = 12
 titleLabel.Parent = mainFrame
 
--- Durum göstergesi (hedef ismi + durum)
+-- Çizgi
+local line = Instance.new("Frame")
+line.Size = UDim2.new(1, -10, 0, 1)
+line.Position = UDim2.new(0, 5, 0, 20)
+line.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+line.BackgroundTransparency = 0.5
+line.Parent = mainFrame
+
+-- Durum
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -10, 0, 25)
-statusLabel.Position = UDim2.new(0, 5, 0, 35)
-statusLabel.Text = "🔴 Bekleniyor..."
+statusLabel.Size = UDim2.new(1, -4, 0, 14)
+statusLabel.Position = UDim2.new(0, 2, 0, 23)
+statusLabel.Text = "⏸"
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 13
+statusLabel.TextSize = 10
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = mainFrame
 
--- Hedef bilgisi
-local targetInfoLabel = Instance.new("TextLabel")
-targetInfoLabel.Size = UDim2.new(1, -10, 0, 20)
-targetInfoLabel.Position = UDim2.new(0, 5, 0, 62)
-targetInfoLabel.Text = "Hedef: Yok"
-targetInfoLabel.BackgroundTransparency = 1
-targetInfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-targetInfoLabel.Font = Enum.Font.Gotham
-targetInfoLabel.TextSize = 12
-targetInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-targetInfoLabel.Parent = mainFrame
+-- Hedef ismi
+local targetNameLabel = Instance.new("TextLabel")
+targetNameLabel.Size = UDim2.new(1, -4, 0, 14)
+targetNameLabel.Position = UDim2.new(0, 2, 0, 39)
+targetNameLabel.Text = "Yok"
+targetNameLabel.BackgroundTransparency = 1
+targetNameLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+targetNameLabel.Font = Enum.Font.Gotham
+targetNameLabel.TextSize = 9
+targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+targetNameLabel.Parent = mainFrame
 
--- Mesafe bilgisi
+-- HP
+local hpLabel = Instance.new("TextLabel")
+hpLabel.Size = UDim2.new(1, -4, 0, 14)
+hpLabel.Position = UDim2.new(0, 2, 0, 55)
+hpLabel.Text = "HP: 100"
+hpLabel.BackgroundTransparency = 1
+hpLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+hpLabel.Font = Enum.Font.Gotham
+hpLabel.TextSize = 9
+hpLabel.TextXAlignment = Enum.TextXAlignment.Left
+hpLabel.Parent = mainFrame
+
+-- Mesafe
 local distLabel = Instance.new("TextLabel")
-distLabel.Size = UDim2.new(1, -10, 0, 20)
-distLabel.Position = UDim2.new(0, 5, 0, 84)
-distLabel.Text = "Mesafe: 0m"
+distLabel.Size = UDim2.new(1, -4, 0, 14)
+distLabel.Position = UDim2.new(0, 2, 0, 71)
+distLabel.Text = "0m"
 distLabel.BackgroundTransparency = 1
-distLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+distLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
 distLabel.Font = Enum.Font.Gotham
-distLabel.TextSize = 12
+distLabel.TextSize = 9
 distLabel.TextXAlignment = Enum.TextXAlignment.Left
 distLabel.Parent = mainFrame
 
+-- Kill sayacı
+local killLabel = Instance.new("TextLabel")
+killLabel.Size = UDim2.new(1, -4, 0, 14)
+killLabel.Position = UDim2.new(0, 2, 0, 87)
+killLabel.Text = "💀 0"
+killLabel.BackgroundTransparency = 1
+killLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+killLabel.Font = Enum.Font.GothamBold
+killLabel.TextSize = 10
+killLabel.TextXAlignment = Enum.TextXAlignment.Left
+killLabel.Parent = mainFrame
+
 -- GİT Butonu
 local gitButton = Instance.new("TextButton")
-gitButton.Size = UDim2.new(0, 90, 0, 35)
-gitButton.Position = UDim2.new(0, 10, 0, 115)
-gitButton.Text = "🔍 GİT"
-gitButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+gitButton.Size = UDim2.new(0, 35, 0, 22)
+gitButton.Position = UDim2.new(0, 2, 0, 103)
+gitButton.Text = "▶"
+gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
 gitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 gitButton.Font = Enum.Font.GothamBold
-gitButton.TextSize = 15
+gitButton.TextSize = 14
 gitButton.BorderSizePixel = 0
 gitButton.Parent = mainFrame
 
 -- KAPAT Butonu
 local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 90, 0, 35)
-closeButton.Position = UDim2.new(0, 110, 0, 115)
-closeButton.Text = "✕ KAPAT"
-closeButton.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+closeButton.Size = UDim2.new(0, 30, 0, 22)
+closeButton.Position = UDim2.new(0, 41, 0, 103)
+closeButton.Text = "✕"
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.Font = Enum.Font.GothamBold
-closeButton.TextSize = 15
+closeButton.TextSize = 12
 closeButton.BorderSizePixel = 0
 closeButton.Parent = mainFrame
 
--- Animasyonlu çizgi
-local line = Instance.new("Frame")
-line.Size = UDim2.new(1, 0, 0, 2)
-line.Position = UDim2.new(0, 0, 0, 33)
-line.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-line.BackgroundTransparency = 0.3
-line.Parent = mainFrame
+-- ═══════════════════════════════════════════════════════════════════════════
+-- F O N K S İ Y O N L A R
+-- ═══════════════════════════════════════════════════════════════════════════
 
--- ═══════════════════════════════════════════════════ DEĞİŞKENLER ═══════════════════════════════════════════════════
-
-local isActive = false
-local currentTarget = nil
-local currentTargetDistance = 0
-local isRunning = false
-local targetHumanoid = nil
-
--- ═══════════════════════════════════════════════════ FONKSİYONLAR ═══════════════════════════════════════════════════
-
--- Takım kontrolü (detaylı)
+-- Takım kontrolü
 local function isEnemy(targetPlayer)
     if not targetPlayer or targetPlayer == player then 
         return false 
     end
     
-    if SETTINGS.TeamCheckEnabled then
-        -- Oyuncunun takımı varsa kontrol et
+    if SETTINGS.TeamCheck then
         if player.Team and targetPlayer.Team then
             return player.Team ~= targetPlayer.Team
         end
-        
-        -- Takım yoksa ama Neutral vs Neutral kontrolü
-        if not player.Team and not targetPlayer.Team then
-            return true -- Takım yoksa herkes düşman
-        end
-        
-        -- Biri takımlı diğeri değilse
         return true
     end
-    
-    return true -- Takım kontrolü kapalıysa herkes düşman
+    return true
 end
 
--- Daha hassas duvar kontrolü
-local function canSeeTarget(targetRoot)
-    if not SETTINGS.WallCheckEnabled then 
-        return true 
-    end
-    
-    local origin = rootPart.Position + Vector3.new(0, 1.5, 0)
-    local targetPos = targetRoot.Position + Vector3.new(0, 1.5, 0)
-    local direction = (targetPos - origin).Unit
-    local distance = (targetPos - origin).Magnitude
-    
-    if distance > SETTINGS.MaxDistance then
-        return false
-    end
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {character, targetRoot.Parent}
-    raycastParams.IgnoreWater = true
-    
-    local result = workspace:Raycast(origin, direction * distance, raycastParams)
-    
-    if result then
-        local hitInstance = result.Instance
-        -- Eğer çarptığımız şey hedefin bir parçasıysa görüyoruz
-        if hitInstance and hitInstance:IsDescendantOf(targetRoot.Parent) then
-            return true
-        end
-        
-        -- Vurulan obje duvar mı kontrol et
-        if hitInstance and hitInstance.Material then
-            local material = hitInstance.Material
-            if material == Enum.Material.Air or material == Enum.Material.Glass then
-                return true -- Cam veya havadan geçebilir
-            end
-        end
-        
-        return false -- Duvar var
-    end
-    
-    return true -- Hiçbir şeye çarpmadıysa görüyor
-end
-
--- Tüm oyuncuları tara ve en yakın düşmanı bul (gelişmiş)
+-- En yakın düşmanı bul (gelişmiş)
 local function getNearestEnemy()
     local nearest = nil
     local nearestDist = math.huge
     local players = game.Players:GetPlayers()
-    local totalPlayers = #players
-    
-    if totalPlayers == 0 then
-        return nil
-    end
     
     for _, otherPlayer in pairs(players) do
-        -- Kendini ve ölüleri atla
         if otherPlayer == player then 
             continue 
         end
         
-        -- Takım kontrolü
         if not isEnemy(otherPlayer) then
             continue
         end
@@ -243,300 +220,372 @@ local function getNearestEnemy()
             continue 
         end
         
-        -- Ölü mü kontrol et
         if otherHumanoid.Health <= 0 then
             continue
         end
         
-        -- Mesafe hesapla
         local dist = (otherRoot.Position - rootPart.Position).Magnitude
         
-        -- Max mesafe kontrolü
         if dist > SETTINGS.MaxDistance then
             continue
         end
         
-        -- Duvar kontrolü
-        if not canSeeTarget(otherRoot) then
-            continue
-        end
-        
-        -- En yakını bul
         if dist < nearestDist then
             nearest = otherPlayer
             nearestDist = dist
-            currentTargetDistance = dist
         end
     end
     
     return nearest
 end
 
--- Hedefe git ve sabitlen (gelişmiş)
-local function goToTarget(targetPlayer)
-    if not targetPlayer then 
-        statusLabel.Text = "⚠️ Hedef bulunamadı!"
-        return false 
+-- Fly oluştur
+local function createFly()
+    if bodyVelocity then 
+        bodyVelocity:Destroy() 
+        bodyVelocity = nil
+    end
+    if bodyGyro then 
+        bodyGyro:Destroy() 
+        bodyGyro = nil
+    end
+    
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Parent = rootPart
+    
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.P = 999999
+    bodyGyro.D = 999999
+    bodyGyro.CFrame = rootPart.CFrame
+    bodyGyro.Parent = rootPart
+    
+    humanoid.PlatformStand = true
+    humanoid.AutoRotate = false
+end
+
+-- Fly yok et
+local function destroyFly()
+    if bodyVelocity then 
+        bodyVelocity:Destroy() 
+        bodyVelocity = nil
+    end
+    if bodyGyro then 
+        bodyGyro:Destroy() 
+        bodyGyro = nil
+    end
+    humanoid.PlatformStand = false
+    humanoid.AutoRotate = true
+end
+
+-- Hedefe yapış (fly ile) - TAM KİLİT
+local function attachToTarget(targetPlayer)
+    if not targetPlayer then
+        statusLabel.Text = "⚠️"
+        return false
     end
     
     local targetChar = targetPlayer.Character
-    if not targetChar then 
-        statusLabel.Text = "❌ Hedef karakteri yok!"
-        return false 
+    if not targetChar then
+        statusLabel.Text = "❌"
+        return false
     end
     
     local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-    local targetHum = targetChar:FindFirstChild("Humanoid")
+    local targetHumanoid = targetChar:FindFirstChild("Humanoid")
     
-    if not targetRoot or not targetHum or targetHum.Health <= 0 then
-        statusLabel.Text = "💀 Hedef ölü!"
+    if not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then
+        statusLabel.Text = "💀"
         return false
     end
+    
+    -- Önceki hedefi temizle
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+    
+    currentTarget = targetPlayer
+    lastTargetHealth = targetHumanoid.Health
+    targetDied = false
+    
+    -- Fly oluştur
+    createFly()
+    isActive = true
+    isRunning = true
+    
+    -- Buton görünümünü güncelle
+    gitButton.Text = "⏹"
+    gitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    statusLabel.Text = "🔴"
     
     -- Hedef bilgilerini güncelle
-    currentTarget = targetPlayer
-    targetHumanoid = targetHum
+    targetNameLabel.Text = targetPlayer.Name
+    hpLabel.Text = "HP: " .. math.floor(targetHumanoid.Health)
+    hpLabel.TextColor3 = targetHumanoid.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
     
-    local targetPos = targetRoot.Position
-    local lookVector = targetRoot.CFrame.LookVector
+    local dist = (targetRoot.Position - rootPart.Position).Magnitude
+    distLabel.Text = math.floor(dist) .. "m"
     
-    -- Hedefin arka üstüne git (ayarlardan)
-    local offsetBack = SETTINGS.TargetOffsetBack
-    local offsetUp = SETTINGS.TargetOffsetUp
-    local targetPosition = targetPos - (lookVector * offsetBack) + Vector3.new(0, offsetUp, 0)
-    
-    -- Teleport et (güvenli)
-    local success, err = pcall(function()
-        rootPart.CFrame = CFrame.new(targetPosition, targetPos)
-    end)
-    
-    if not success then
-        statusLabel.Text = "⚠️ Teleport hatası!"
-        return false
-    end
-    
-    -- Bilgileri güncelle
-    local dist = (targetPos - rootPart.Position).Magnitude
-    currentTargetDistance = dist
-    
-    statusLabel.Text = "🎯 Takip: " .. targetPlayer.Name
-    targetInfoLabel.Text = "Hedef: " .. targetPlayer.Name .. " | " .. math.floor(targetHum.Health) .. " HP"
-    distLabel.Text = "Mesafe: " .. math.floor(dist) .. "m | Takım: " .. (targetPlayer.Team and targetPlayer.Team.Name or "Yok")
-    
-    return true
-end
-
--- Hedefe bak (aimlock)
-local function aimAtTarget()
-    if not currentTarget then 
-        return 
-    end
-    
-    local targetChar = currentTarget.Character
-    if not targetChar then 
-        return 
-    end
-    
-    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-    if not targetRoot then 
-        return 
-    end
-    
-    -- Dönüş hızı ile yumuşak aim
-    local targetPos = targetRoot.Position
-    local currentPos = rootPart.Position
-    local lookAt = CFrame.lookAt(currentPos, targetPos)
-    
-    -- Yumuşak geçiş
-    local speed = SETTINGS.AutoRotateSpeed / 10
-    local newCFrame = rootPart.CFrame:Lerp(lookAt, speed)
-    rootPart.CFrame = newCFrame
-end
-
--- Kill check (ölüm kontrolü)
-local function checkTargetAlive()
-    if not SETTINGS.KillCheckEnabled then
-        return true
-    end
-    
-    if not currentTarget then 
-        return false 
-    end
-    
-    local targetChar = currentTarget.Character
-    if not targetChar then 
-        statusLabel.Text = "💀 Hedef yok oldu!"
-        currentTarget = nil
-        targetHumanoid = nil
-        return false 
-    end
-    
-    local targetHum = targetChar:FindFirstChild("Humanoid")
-    if not targetHum or targetHum.Health <= 0 then
-        statusLabel.Text = "💀 Hedef öldü! Yeni hedef aranıyor..."
-        currentTarget = nil
-        targetHumanoid = nil
-        return false
-    end
-    
-    return true
-end
-
--- ═══════════════════════════════════════════════════ ANA DÖNGÜ ═══════════════════════════════════════════════════
-
-local function mainLoop()
-    while isActive and isRunning do
-        -- === KONTROL 1: Hedef yaşıyor mu? ===
-        if currentTarget then
-            local alive = checkTargetAlive()
-            if not alive then
-                -- Hedef öldü, yenisini ara
+    -- ═══════ FLY DÖNGÜSÜ - TAM KİLİT ═══════
+    flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not isActive or not isRunning or not currentTarget then
+            destroyFly()
+            isActive = false
+            isRunning = false
+            gitButton.Text = "▶"
+            gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+            statusLabel.Text = "⏸"
+            if flyConnection then 
+                flyConnection:Disconnect() 
+                flyConnection = nil 
+            end
+            return
+        end
+        
+        local targetChar = currentTarget.Character
+        if not targetChar then
+            if SETTINGS.AutoSwitch then
                 local newTarget = getNearestEnemy()
                 if newTarget then
-                    goToTarget(newTarget)
+                    attachToTarget(newTarget)
+                    return
+                end
+            end
+            destroyFly()
+            isActive = false
+            isRunning = false
+            gitButton.Text = "▶"
+            gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+            statusLabel.Text = "❌"
+            if flyConnection then 
+                flyConnection:Disconnect() 
+                flyConnection = nil 
+            end
+            return
+        end
+        
+        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+        local targetHumanoid = targetChar:FindFirstChild("Humanoid")
+        
+        if not targetRoot or not targetHumanoid then
+            if SETTINGS.AutoSwitch then
+                local newTarget = getNearestEnemy()
+                if newTarget then
+                    attachToTarget(newTarget)
+                    return
+                end
+            end
+            destroyFly()
+            isActive = false
+            isRunning = false
+            gitButton.Text = "▶"
+            gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+            statusLabel.Text = "❌"
+            if flyConnection then 
+                flyConnection:Disconnect() 
+                flyConnection = nil 
+            end
+            return
+        end
+        
+        -- KILL CHECK - Öldü mü?
+        if targetHumanoid.Health <= 0 then
+            killCount = killCount + 1
+            killLabel.Text = "💀 " .. killCount
+            targetDied = true
+            
+            if SETTINGS.AutoSwitch then
+                statusLabel.Text = "🔄"
+                targetNameLabel.Text = "Yeni hedef..."
+                local newTarget = getNearestEnemy()
+                if newTarget then
+                    attachToTarget(newTarget)
+                    return
                 else
-                    statusLabel.Text = "⏳ Düşman aranıyor..."
-                    targetInfoLabel.Text = "Hedef: Yok"
-                    currentTarget = nil
-                    targetHumanoid = nil
-                end
-                wait(SETTINGS.CheckInterval)
-                continue
-            end
-        end
-        
-        -- === KONTROL 2: Hedef yoksa yeni hedef bul ===
-        if not currentTarget then
-            local target = getNearestEnemy()
-            if target then
-                goToTarget(target)
-            else
-                statusLabel.Text = "⏳ Düşman aranıyor..."
-                targetInfoLabel.Text = "Hedef: Yok"
-                distLabel.Text = "Mesafe: 0m"
-            end
-            wait(SETTINGS.CheckInterval)
-            continue
-        end
-        
-        -- === KONTROL 3: Hedefe bak ve pozisyonu koru ===
-        if currentTarget then
-            local targetChar = currentTarget.Character
-            if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
-                local targetRoot = targetChar.HumanoidRootPart
-                
-                -- Duvar kontrolü
-                if not canSeeTarget(targetRoot) then
-                    statusLabel.Text = "🧱 Duvar engelliyor, yeni hedef aranıyor..."
-                    local newTarget = getNearestEnemy()
-                    if newTarget then
-                        goToTarget(newTarget)
-                    else
-                        currentTarget = nil
-                        targetHumanoid = nil
-                        statusLabel.Text = "⚠️ Hedef kaybedildi"
+                    destroyFly()
+                    isActive = false
+                    isRunning = false
+                    gitButton.Text = "▶"
+                    gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+                    statusLabel.Text = "⏸"
+                    targetNameLabel.Text = "Yok"
+                    hpLabel.Text = "HP: 0"
+                    distLabel.Text = "0m"
+                    if flyConnection then 
+                        flyConnection:Disconnect() 
+                        flyConnection = nil 
                     end
-                    wait(SETTINGS.CheckInterval)
-                    continue
-                end
-                
-                -- Hedefe bak (aimlock)
-                aimAtTarget()
-                
-                -- Mesafeyi güncelle
-                local dist = (targetRoot.Position - rootPart.Position).Magnitude
-                currentTargetDistance = dist
-                distLabel.Text = "Mesafe: " .. math.floor(dist) .. "m"
-                
-                -- HP güncelle
-                local hum = targetChar:FindFirstChild("Humanoid")
-                if hum then
-                    targetInfoLabel.Text = "Hedef: " .. currentTarget.Name .. " | " .. math.floor(hum.Health) .. " HP"
+                    return
                 end
             else
-                -- Hedef karakteri kayboldu
-                statusLabel.Text = "❌ Hedef kayboldu!"
-                currentTarget = nil
-                targetHumanoid = nil
+                destroyFly()
+                isActive = false
+                isRunning = false
+                gitButton.Text = "▶"
+                gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+                statusLabel.Text = "💀"
+                if flyConnection then 
+                    flyConnection:Disconnect() 
+                    flyConnection = nil 
+                end
+                return
             end
         end
         
-        wait(SETTINGS.CheckInterval)
-    end
+        -- HP güncelle
+        if targetHumanoid.Health ~= lastTargetHealth then
+            lastTargetHealth = targetHumanoid.Health
+            hpLabel.Text = "HP: " .. math.floor(targetHumanoid.Health)
+            hpLabel.TextColor3 = targetHumanoid.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+        end
+        
+        -- HEDEFİN ARKA ÜSTÜNE GİT
+        local targetPos = targetRoot.Position
+        local lookVector = targetRoot.CFrame.LookVector
+        local targetPosition = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
+        
+        -- UÇUŞ - DUVARLARI YOK SAYAR
+        local direction = (targetPosition - rootPart.Position)
+        local distance = direction.Magnitude
+        
+        if distance > 0.5 then
+            local speed = math.min(distance * SETTINGS.FlySpeed, SETTINGS.FlySpeed * 3)
+            local velocity = direction.Unit * speed
+            if bodyVelocity then
+                bodyVelocity.Velocity = velocity
+            end
+        else
+            if bodyVelocity then
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            end
+        end
+        
+        -- ═══════ TAM KİLİT - FOV 180 (anında hedefe bak) ═══════
+        if bodyGyro then
+            -- Direkt hedefe bak - hiç yumuşaklık yok
+            bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, targetRoot.Position)
+        end
+        
+        -- Mesafeyi güncelle
+        local currentDist = (targetRoot.Position - rootPart.Position).Magnitude
+        distLabel.Text = math.floor(currentDist) .. "m"
+        
+        -- Durum rengi
+        statusLabel.Text = currentDist < 10 and "🟢" or "🟡"
+    end)
+    
+    return true
 end
 
--- ═══════════════════════════════════════════════════ BUTON İŞLEVLERİ ═══════════════════════════════════════════════════
+-- Durdur
+local function stopAll()
+    isActive = false
+    isRunning = false
+    destroyFly()
+    if flyConnection then 
+        flyConnection:Disconnect() 
+        flyConnection = nil 
+    end
+    gitButton.Text = "▶"
+    gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    statusLabel.Text = "⏸"
+    targetNameLabel.Text = "Yok"
+    currentTarget = nil
+end
 
--- GİT butonu
+-- ═══════════════════════════════════════════════════════════════════════════
+-- B U T O N   İ Ş L E V L E R İ
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- GİT Butonu
 gitButton.MouseButton1Click:Connect(function()
     if isActive then
-        -- Durdur
-        isActive = false
-        isRunning = false
-        gitButton.Text = "🔍 GİT"
-        gitButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-        statusLabel.Text = "⏹ Durduruldu"
-        targetInfoLabel.Text = "Hedef: Yok"
-        distLabel.Text = "Mesafe: 0m"
-        currentTarget = nil
-        targetHumanoid = nil
+        stopAll()
     else
-        -- Başlat
-        isActive = true
-        isRunning = true
-        gitButton.Text = "⏹ DURDUR"
-        gitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        statusLabel.Text = "🔄 Başlatılıyor..."
-        
-        -- Yeni thread başlat
-        spawn(function()
-            mainLoop()
-        end)
+        local target = getNearestEnemy()
+        if target then
+            attachToTarget(target)
+        else
+            statusLabel.Text = "🔍"
+            gitButton.Text = "⏳"
+            spawn(function()
+                local attempts = 0
+                while attempts < 30 do
+                    local t = getNearestEnemy()
+                    if t then
+                        attachToTarget(t)
+                        return
+                    end
+                    attempts = attempts + 1
+                    wait(0.2)
+                end
+                gitButton.Text = "▶"
+                gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+                statusLabel.Text = "⚠️"
+            end)
+        end
     end
 end)
 
--- KAPAT butonu
+-- KAPAT Butonu
 closeButton.MouseButton1Click:Connect(function()
-    isActive = false
-    isRunning = false
-    currentTarget = nil
-    targetHumanoid = nil
+    stopAll()
     screenGui:Destroy()
-    print("✅ Script kapatıldı")
+    print("✅ Fly Aimlock kapatıldı")
 end)
 
--- ═══════════════════════════════════════════════════ OLAY YAKALAYICILAR ═══════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════
+-- E T K İ N L İ K   Y A K A L A Y I C I L A R
+-- ═══════════════════════════════════════════════════════════════════════════
 
 -- Karakter değişimi
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = newChar:WaitForChild("Humanoid")
     rootPart = newChar:WaitForChild("HumanoidRootPart")
-    currentTarget = nil
-    targetHumanoid = nil
-    statusLabel.Text = "🔄 Karakter yenilendi"
-    targetInfoLabel.Text = "Hedef: Yok"
-    distLabel.Text = "Mesafe: 0m"
+    stopAll()
+    statusLabel.Text = "🔄"
+    targetNameLabel.Text = "Yenilendi"
+    wait(1)
+    if not isActive then
+        statusLabel.Text = "⏸"
+        targetNameLabel.Text = "Yok"
+    end
 end)
 
 -- Oyuncu çıkışı
 game.Players.PlayerRemoving:Connect(function(plr)
     if currentTarget == plr then
-        currentTarget = nil
-        targetHumanoid = nil
-        statusLabel.Text = "👋 Hedef çıktı!"
+        statusLabel.Text = "👋"
+        targetNameLabel.Text = "Çıktı"
+        if SETTINGS.AutoSwitch then
+            local newTarget = getNearestEnemy()
+            if newTarget then
+                attachToTarget(newTarget)
+            else
+                stopAll()
+            end
+        else
+            stopAll()
+        end
     end
 end)
 
--- ═══════════════════════════════════════════════════ BAŞLANGIÇ MESAJI ═══════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════
+-- B A Ş L A N G I Ç   M E S A J I
+-- ═══════════════════════════════════════════════════════════════════════════
 
-print("╔═══════════════════════════════════════════════╗")
-print("║     ⚡ AIMLOCK SCRIPT v2.0 HAZIR ⚡          ║")
-print("╠═══════════════════════════════════════════════╣")
-print("║  🔍 GİT butonu ile hedefe git              ║")
-print("║  🎯 Hedefin arka üstüne sabitlenir         ║")
-print("║  👁️  Otomatik hedefe bakar (aimlock)        ║")
-print("║  🛡️  Takım kontrolü aktif                  ║")
-print("║  🧱 Duvar kontrolü aktif                   ║")
-print("║  💀 Kill check aktif (ölünce geçer)        ║")
-print("╚═══════════════════════════════════════════════╝")
+print("╔══════════════════════════════════════════════════════════════╗")
+print("║        ⚡ FLY AIMLOCK v5.0 - TAM KİLİT ⚡                  ║")
+print("╠══════════════════════════════════════════════════════════════╣")
+print("║  ▶ GİT bas - düşmanın arka üstüne yapış                    ║")
+print("║  🧱 Duvarları yok sayar - deler geçer                      ║")
+print("║  🎯 FOV 180 - TAM EKRAN KİLİT (anında)                     ║")
+print("║  👁️  Otomatik takip - hiç yumuşaklık yok                  ║")
+print("║  💀 Ölünce otomatik yeni hedef                             ║")
+print("║  🛡️  Takım kontrolü aktif                                  ║")
+print("║  📊 Kill sayacı aktif                                      ║")
+print("╚══════════════════════════════════════════════════════════════╝")

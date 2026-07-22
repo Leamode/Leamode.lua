@@ -1,17 +1,15 @@
--- LEA MOD V16.0 - PART 1 (NATURAL ANIMATION & BALANCED CORE)
+-- LEA MOD V17.0 - PART 1 (CUSTOM CORE & ANTI-KICK BYPASS)
 task.spawn(function()
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local Workspace = game:GetService("Workspace")
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local UserInputService = game:GetService("UserInputService")
-    local TweenService = game:GetService("TweenService")
     local VirtualUser = game:GetService("VirtualUser")
 
     local LocalPlayer = Players.LocalPlayer
-    local Camera = Workspace.CurrentCamera
 
-    getgenv().LeaStateV16 = getgenv().LeaStateV16 or {
+    getgenv().LeaStateV17 = getgenv().LeaStateV17 or {
         Active = true,
         Cube = false,
         Fly = false,
@@ -24,7 +22,7 @@ task.spawn(function()
         Cache = { Cubes = {} }
     }
 
-    local S = getgenv().LeaStateV16
+    local S = getgenv().LeaStateV17
 
     for _, c in pairs(S.Connections) do
         if typeof(c) == "RBXScriptConnection" then c:Disconnect() end
@@ -32,109 +30,113 @@ task.spawn(function()
     S.Connections = {}
 
     -- ==============================================================================
-    -- 1. GİZLİ VE GELİŞTİRİLMİŞ METAMETHOD KORUMASI
+    -- 1) İSTEDİĞİN GÜÇLENDİRİLMİŞ ANTI-CHEAT VE KICK / RESET KORUMASI
     -- ==============================================================================
-    pcall(function()
-        local mt = getrawmetatable(game)
-        if mt then
-            setreadonly(mt, false)
-            local oldNamecall = mt.__namecall
-            local oldIndex = mt.__index
-            
-            mt.__namecall = newcclosure(function(self, ...)
-                local method = getnamecallmethod()
-                local selfStr = tostring(self):lower()
-                
-                if S.AntiKick and (method == "Kick" or selfStr:find("kick") or selfStr:find("ban") or selfStr:find("anticheat") or selfStr:find("integrity") or selfStr:find("teleport")) then
-                    return nil
-                end
-                
-                return oldNamecall(self, ...)
-            end)
-            
-            mt.__index = newcclosure(function(self, k)
-                if S.AntiReset and self:IsA("Humanoid") and (k == "Health" or k == "MaxHealth") then
-                    return oldIndex(self, k)
-                end
-                return oldIndex(self, k)
-            end)
-            
-            setreadonly(mt, true)
-        end
-    end)
-
-    -- ==============================================================================
-    -- 2. DENGELİ VE YUMUŞATILMIŞ ANTI-RESET
-    -- ==============================================================================
-    local function ApplyAntiReset(char)
-        local hum = char:WaitForChild("Humanoid", 3)
-        local hrp = char:WaitForChild("HumanoidRootPart", 3)
-        if not hum or not hrp then return end
-
-        hum.BreakJointsOnDeath = false
-        hum.RequiresNeck = false
-
-        table.insert(S.Connections, hum.HealthChanged:Connect(function(hp)
-            if S.AntiReset and hp < 25 then
-                task.spawn(function()
-                    pcall(function()
-                        hum.Health = hum.MaxHealth
-                    end)
-                end)
-            end
-        end))
-    end
-
-    if LocalPlayer.Character then ApplyAntiReset(LocalPlayer.Character) end
-    table.insert(S.Connections, LocalPlayer.CharacterAdded:Connect(function(c)
-        task.wait(0.1)
-        ApplyAntiReset(c)
-    end))
-
-    -- ==============================================================================
-    -- 3. OPTİMİZE EDİLMİŞ CUBE SİSTEMİ
-    -- ==============================================================================
-    table.insert(S.Connections, RunService.RenderStepped:Connect(function()
-        if not S.Cube then return end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-
+    local function ApplySecurityBypass()
         pcall(function()
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {char}
-            params.FilterType = Enum.RaycastFilterType.Exclude
-
-            local res = Workspace:Raycast(hrp.Position, Vector3.new(0, -9, 0), params)
-            if not res or (hrp.Position - res.Position).Magnitude > 4 then
-                local cube = Instance.new("Part")
-                cube.Size = Vector3.new(2.5, 0.3, 2.5)
-                cube.Position = hrp.Position - Vector3.new(0, 3.5, 0)
-                cube.Anchored = true
-                cube.CanCollide = true
-                cube.Material = Enum.Material.SmoothPlastic
-                cube.Color = Color3.fromRGB(0, 200, 255)
-                cube.Transparency = 0.3
-                cube.Parent = Workspace
-
-                table.insert(S.Cache.Cubes, cube)
-                if #S.Cache.Cubes > 5 then
-                    local old = table.remove(S.Cache.Cubes, 1)
-                    if old and old.Parent then old:Destroy() end
-                end
-
-                task.delay(1.2, function()
-                    if cube and cube.Parent then cube:Destroy() end
+            local mt = getrawmetatable(game)
+            if mt then
+                setreadonly(mt, false)
+                local old = mt.__namecall
+                mt.__namecall = newcclosure(function(self, ...)
+                    local method = getnamecallmethod()
+                    local selfStr = tostring(self):lower()
+                    
+                    if S.AntiKick and (method == "Kick" or method == "Ban" or selfStr:find("anticheat") or selfStr:find("kick") or selfStr:find("ban") or selfStr:find("integrity")) then
+                        return nil
+                    end
+                    
+                    if method == "FireServer" and (selfStr:find("anticheat") or selfStr:find("kick") or selfStr:find("ban")) then
+                        return nil
+                    end
+                    
+                    return old(self, ...)
                 end)
+                setreadonly(mt, true)
             end
         end)
+    end
+    ApplySecurityBypass()
+
+    local EngineState = {
+        Speed = 24,
+        ActiveCubes = {},
+        LastCubeTick = 0
+    }
+
+    local function ClearCubesSafely()
+        for _, cubeInstance in ipairs(EngineState.ActiveCubes) do
+            if cubeInstance and cubeInstance.Parent then
+                cubeInstance:Destroy()
+            end
+        end
+        EngineState.ActiveCubes = {}
+    end
+
+    -- ==============================================================================
+    -- 2) HAREKET, HIZ VE CUBE (KÜP) SİSTEMİ (İstediğin Mantık)
+    -- ==============================================================================
+    table.insert(S.Connections, RunService.Heartbeat:Connect(function(dt)
+        local characterModel = LocalPlayer.Character
+        if not characterModel then return end
+        local hrp = characterModel:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        if S.Cube then
+            local velocityY = hrp.AssemblyLinearVelocity.Y
+            if velocityY < -1 and (os.clock() - EngineState.LastCubeTick > 0.15) then
+                if #EngineState.ActiveCubes >= 6 then
+                    local oldCube = table.remove(EngineState.ActiveCubes, 1)
+                    if oldCube and oldCube.Parent then oldCube:Destroy() end
+                end
+
+                local newCube = Instance.new("Part")
+                newCube.Size = Vector3.new(4, 0.5, 4)
+                newCube.Position = hrp.Position - Vector3.new(0, 3.2, 0)
+                newCube.Anchored = true
+                newCube.CanCollide = true
+                newCube.Transparency = 0.4
+                newCube.Material = Enum.Material.Neon
+                newCube.Color = Color3.fromRGB(0, 255, 200)
+                newCube.Parent = Workspace
+
+                table.insert(EngineState.ActiveCubes, newCube)
+                EngineState.LastCubeTick = os.clock()
+            end
+        else
+            ClearCubesSafely()
+        end
     end))
 
     -- ==============================================================================
-    -- 4. DOĞAL ZIPLAMA ANİMASYONLU FLY (ANTİCHEAT KÖRLEYİCİ)
+    -- 3) RESET KORUMA ENTEGRASYONU
     -- ==============================================================================
-    table.insert(S.Connections, RunService.RenderStepped:Connect(function(dt)
+    LocalPlayer.CharacterAdded:Connect(function(newChar)
+        ClearCubesSafely()
+        pcall(function()
+            local humanoidComp = newChar:WaitForChild("Humanoid", 5)
+            if humanoidComp and S.AntiReset then
+                humanoidComp:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            end
+        end)
+    end)
+
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        pcall(function()
+            LocalPlayer.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        end)
+    end
+
+    -- ==============================================================================
+    -- 4) FLY (UÇUŞ) VE HAREKET MOTORU ENTEGRASYONU
+    -- ==============================================================================
+    local FlyState = {
+        Speed = 32,
+        BodyVelocity = nil,
+        BodyGyro = nil
+    }
+
+    table.insert(S.Connections, RunService.RenderStepped:Connect(function()
         local char = LocalPlayer.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -142,34 +144,57 @@ task.spawn(function()
         if not hrp or not hum then return end
 
         if S.Fly then
-            -- Sert platform kilitlenmesi kaldırıldı; karakter zıplama/süzülme animasyonunda kalır
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            hum.PlatformStand = true
             
-            local camCF = Camera.CFrame
-            local moveDir = hum.MoveDirection
-            local speed = 22
-            
-            local currentVel = hrp.AssemblyLinearVelocity
-            local targetVel = Vector3.zero
-            
-            if moveDir.Magnitude > 0 then
-                targetVel = (camCF.RightVector * moveDir.X + camCF.LookVector * -moveDir.Z).Unit * speed
+            if not FlyState.BodyVelocity or not FlyState.BodyVelocity.Parent then
+                FlyState.BodyVelocity = Instance.new("BodyVelocity")
+                FlyState.BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                FlyState.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                FlyState.BodyVelocity.Parent = hrp
             end
-            
+
+            if not FlyState.BodyGyro or not FlyState.BodyGyro.Parent then
+                FlyState.BodyGyro = Instance.new("BodyGyro")
+                FlyState.BodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                FlyState.BodyGyro.CFrame = hrp.CFrame
+                FlyState.BodyGyro.Parent = hrp
+            end
+
+            local cam = Workspace.CurrentCamera
+            local moveDirection = Vector3.new(0, 0, 0)
+
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                moveDirection = moveDirection + cam.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                moveDirection = moveDirection - cam.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                moveDirection = moveDirection - cam.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                moveDirection = moveDirection + cam.CFrame.RightVector
+            end
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                targetVel = Vector3.new(targetVel.X, speed * 0.7, targetVel.Z)
-            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                targetVel = Vector3.new(targetVel.X, -speed * 0.7, targetVel.Z)
-            else
-                targetVel = Vector3.new(targetVel.X, 0, targetVel.Z)
+                moveDirection = moveDirection + Vector3.new(0, 1, 0)
             end
-            
-            hrp.AssemblyLinearVelocity = targetVel
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                moveDirection = moveDirection - Vector3.new(0, 1, 0)
+            end
+
+            if FlyState.BodyVelocity and FlyState.BodyGyro then
+                FlyState.BodyVelocity.Velocity = moveDirection.Magnitude > 0 and (moveDirection.Unit * FlyState.Speed) or Vector3.new(0, 0.1, 0)
+                FlyState.BodyGyro.CFrame = cam.CFrame
+            end
+        else
+            hum.PlatformStand = false
+            if FlyState.BodyVelocity then FlyState.BodyVelocity:Destroy() FlyState.BodyVelocity = nil end
+            if FlyState.BodyGyro then FlyState.BodyGyro:Destroy() FlyState.BodyGyro = nil end
         end
     end))
 
     -- ==============================================================================
-    -- 5. HIZI DÜŞÜRÜLMÜŞ YUMUŞAK TAKİP VE AUTO MEDUSA
+    -- 5) YUMUŞATILMIŞ TAKİP VE AUTO MEDUSA MOTORLARI
     -- ==============================================================================
     local function GetNearestTarget()
         local target, minDist = nil, math.huge
@@ -192,7 +217,7 @@ task.spawn(function()
         return target
     end
 
-    table.insert(S.Connections, RunService.Heartbeat:Connect(function(dt)
+    table.insert(S.Connections, RunService.Heartbeat:Connect(function()
         local char = LocalPlayer.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -203,13 +228,11 @@ task.spawn(function()
             if tChar then
                 local tHrp = tChar:FindFirstChild("HumanoidRootPart")
                 if tHrp then
-                    local targetPos = tHrp.Position - ((tHrp.Position - hrp.Position).Unit * 5)
-                    -- Çok hızlı hareket önlendi, lerp ile yumuşatıldı
-                    hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(hrp.Position, tHrp.Position), 0.1)
+                    hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(hrp.Position, tHrp.Position), 0.08)
                     if (hrp.Position - tHrp.Position).Magnitude <= 6 then
                         pcall(function()
-                            VirtualUser:Button1Down(Vector2.new(0,0), Camera.CFrame)
-                            VirtualUser:Button1Up(Vector2.new(0,0), Camera.CFrame)
+                            VirtualUser:Button1Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
+                            VirtualUser:Button1Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
                         end)
                     end
                 end
@@ -246,21 +269,21 @@ task.spawn(function()
         end)
     end
 
-    print("✅ Part 1 V16 Doğal Fizik Yüklendi!")
+    print("✅ Part 1 İstediğin Çekirdek Bloklarla Güncellendi!")
 end)
--- LEA MOD V16.0 - PART 2 (UI ARAYÜZ)
+-- LEA MOD V17.0 - PART 2 (UI ARAYÜZ)
 task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
-    local S = getgenv().LeaStateV16
+    local S = getgenv().LeaStateV17
     if not S then
         warn("❌ Önce Part 1 Kodunu Çalıştırmalısın!")
         return
     end
 
-    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V16_UI") then CoreGui.LEAMOD_V16_UI:Destroy() end end)
+    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V17_UI") then CoreGui.LEAMOD_V17_UI:Destroy() end end)
 
     local Gui = Instance.new("ScreenGui")
-    Gui.Name = "LEAMOD_V16_UI"
+    Gui.Name = "LEAMOD_V17_UI"
     Gui.ResetOnSpawn = false
     Gui.Parent = CoreGui
 
@@ -291,7 +314,7 @@ task.spawn(function()
     Open.Position = UDim2.new(1, -50, 0, 4)
     Open.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     Open.Text = "LEA"
-    Open.TextColor3 = Color3.fromRGB(0, 200, 255)
+    Open.TextColor3 = Color3.fromRGB(0, 255, 200)
     Open.TextSize = 11
     Open.Font = Enum.Font.SourceSansBold
     Open.Visible = false
@@ -301,8 +324,8 @@ task.spawn(function()
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 22)
     Title.BackgroundTransparency = 1
-    Title.Text = "LEA V16 NATURAL"
-    Title.TextColor3 = Color3.fromRGB(0, 200, 255)
+    Title.Text = "LEA V17 CUSTOM"
+    Title.TextColor3 = Color3.fromRGB(0, 255, 200)
     Title.TextSize = 10
     Title.Font = Enum.Font.SourceSansBold
     Title.Parent = Main
@@ -351,5 +374,5 @@ task.spawn(function()
     Close.MouseButton1Click:Connect(function() Main.Visible = false; Open.Visible = true end)
     Open.MouseButton1Click:Connect(function() Main.Visible = true; Open.Visible = false end)
 
-    print("✅ Part 2 V16 UI Yüklendi!")
+    print("✅ Part 2 UI Yüklendi!")
 end)

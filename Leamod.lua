@@ -1,5 +1,5 @@
 --[[\
-    Project: LEA MOD (Universal Gun Mod Edition)
+    Project: LEA MOD (Universal Gun Mod Edition - Final Clean Build)
     Target: Universal Roblox FPS / Shooter Games
     Environment: Roblox Luau
 ]]--
@@ -22,6 +22,7 @@ getgenv().LEAModState = {
     Teleport = false,
     Fly = false,
     SpeedVal = 16,
+    HitboxSize = 2,
     MenuVisible = true
 }
 
@@ -46,11 +47,11 @@ HeaderLabel.Size = UDim2.new(0, 200, 0, 40)
 HeaderLabel.BackgroundTransparency = 1
 HeaderLabel.Font = Enum.Font.SourceSansBold
 HeaderLabel.Text = "LEA MOD"
-HeaderLabel.TextColor3 = Color3.fromRGB(170, 0, 255) -- Bright Purple
+HeaderLabel.TextColor3 = Color3.fromRGB(170, 0, 255)
 HeaderLabel.TextSize = 28
 HeaderLabel.TextStrokeTransparency = 0.5
 
--- Draggable Main Menu (Compact 65x190 proportions / scalable layout)
+-- Draggable Main Menu
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -58,11 +59,11 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderColor3 = Color3.fromRGB(170, 0, 255)
 MainFrame.BorderSizePixel = 1
 MainFrame.Position = UDim2.new(0.75, 0, 0.1, 0)
-MainFrame.Size = UDim2.new(0, 190, 0, 310)
+MainFrame.Size = UDim2.new(0, 190, 0, 350)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Menu Toggle Button (Corner)
+-- Menu Toggle Button
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleMenu"
 ToggleButton.Parent = ScreenGui
@@ -91,7 +92,7 @@ local function createButton(name, key)
     local btn = Instance.new("TextButton")
     btn.Name = name .. "Btn"
     btn.Parent = MainFrame
-    btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) -- Red (Off)
+    btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
     btn.Size = UDim2.new(1, 0, 0, 22)
     btn.Font = Enum.Font.SourceSansBold
     btn.Text = name .. " ❌"
@@ -101,10 +102,10 @@ local function createButton(name, key)
     btn.MouseButton1Click:Connect(function()
         getgenv().LEAModState[key] = not getgenv().LEAModState[key]
         if getgenv().LEAModState[key] then
-            btn.BackgroundColor3 = Color3.fromRGB(40, 180, 40) -- Green (On)
+            btn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
             btn.Text = name .. " ✅"
         else
-            btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) -- Red (Off)
+            btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
             btn.Text = name .. " ❌"
         end
     end)
@@ -128,7 +129,6 @@ SpeedFrame.Size = UDim2.new(1, 0, 0, 25)
 local SpeedDec = Instance.new("TextButton")
 SpeedDec.Parent = SpeedFrame
 SpeedDec.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-SpeedDec.Position = UDim2.new(0, 0, 0, 0)
 SpeedDec.Size = UDim2.new(0.5, 0, 1, 0)
 SpeedDec.Font = Enum.Font.SourceSansBold
 SpeedDec.Text = "Speed -"
@@ -153,7 +153,49 @@ SpeedInc.MouseButton1Click:Connect(function()
     getgenv().LEAModState.SpeedVal = math.clamp(getgenv().LEAModState.SpeedVal + 2, 16, 200)
 end)
 
--- 1. AIMBOT LOGIC (Right-click hold, zero smoothness instant snap to HumanoidRootPart)
+-- Hitbox Controls Frame (Up to 300)
+local HitboxFrame = Instance.new("Frame")
+HitboxFrame.Parent = MainFrame
+HitboxFrame.BackgroundTransparency = 1
+HitboxFrame.Size = UDim2.new(1, 0, 0, 25)
+
+local HitboxDec = Instance.new("TextButton")
+HitboxDec.Parent = HitboxFrame
+HitboxDec.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+HitboxDec.Size = UDim2.new(0.5, 0, 1, 0)
+HitboxDec.Font = Enum.Font.SourceSansBold
+HitboxDec.Text = "Hitbox -"
+HitboxDec.TextColor3 = Color3.fromRGB(255, 255, 255)
+HitboxDec.TextSize = 12
+
+local HitboxInc = Instance.new("TextButton")
+HitboxInc.Parent = HitboxFrame
+HitboxInc.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+HitboxInc.Position = UDim2.new(0.5, 0, 0, 0)
+HitboxInc.Size = UDim2.new(0.5, 0, 1, 0)
+HitboxInc.Font = Enum.Font.SourceSansBold
+HitboxInc.Text = "Hitbox +"
+HitboxInc.TextColor3 = Color3.fromRGB(255, 255, 255)
+HitboxInc.TextSize = 12
+
+HitboxDec.MouseButton1Click:Connect(function()
+    getgenv().LEAModState.HitboxSize = math.clamp(getgenv().LEAModState.HitboxSize - 5, 2, 300)
+end)
+
+HitboxInc.MouseButton1Click:Connect(function()
+    getgenv().LEAModState.HitboxSize = math.clamp(getgenv().LEAModState.HitboxSize + 5, 2, 300)
+end)
+
+-- Helper: Strict Enemy Check
+local function isEnemy(player)
+    if player == LocalPlayer then return false end
+    if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+        return false
+    end
+    return true
+end
+
+-- 1. PERFECTED AIMBOT LOGIC (Right-click hold, zero smoothness, exact center locking)
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Aimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
         local closestTarget = nil
@@ -161,7 +203,7 @@ RunService.RenderStepped:Connect(function()
         local mousePos = UserInputService:GetMouseLocation()
 
         for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            if isEnemy(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
                 local rootPart = player.Character.HumanoidRootPart
                 local screenPoint, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
                 if onScreen then
@@ -237,8 +279,8 @@ RunService.RenderStepped:Connect(function()
             end
 
             local cache = espCache[player]
-            local isTeamMate = (player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team)
-            local color = isTeamMate and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+            local enemyCheck = isEnemy(player)
+            local color = enemyCheck and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
             
             cache.Box.Color3 = color
             
@@ -253,7 +295,20 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 3. 360 SPIN LOGIC
+-- 3. HITBOX EXPANDER LOGIC (Enemies only, invisible size expansion up to 300)
+RunService.RenderStepped:Connect(function()
+    local targetSize = getgenv().LEAModState.HitboxSize
+    for _, player in ipairs(Players:GetPlayers()) do
+        if isEnemy(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local root = player.Character.HumanoidRootPart
+            root.Size = Vector3.new(targetSize, targetSize, targetSize)
+            root.Transparency = 1
+            root.CanCollide = false
+        end
+    end
+end)
+
+-- 4. 360 SPIN LOGIC
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Spin360 and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local root = LocalPlayer.Character.HumanoidRootPart
@@ -261,7 +316,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 4. RAINBOW (HSV Color Cycle)
+-- 5. RAINBOW (HSV Color Cycle)
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Rainbow and LocalPlayer.Character then
         local hue = tick() % 5 / 5
@@ -274,14 +329,14 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 5. INFINITE JUMP LOGIC
+-- 6. INFINITE JUMP LOGIC
 UserInputService.JumpRequest:Connect(function()
     if getgenv().LEAModState.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- 6. TELEPORT BEHIND NEAREST ENEMY (5 steps back, 4 steps up)
+-- 7. TELEPORT BEHIND NEAREST ENEMY (Enemies only)
 RunService.Heartbeat:Connect(function()
     if getgenv().LEAModState.Teleport and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local closestTarget = nil
@@ -289,7 +344,7 @@ RunService.Heartbeat:Connect(function()
         local myRoot = LocalPlayer.Character.HumanoidRootPart
 
         for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if isEnemy(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local dist = (myRoot.Position - player.Character.HumanoidRootPart.Position).Magnitude
                 if dist < shortestDistance then
                     shortestDistance = dist
@@ -310,7 +365,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 7. FLY LOGIC (WASD + Space/Shift)
+-- 8. FLY LOGIC (WASD + Space/Shift)
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if getgenv().LEAModState.Fly and char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") then
@@ -333,10 +388,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 8. SPEED LOGIC
+-- 9. SPEED LOGIC
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = getgenv().LEAModState.SpeedVal
     end
 end)
-

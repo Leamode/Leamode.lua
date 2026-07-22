@@ -1,17 +1,15 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ TELEPORT + FLY AIMLOCK v8.0 - SON VERSİYON (TÜM ÖZELLİKLER)
+    ⚡ TELEPORT + FLY AIMLOCK v9.0 - ENGEL YOK, DIREK IŞINLANMA
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ GİT basınca HEDEFİN ARKASINA TELEPORT (duvar deler)
-    ✅ Teleport sonrası FLY ile sabitlenir (arkada kalır)
-    ✅ Aimbot ile tam kilit (BodyGyro)
+    ✅ En yakın düşmanı algılar (engel yok sayar)
+    ✅ Direk arkasına IŞINLANIR (duvar, engel farketmez)
+    ✅ FLY ile arkasında sabit kalır
+    ✅ Aimbot ile tam kilit
     ✅ Otomatik ateş
-    ✅ Antireset
-    ✅ Mermi koruması
+    ✅ Ölünce direk diğer adama IŞINLANIR
     ✅ Takım kontrolü
-    ✅ Kill check - ölünce yeni hedef
-    ✅ Menü sağ köşede küçük
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -24,7 +22,6 @@ local SETTINGS = {
     FlySpeed = 80,                -- Fly takip hızı
     MaxDistance = 500,            -- Maksimum hedef alma mesafesi
     TeamCheck = true,             -- Takım kontrolü
-    AutoSwitch = true,            -- Ölünce otomatik hedef değiştir
     AutoFire = true,              -- Otomatik ateş et
     AntiReset = true,             -- Antireset aktif
     BulletProof = true,           -- Mermi geçirmez
@@ -72,7 +69,7 @@ mainFrame.Parent = screenGui
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 18)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.Text = "⚡KİLİT"
+titleLabel.Text = "⚡IŞIN"
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 titleLabel.Font = Enum.Font.GothamBold
@@ -167,6 +164,7 @@ closeButton.Parent = mainFrame
 -- F O N K S İ Y O N L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- Takım kontrolü
 local function isEnemy(targetPlayer)
     if not targetPlayer or targetPlayer == player then return false end
     if SETTINGS.TeamCheck then
@@ -178,6 +176,7 @@ local function isEnemy(targetPlayer)
     return true
 end
 
+-- En yakın düşmanı bul (ENGEL YOK SAYAR, GÖRMESİNE GEREK YOK)
 local function getNearestEnemy()
     local nearest = nil
     local nearestDist = math.huge
@@ -265,10 +264,10 @@ local function autoFire()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- HEDEFE TELEPORT + FLY + KİLİT
+-- HEDEFE IŞINLAN + FLY + KİLİT
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local function startAttack(targetPlayer)
+local function teleportToTarget(targetPlayer)
     if not targetPlayer then return false end
     
     local targetChar = targetPlayer.Character
@@ -287,13 +286,13 @@ local function startAttack(targetPlayer)
     currentTarget = targetPlayer
     lastHealth = targetHumanoid.Health
     
-    -- 1. TELEPORT - Hedefin arka üstüne (duvar deler)
+    -- HEDEFİN ARKA ÜSTÜNE IŞINLAN (ENGEL YOK SAYAR)
     local targetPos = targetRoot.Position
     local lookVector = targetRoot.CFrame.LookVector
-    local targetPosition = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
-    rootPart.CFrame = CFrame.new(targetPosition, targetPos)
+    local teleportPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
+    rootPart.CFrame = CFrame.new(teleportPos, targetPos)
     
-    -- 2. FLY oluştur (sabit kalmak için)
+    -- FLY oluştur
     createFly()
     
     isActive = true
@@ -303,10 +302,11 @@ local function startAttack(targetPlayer)
     statusLabel.Text = "🔴"
     targetNameLabel.Text = targetPlayer.Name
     hpLabel.Text = "HP: " .. math.floor(targetHumanoid.Health)
+    distLabel.Text = "0m"
     
-    -- 3. FLY + AIMBOT DÖNGÜSÜ
+    -- FLY + AIMBOT DÖNGÜSÜ
     flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not isActive or not isRunning or not currentTarget then
+        if not isActive or not isRunning then
             destroyFly()
             isActive = false
             isRunning = false
@@ -318,58 +318,21 @@ local function startAttack(targetPlayer)
             return
         end
         
-        local tChar = currentTarget.Character
-        if not tChar then
-            if SETTINGS.AutoSwitch then
+        -- HEDEF ÖLDÜ MÜ KONTROL ET
+        if currentTarget then
+            local tChar = currentTarget.Character
+            local tHum = tChar and tChar:FindFirstChild("Humanoid")
+            
+            -- Hedef öldü veya kaybolduysa DIREK YENİ HEDEFE IŞINLAN
+            if not tChar or not tHum or tHum.Health <= 0 then
+                killCount = killCount + 1
+                killLabel.Text = "💀 " .. killCount
+                
                 local newTarget = getNearestEnemy()
                 if newTarget then
-                    startAttack(newTarget)
-                    return
-                end
-            end
-            destroyFly()
-            isActive = false
-            isRunning = false
-            gitButton.Text = "▶"
-            gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            statusLabel.Text = "❌"
-            targetNameLabel.Text = "Yok"
-            if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-            return
-        end
-        
-        local tRoot = tChar:FindFirstChild("HumanoidRootPart")
-        local tHum = tChar:FindFirstChild("Humanoid")
-        
-        if not tRoot or not tHum then
-            if SETTINGS.AutoSwitch then
-                local newTarget = getNearestEnemy()
-                if newTarget then
-                    startAttack(newTarget)
-                    return
-                end
-            end
-            destroyFly()
-            isActive = false
-            isRunning = false
-            gitButton.Text = "▶"
-            gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            statusLabel.Text = "❌"
-            targetNameLabel.Text = "Yok"
-            if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-            return
-        end
-        
-        -- KILL CHECK
-        if tHum.Health <= 0 then
-            killCount = killCount + 1
-            killLabel.Text = "💀 " .. killCount
-            if SETTINGS.AutoSwitch then
-                statusLabel.Text = "🔄"
-                targetNameLabel.Text = "Yeni hedef..."
-                local newTarget = getNearestEnemy()
-                if newTarget then
-                    startAttack(newTarget)
+                    statusLabel.Text = "🔄"
+                    targetNameLabel.Text = "Yeni hedef..."
+                    teleportToTarget(newTarget)
                     return
                 else
                     destroyFly()
@@ -384,53 +347,57 @@ local function startAttack(targetPlayer)
                     if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
                     return
                 end
-            else
-                destroyFly()
-                isActive = false
-                isRunning = false
-                gitButton.Text = "▶"
-                gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-                statusLabel.Text = "💀"
-                if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-                return
             end
-        end
-        
-        -- HP güncelle
-        if tHum.Health ~= lastHealth then
-            lastHealth = tHum.Health
-            hpLabel.Text = "HP: " .. math.floor(tHum.Health)
-            hpLabel.TextColor3 = tHum.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-        end
-        
-        -- FLY - HEDEFİN ARKA ÜSTÜNDE KAL
-        local targetPos = tRoot.Position
-        local lookVector = tRoot.CFrame.LookVector
-        local flyTargetPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
-        
-        local direction = (flyTargetPos - rootPart.Position)
-        local distance = direction.Magnitude
-        
-        if distance > 0.5 then
-            local speed = math.min(distance * SETTINGS.FlySpeed, SETTINGS.FlySpeed * 3)
-            if bodyVelocity then
-                bodyVelocity.Velocity = direction.Unit * speed
+            
+            -- HP güncelle
+            if tHum.Health ~= lastHealth then
+                lastHealth = tHum.Health
+                hpLabel.Text = "HP: " .. math.floor(tHum.Health)
+                hpLabel.TextColor3 = tHum.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+            end
+            
+            local tRoot = tChar:FindFirstChild("HumanoidRootPart")
+            if tRoot then
+                -- FLY - HEDEFİN ARKA ÜSTÜNDE KAL
+                local targetPos = tRoot.Position
+                local lookVector = tRoot.CFrame.LookVector
+                local flyTargetPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
+                
+                local direction = (flyTargetPos - rootPart.Position)
+                local distance = direction.Magnitude
+                
+                if distance > 0.5 then
+                    local speed = math.min(distance * SETTINGS.FlySpeed, SETTINGS.FlySpeed * 3)
+                    if bodyVelocity then
+                        bodyVelocity.Velocity = direction.Unit * speed
+                    end
+                else
+                    if bodyVelocity then
+                        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                    end
+                end
+                
+                -- AIMBOT - HEDEFE BAK (tam kilit)
+                if bodyGyro then
+                    bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, tRoot.Position)
+                end
+                
+                -- Mesafe güncelle
+                local dist = (tRoot.Position - rootPart.Position).Magnitude
+                distLabel.Text = math.floor(dist) .. "m"
+                statusLabel.Text = dist < 15 and "🟢" or "🟡"
             end
         else
-            if bodyVelocity then
-                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            -- Hedef yoksa yeni bul
+            local newTarget = getNearestEnemy()
+            if newTarget then
+                teleportToTarget(newTarget)
+                return
+            else
+                statusLabel.Text = "⏳"
+                targetNameLabel.Text = "Aranıyor..."
             end
         end
-        
-        -- AIMBOT - HEDEFE BAK (tam kilit)
-        if bodyGyro then
-            bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, tRoot.Position)
-        end
-        
-        -- Mesafe güncelle
-        local dist = (tRoot.Position - rootPart.Position).Magnitude
-        distLabel.Text = math.floor(dist) .. "m"
-        statusLabel.Text = dist < 15 and "🟢" or "🟡"
         
         -- Otomatik ateş
         if SETTINGS.AutoFire then
@@ -464,7 +431,7 @@ gitButton.MouseButton1Click:Connect(function()
     else
         local target = getNearestEnemy()
         if target then
-            startAttack(target)
+            teleportToTarget(target)
         else
             statusLabel.Text = "🔍"
             gitButton.Text = "⏳"
@@ -473,7 +440,7 @@ gitButton.MouseButton1Click:Connect(function()
                 while attempts < 30 do
                     local t = getNearestEnemy()
                     if t then
-                        startAttack(t)
+                        teleportToTarget(t)
                         return
                     end
                     attempts = attempts + 1
@@ -519,13 +486,9 @@ game.Players.PlayerRemoving:Connect(function(plr)
     if currentTarget == plr then
         statusLabel.Text = "👋"
         targetNameLabel.Text = "Çıktı"
-        if SETTINGS.AutoSwitch then
-            local newTarget = getNearestEnemy()
-            if newTarget then
-                startAttack(newTarget)
-            else
-                stopAll()
-            end
+        local newTarget = getNearestEnemy()
+        if newTarget then
+            teleportToTarget(newTarget)
         else
             stopAll()
         end
@@ -533,13 +496,12 @@ game.Players.PlayerRemoving:Connect(function(plr)
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   ⚡ TELEPORT + FLY AIMLOCK v8.0 - FULL SİSTEM ⚡          ║")
+print("║   ⚡ TELEPORT + FLY v9.0 - ENGEL YOK, DIREK IŞINLAN ⚡     ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  ▶ GİT bas - hedefin arkasına TELEPORT (duvar deler)       ║")
-print("║  📍 5 geri - 4 yukarı sabitlenir                           ║")
+print("║  ▶ GİT bas - en yakın düşmanın arkasına IŞINLANIR          ║")
+print("║  📍 Engel FARKETMEZ - duvar, bina hepsi yok sayılır        ║")
 print("║  🪰 FLY ile arkasında sabit kalır                          ║")
-print("║  🎯 Aimbot ile tam kilit (anında)                          ║")
-print("║  🔫 Otomatik ateş aktif                                    ║")
-print("║  🛡️  Antireset + Mermi koruması                           ║")
-print("║  💀 Kill check - ölünce yeni hedef                         ║")
+print("║  🎯 Aimbot tam kilit                                       ║")
+print("║  🔫 Otomatik ateş                                         ║")
+print("║  💀 Ölünce DIREK diğer adama IŞINLANIR                     ║")
 print("╚══════════════════════════════════════════════════════════════╝")

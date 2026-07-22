@@ -1,355 +1,388 @@
--- ==============================================================================
--- LEA MOD V13.0 - ULTIMATE MASTER OPTIMIZED ENGINE (STEAL A BRAINROT)
--- ==============================================================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local VirtualUser = game:GetService("VirtualUser")
+-- PART 1 KODU - BURAYI KOPYALA
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local Workspace = game:GetService("Workspace")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
+    local VirtualUser = game:GetService("VirtualUser")
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+    local LocalPlayer = Players.LocalPlayer
+    local Camera = Workspace.CurrentCamera
 
-getgenv().LeaModV13 = getgenv().LeaModV13 or {
-    Active = true,
-    Cube = false,
-    Fly = false,
-    Follow = false,
-    Medusa = false,
-    Lagger = false,
-    AntiKick = true,
-    AntiReset = true,
-    Connections = {},
-    Cache = { Cubes = {} }
-}
+    getgenv().LeaStateV14 = getgenv().LeaStateV14 or {
+        Active = true,
+        Cube = false,
+        Fly = false,
+        Follow = false,
+        Medusa = false,
+        Lagger = false,
+        AntiKick = true,
+        AntiReset = true,
+        Connections = {},
+        Cache = { Cubes = {} }
+    }
 
-local S = getgenv().LeaModV13
+    local S = getgenv().LeaStateV14
 
-for _, c in pairs(S.Connections) do
-    if typeof(c) == "RBXScriptConnection" then c:Disconnect() end
-end
-S.Connections = {}
-
--- ==============================================================================
--- 1. GELİŞTİRİLMİŞ BYPASS & ANTI-KICK MOTORU
--- ==============================================================================
-pcall(function()
-    local mt = getrawmetatable(game)
-    if mt then
-        setreadonly(mt, false)
-        local old = mt.__namecall
-        mt.__namecall = newcclosure(function(self, ...)
-            local m = getnamecallmethod()
-            if S.AntiKick and (m == "Kick" or tostring(self):lower():find("anticheat") or tostring(self):lower():find("ban")) then
-                return
-            end
-            return old(self, ...)
-        end)
-        setreadonly(mt, true)
+    for _, c in pairs(S.Connections) do
+        if typeof(c) == "RBXScriptConnection" then c:Disconnect() end
     end
-end)
-
--- ==============================================================================
--- 2. KUSURSUZ ANTI-RESET VE ÖLÜMSÜZLÜK SİSTEMİ
--- ==============================================================================
-local function ApplyAntiReset(char)
-    local hum = char:WaitForChild("Humanoid", 3)
-    local hrp = char:WaitForChild("HumanoidRootPart", 3)
-    if not hum or not hrp then return end
-
-    hum.BreakJointsOnDeath = false
-    hum.MaxHealth = 100
-    hum.Health = 100
-
-    table.insert(S.Connections, hum.HealthChanged:Connect(function(hp)
-        if S.AntiReset and hp <= 0 then
-            task.spawn(function()
-                hum.Health = 100
-                pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
-            end)
-        end
-    end))
-
-    table.insert(S.Connections, RunService.Heartbeat:Connect(function()
-        if not S.AntiReset or not hum or not hrp then return end
-        if hum.Health <= 0 then
-            hum.Health = 100
-            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
-        end
-        if hrp.Position.Y < -80 then
-            hrp.CFrame = CFrame.new(0, 40, 0)
-            hrp.AssemblyLinearVelocity = Vector3.zero
-        end
-    end))
-end
-
-if LocalPlayer.Character then ApplyAntiReset(LocalPlayer.Character) end
-table.insert(S.Connections, LocalPlayer.CharacterAdded:Connect(function(c)
-    task.wait(0.05)
-    ApplyAntiReset(c)
-end))
-
--- ==============================================================================
--- 3. ANLIK ZEMİN KÜP SİSTEMİ (KOŞMA VE ZIPLAMA TEPKİSEL)
--- ==============================================================================
-table.insert(S.Connections, RunService.Heartbeat:Connect(function()
-    if not S.Cube then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    S.Connections = {}
 
     pcall(function()
-        local params = RaycastParams.new()
-        params.FilterDescendantsInstances = {char}
-        params.FilterType = Enum.RaycastFilterType.Exclude
-
-        local res = Workspace:Raycast(hrp.Position, Vector3.new(0, -6, 0), params)
-        if not res or (hrp.Position - res.Position).Magnitude > 3.4 then
-            local cube = Instance.new("Part")
-            cube.Size = Vector3.new(2.4, 0.3, 2.4)
-            cube.Position = hrp.Position - Vector3.new(0, 3.2, 0)
-            cube.Anchored = true
-            cube.CanCollide = true
-            cube.Material = Enum.Material.Neon
-            cube.Color = Color3.fromRGB(0, 255, 200)
-            cube.Transparency = 0.1
-            cube.Parent = Workspace
-
-            table.insert(S.Cache.Cubes, cube)
-            if #S.Cache.Cubes > 4 then
-                local old = table.remove(S.Cache.Cubes, 1)
-                if old and old.Parent then old:Destroy() end
-            end
-
-            task.delay(1.2, function()
-                if cube and cube.Parent then
-                    TweenService:Create(cube, TweenInfo.new(0.2), {Transparency = 1}):Play()
-                    task.delay(0.2, function() cube:Destroy() end)
+        local mt = getrawmetatable(game)
+        if mt then
+            setreadonly(mt, false)
+            local oldNamecall = mt.__namecall
+            local oldIndex = mt.__index
+            
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local selfStr = tostring(self):lower()
+                
+                if S.AntiKick and (method == "Kick" or selfStr:find("kick") or selfStr:find("ban") or selfStr:find("anticheat") or selfStr:find("integrity") or selfStr:find("teleport")) then
+                    return nil
                 end
+                
+                return oldNamecall(self, ...)
             end)
+            
+            mt.__index = newcclosure(function(self, k)
+                if S.AntiReset and self:IsA("Humanoid") and (k == "Health" or k == "MaxHealth") then
+                    return oldIndex(self, k)
+                end
+                return oldIndex(self, k)
+            end)
+            
+            setreadonly(mt, true)
         end
     end)
-end))
 
--- ==============================================================================
--- 4. GELİŞTİRİLMİŞ AKİCİ FLY (SÜZÜLME) SİSTEMİ
--- ==============================================================================
-table.insert(S.Connections, RunService.RenderStepped:Connect(function(dt)
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
-
-    if S.Fly then
-        hum.PlatformStand = true
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        
-        local moveDir = hum.MoveDirection
-        local speed = 24
-        local camCF = Camera.CFrame
-        
-        local velocity = Vector3.zero
-        if moveDir.Magnitude > 0 then
-            velocity = (camCF.RightVector * moveDir.X + camCF.LookVector * -moveDir.Z).Unit * speed
-        end
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            velocity = velocity + Vector3.new(0, speed, 0)
-        elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-            velocity = velocity + Vector3.new(0, -speed, 0)
-        end
-        
-        hrp.CFrame = hrp.CFrame + (velocity * dt)
-    else
-        if hum.PlatformStand then
-            hum.PlatformStand = false
-        end
-    end
-end))
-
--- ==============================================================================
--- 5. TAKİP VE AUTO MEDUSA MOTORU
--- ==============================================================================
-local function GetTarget()
-    local target, minDist = nil, math.huge
-    local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myHrp then return nil end
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
-            local tHum = p.Character:FindFirstChildOfClass("Humanoid")
-            if tHrp and tHum and tHum.Health > 0 then
-                local dist = (myHrp.Position - tHrp.Position).Magnitude
-                if dist < minDist then
-                    minDist = dist
-                    target = p.Character
+    pcall(function()
+        for _, obj in pairs(getgc(true)) do
+            if typeof(obj) == "function" then
+                local info = debug.getinfo(obj)
+                if info and info.name then
+                    local n = info.name:lower()
+                    if n:find("detect") or n:find("hook") or n:find("integrity") or n:find("check") or n:find("ban") or n:find("kick") then
+                        pcall(function()
+                            for i = 1, 10 do
+                                pcall(function() debug.setupvalue(obj, i, function() return true end) end)
+                            end
+                        end)
+                    end
                 end
             end
         end
-    end
-    return target
-end
+    end)
 
-table.insert(S.Connections, RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local function ApplyAntiReset(char)
+        local hum = char:WaitForChild("Humanoid", 3)
+        local hrp = char:WaitForChild("HumanoidRootPart", 3)
+        if not hum or not hrp then return end
 
-    if S.Follow then
-        local tChar = GetTarget()
-        if tChar then
-            local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-            if tHrp then
-                if (hrp.Position - tHrp.Position).Magnitude > 4.5 then
-                    hrp.CFrame = CFrame.new(hrp.Position, tHrp.Position) + ((tHrp.Position - hrp.Position).Unit * 3.8)
-                else
+        hum.BreakJointsOnDeath = false
+        hum.RequiresNeck = false
+
+        table.insert(S.Connections, hum.HealthChanged:Connect(function(hp)
+            if S.AntiReset and hp < 20 then
+                task.spawn(function()
                     pcall(function()
-                        VirtualUser:Button1Down(Vector2.new(0,0), Camera.CFrame)
-                        VirtualUser:Button1Up(Vector2.new(0,0), Camera.CFrame)
+                        hum.Health = hum.MaxHealth
+                        hum:ChangeState(Enum.HumanoidStateType.Running)
+                    end)
+                end)
+            end
+        end))
+
+        table.insert(S.Connections, RunService.Stepped:Connect(function()
+            if not S.AntiReset or not hum or not hrp then return end
+            if hum.Health <= 0 then
+                hum.Health = hum.MaxHealth
+                pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+            end
+            if hrp.Position.Y < -200 then
+                hrp.CFrame = CFrame.new(0, 60, 0)
+                hrp.AssemblyLinearVelocity = Vector3.zero
+            end
+        end))
+    end
+
+    if LocalPlayer.Character then ApplyAntiReset(LocalPlayer.Character) end
+    table.insert(S.Connections, LocalPlayer.CharacterAdded:Connect(function(c)
+        task.wait(0.1)
+        ApplyAntiReset(c)
+    end))
+
+    table.insert(S.Connections, RunService.RenderStepped:Connect(function()
+        if not S.Cube then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        pcall(function()
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = {char}
+            params.FilterType = Enum.RaycastFilterType.Exclude
+
+            local res = Workspace:Raycast(hrp.Position, Vector3.new(0, -7.5, 0), params)
+            if not res or (hrp.Position - res.Position).Magnitude > 3.6 then
+                local cube = Instance.new("Part")
+                cube.Size = Vector3.new(2.7, 0.35, 2.7)
+                cube.Position = hrp.Position - Vector3.new(0, 3.5, 0)
+                cube.Anchored = true
+                cube.CanCollide = true
+                cube.Material = Enum.Material.Neon
+                cube.Color = Color3.fromRGB(0, 255, 180)
+                cube.Transparency = 0.15
+                cube.Parent = Workspace
+
+                table.insert(S.Cache.Cubes, cube)
+                if #S.Cache.Cubes > 6 then
+                    local old = table.remove(S.Cache.Cubes, 1)
+                    if old and old.Parent then old:Destroy() end
+                end
+
+                task.delay(1.5, function()
+                    if cube and cube.Parent then
+                        TweenService:Create(cube, TweenInfo.new(0.3), {Transparency = 1}):Play()
+                        task.delay(0.3, function() cube:Destroy() end)
+                    end
+                end)
+            end
+        end)
+    end))
+
+    local bodyVel, bodyGyro
+    table.insert(S.Connections, RunService.RenderStepped:Connect(function(dt)
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+
+        if S.Fly then
+            if not bodyVel or not bodyVel.Parent then
+                bodyVel = Instance.new("BodyVelocity")
+                bodyVel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bodyVel.Velocity = Vector3.zero
+                bodyVel.Parent = hrp
+            end
+            if not bodyGyro or not bodyGyro.Parent then
+                bodyGyro = Instance.new("BodyGyro")
+                bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                bodyGyro.CFrame = Camera.CFrame
+                bodyGyro.Parent = hrp
+            end
+
+            hum.PlatformStand = true
+            local camCF = Camera.CFrame
+            local moveDir = hum.MoveDirection
+            local speed = 28
+            
+            local targetVel = Vector3.zero
+            if moveDir.Magnitude > 0 then
+                targetVel = (camCF.RightVector * moveDir.X + camCF.LookVector * -moveDir.Z).Unit * speed
+            end
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                targetVel = targetVel + Vector3.new(0, speed, 0)
+            elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                targetVel = targetVel + Vector3.new(0, -speed, 0)
+            end
+            
+            bodyVel.Velocity = targetVel
+            bodyGyro.CFrame = camCF
+        else
+            if bodyVel then bodyVel:Destroy() bodyVel = nil end
+            if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+            if hum.PlatformStand then hum.PlatformStand = false end
+        end
+    end))
+
+    local function GetNearestTarget()
+        local target, minDist = nil, math.huge
+        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not myHrp then return nil end
+
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
+                local tHum = p.Character:FindFirstChildOfClass("Humanoid")
+                if tHrp and tHum and tHum.Health > 0 then
+                    local dist = (myHrp.Position - tHrp.Position).Magnitude
+                    if dist < minDist then
+                        minDist = dist
+                        target = p.Character
+                    end
+                end
+            end
+        end
+        return target
+    end
+
+    table.insert(S.Connections, RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        if S.Follow then
+            local tChar = GetNearestTarget()
+            if tChar then
+                local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+                if tHrp then
+                    if (hrp.Position - tHrp.Position).Magnitude > 5 then
+                        hrp.CFrame = CFrame.new(hrp.Position, tHrp.Position) + ((tHrp.Position - hrp.Position).Unit * 4)
+                    else
+                        pcall(function()
+                            VirtualUser:Button1Down(Vector2.new(0,0), Camera.CFrame)
+                            VirtualUser:Button1Up(Vector2.new(0,0), Camera.CFrame)
+                        end)
+                    end
+                end
+            end
+        end
+
+        if S.Medusa then
+            local tChar = GetNearestTarget()
+            if tChar then
+                local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+                if tHrp and (hrp.Position - tHrp.Position).Magnitude <= 14 then
+                    pcall(function()
+                        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+                        local med = bp and bp:FindFirstChild("Medusa") or char:FindFirstChild("Medusa")
+                        if med then
+                            med.Parent = char
+                            if med:FindFirstChild("Activate") then med:Activate() end
+                        end
                     end)
                 end
             end
         end
-    end
+    end))
 
-    if S.Medusa then
-        local tChar = GetTarget()
-        if tChar then
-            local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-            if tHrp and (hrp.Position - tHrp.Position).Magnitude <= 14 then
+    function S.RunLagger()
+        task.spawn(function()
+            while S.Lagger do
                 pcall(function()
-                    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-                    local med = bp and bp:FindFirstChild("Medusa") or char:FindFirstChild("Medusa")
-                    if med then
-                        med.Parent = char
-                        if med:FindFirstChild("Activate") then med:Activate() end
+                    for i = 1, 30 do
+                        local rem = ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("NetworkEvent")
+                        if rem then rem:FireServer(math.random(1e9, 9e9), string.rep("LEA_V14_BYPASS", 250)) end
                     end
                 end)
+                task.wait(0.02)
             end
-        end
+        end)
     end
-end))
 
--- ==============================================================================
--- 6. LAGGER NETWORK MOTORU
--- ==============================================================================
-local function RunLagger()
-    task.spawn(function()
-        while S.Lagger do
-            pcall(function()
-                for i = 1, 20 do
-                    local rem = ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("NetworkEvent")
-                    if rem then rem:FireServer(math.random(1e8, 9e8), string.rep("LEA_V13", 150)) end
-                end
-            end)
-            task.wait(0.03)
-        end
-    end)
-end
+    print("✅ Part 1 Yüklendi!")
+end)
+-- PART 2 KODU - BURAYI KOPYALA
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+    local S = getgenv().LeaStateV14
+    if not S then
+        warn("❌ Önce Part 1 Kodunu Çalıştırmalısın!")
+        return
+    end
 
--- ==============================================================================
--- 7. ULTRA KOMPAKT & OPTİMİZE DELTA MOBILE UI
--- ==============================================================================
-pcall(function() if CoreGui:FindFirstChild("LEAMOD_V13") then CoreGui.LEAMOD_V13:Destroy() end end)
+    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V14_UI") then CoreGui.LEAMOD_V14_UI:Destroy() end end)
 
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "LEAMOD_V13"
-Gui.ResetOnSpawn = false
-Gui.Parent = CoreGui
+    local Gui = Instance.new("ScreenGui")
+    Gui.Name = "LEAMOD_V14_UI"
+    Gui.ResetOnSpawn = false
+    Gui.Parent = CoreGui
 
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 160, 0, 195)
-Main.Position = UDim2.new(0.5, -80, 0.5, -97)
-Main.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true
-Main.Parent = Gui
+    local Main = Instance.new("Frame")
+    Main.Size = UDim2.new(0, 160, 0, 195)
+    Main.Position = UDim2.new(0.5, -80, 0.5, -97)
+    Main.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+    Main.BorderSizePixel = 0
+    Main.Active = true
+    Main.Draggable = true
+    Main.Parent = Gui
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 5)
 
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 5)
+    local Close = Instance.new("TextButton")
+    Close.Size = UDim2.new(0, 18, 0, 18)
+    Close.Position = UDim2.new(0, 4, 0, 4)
+    Close.BackgroundTransparency = 0.3
+    Close.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    Close.Text = "X"
+    Close.TextColor3 = Color3.fromRGB(255, 60, 60)
+    Close.TextSize = 10
+    Close.Font = Enum.Font.SourceSansBold
+    Close.Parent = Main
+    Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 3)
 
-local Close = Instance.new("TextButton")
-Close.Size = UDim2.new(0, 18, 0, 18)
-Close.Position = UDim2.new(0, 4, 0, 4)
-Close.BackgroundTransparency = 0.3
-Close.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-Close.Text = "X"
-Close.TextColor3 = Color3.fromRGB(255, 60, 60)
-Close.TextSize = 10
-Close.Font = Enum.Font.SourceSansBold
-Close.Parent = Main
-Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 3)
+    local Open = Instance.new("TextButton")
+    Open.Size = UDim2.new(0, 45, 0, 22)
+    Open.Position = UDim2.new(1, -50, 0, 4)
+    Open.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    Open.Text = "LEA"
+    Open.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Open.TextSize = 11
+    Open.Font = Enum.Font.SourceSansBold
+    Open.Visible = false
+    Open.Parent = Gui
+    Instance.new("UICorner", Open).CornerRadius = UDim.new(0, 3)
 
-local Open = Instance.new("TextButton")
-Open.Size = UDim2.new(0, 45, 0, 22)
-Open.Position = UDim2.new(1, -50, 0, 4)
-Open.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-Open.Text = "LEA"
-Open.TextColor3 = Color3.fromRGB(0, 255, 200)
-Open.TextSize = 11
-Open.Font = Enum.Font.SourceSansBold
-Open.Visible = false
-Open.Parent = Gui
-Instance.new("UICorner", Open).CornerRadius = UDim.new(0, 3)
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 22)
+    Title.BackgroundTransparency = 1
+    Title.Text = "LEA MOD V14"
+    Title.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Title.TextSize = 11
+    Title.Font = Enum.Font.SourceSansBold
+    Title.Parent = Main
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 22)
-Title.BackgroundTransparency = 1
-Title.Text = "LEA MOD V13"
-Title.TextColor3 = Color3.fromRGB(0, 255, 200)
-Title.TextSize = 11
-Title.Font = Enum.Font.SourceSansBold
-Title.Parent = Main
+    local Scroll = Instance.new("ScrollingFrame")
+    Scroll.Size = UDim2.new(1, -8, 1, -28)
+    Scroll.Position = UDim2.new(0, 4, 0, 26)
+    Scroll.BackgroundTransparency = 1
+    Scroll.BorderSizePixel = 0
+    Scroll.ScrollBarThickness = 2
+    Scroll.Parent = Main
 
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -8, 1, -28)
-Scroll.Position = UDim2.new(0, 4, 0, 26)
-Scroll.BackgroundTransparency = 1
-Scroll.BorderSizePixel = 0
-Scroll.ScrollBarThickness = 2
-Scroll.Parent = Main
+    local Layout = Instance.new("UIListLayout")
+    Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    Layout.Padding = UDim.new(0, 3)
+    Layout.Parent = Scroll
 
-local Layout = Instance.new("UIListLayout")
-Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-Layout.Padding = UDim.new(0, 3)
-Layout.Parent = Scroll
-
-local function AddBtn(name, stateKey, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1, 0, 0, 22)
-    b.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-    b.BorderSizePixel = 0
-    b.Text = name .. (S[stateKey] and ": AÇIK" or ": KAPALI")
-    b.TextColor3 = S[stateKey] and Color3.fromRGB(50, 255, 120) or Color3.fromRGB(255, 80, 80)
-    b.TextSize = 10
-    b.Font = Enum.Font.SourceSansBold
-    b.Parent = Scroll
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 3)
-
-    b.MouseButton1Click:Connect(function()
-        S[stateKey] = not S[stateKey]
+    local function AddBtn(name, stateKey, callback)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(1, 0, 0, 22)
+        b.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+        b.BorderSizePixel = 0
         b.Text = name .. (S[stateKey] and ": AÇIK" or ": KAPALI")
         b.TextColor3 = S[stateKey] and Color3.fromRGB(50, 255, 120) or Color3.fromRGB(255, 80, 80)
-        if callback then callback(S[stateKey]) end
-    end)
-end
+        b.TextSize = 10
+        b.Font = Enum.Font.SourceSansBold
+        b.Parent = Scroll
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 3)
 
-AddBtn("Anti-Kick", "AntiKick", function(v) S.AntiKick = v end)
-AddBtn("Anti-Reset", "AntiReset", function(v) S.AntiReset = v end)
-AddBtn("Cube Sistemi", "Cube", function(v) S.Cube = v end)
-AddBtn("Fly Süzülme", "Fly", function(v) S.Fly = v end)
-AddBtn("Takip Modu", "Follow", function(v) S.Follow = v end)
-AddBtn("Auto Medusa", "Medusa", function(v) S.Medusa = v end)
-AddBtn("Lagger Mod", "Lagger", function(v) S.Lagger = v; if v then RunLagger() end end)
+        b.MouseButton1Click:Connect(function()
+            S[stateKey] = not S[stateKey]
+            b.Text = name .. (S[stateKey] and ": AÇIK" or ": KAPALI")
+            b.TextColor3 = S[stateKey] and Color3.fromRGB(50, 255, 120) or Color3.fromRGB(255, 80, 80)
+            if callback then callback(S[stateKey]) end
+        end)
+    end
 
-Close.MouseButton1Click:Connect(function() Main.Visible = false; Open.Visible = true end)
-Open.MouseButton1Click:Connect(function() Main.Visible = true; Open.Visible = false end)
+    AddBtn("Anti-Kick", "AntiKick", function(v) S.AntiKick = v end)
+    AddBtn("Anti-Reset", "AntiReset", function(v) S.AntiReset = v end)
+    AddBtn("Cube Sistemi", "Cube", function(v) S.Cube = v end)
+    AddBtn("Fly Süzülme", "Fly", function(v) S.Fly = v end)
+    AddBtn("Takip Modu", "Follow", function(v) S.Follow = v end)
+    AddBtn("Auto Medusa", "Medusa", function(v) S.Medusa = v end)
+    AddBtn("Lagger Mod", "Lagger", function(v) S.Lagger = v; if v then S.RunLagger() end end)
 
-print("✅ [LEA MOD V13.0]: Optimize Edildi, Buglar Giderildi ve Hazır!")
+    Close.MouseButton1Click:Connect(function() Main.Visible = false; Open.Visible = true end)
+    Open.MouseButton1Click:Connect(function() Main.Visible = true; Open.Visible = false end)
+
+    print("✅ Part 2 UI Yüklendi!")
+end)

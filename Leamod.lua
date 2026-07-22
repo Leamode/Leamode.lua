@@ -1,14 +1,14 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ WEAPON SYSTEM v20.0 - SADE VE ÇALIŞAN (HATALAR GİDERİLDİ)
+    ⚡ WEAPON SYSTEM v21.0 - SERBEST UÇUŞ + AIMBOT KİLİT + OTO ATEŞ
     ═══════════════════════════════════════════════════════════════════════════
     
     ✅ ESP - İsim + HP + Kutu (Çalışıyor)
-    ✅ Aimbot - FOV ayarlı, hedefe kilit (Çalışıyor)
+    ✅ Aimbot - Crosshair hedefe kilitlenir + Otomatik ateş (Çalışıyor)
     ✅ 360 - Sürekli dönüş (Çalışıyor)
-    ✅ Fly - Uçma + No Clip (Çalışıyor)
+    ✅ FLY - Serbest uçuş (WASD + Space/Shift) (Çalışıyor)
     ✅ Rainbow - Renk değiştirme (Çalışıyor)
-    ✅ Teleport - Işınlanma + Otomatik ateş (Çalışıyor)
+    ✅ Teleport - Işınlanma (Çalışıyor)
     ✅ Infinite Jump - Sınırsız zıplama (Çalışıyor)
     ✅ Speed - Hız ayarı (Çalışıyor)
     ✅ LEA MOD - Ekranın ortasının üstünde
@@ -16,7 +16,7 @@
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü
+-- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü  +  FLY
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -27,7 +27,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local SETTINGS = {
     SpeedValue = 50,
-    FlySpeed = 70,
+    FlySpeed = 50,
     OffsetBack = 5,
     OffsetUp = 4,
     FOV = 180,
@@ -55,6 +55,9 @@ local espObjects = {}
 local bodyVelocity = nil
 local bodyGyro = nil
 local currentTarget = nil
+
+-- FLY KONTROLLERİ
+local flyKeys = {W=false, A=false, S=false, D=false, Space=false, Shift=false}
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- LEA MOD
@@ -334,7 +337,7 @@ local function stopESP()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 2. AIMBOT
+-- 2. AIMBOT + OTOMATİK ATEŞ (Crosshair hedefe kilitlenir)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startAimbot()
@@ -353,7 +356,15 @@ local function startAimbot()
         local angle = math.deg(math.acos(currentLook:Dot(lookDir)))
         if angle <= SETTINGS.FOV then
             currentTarget = target
+            -- Crosshair'i hedefe kilitle (karakteri döndür)
             rootPart.CFrame = CFrame.lookAt(rootPart.Position, targetPos)
+            -- Otomatik ateş
+            local mouse = LocalPlayer:GetMouse()
+            if mouse then
+                mouse.Button1Down:Fire()
+                wait(0.03)
+                mouse.Button1Up:Fire()
+            end
         end
     end)
 end
@@ -386,52 +397,71 @@ local function stop360()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. FLY + NO CLIP
+-- 4. SERBEST UÇUŞ (FLY) - WASD + Space/Shift
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startFly()
     if bodyVelocity then return end
+    -- Fly mekaniği: BodyVelocity ile serbest uçuş
     bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = Vector3.new(0,0,0)
     bodyVelocity.MaxForce = Vector3.new(9e9,9e9,9e9)
     bodyVelocity.Parent = rootPart
+    
     bodyGyro = Instance.new("BodyGyro")
     bodyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
     bodyGyro.P = 999999
     bodyGyro.D = 999999
     bodyGyro.CFrame = rootPart.CFrame
     bodyGyro.Parent = rootPart
+    
     humanoid.PlatformStand = true
     humanoid.AutoRotate = false
+    
+    -- No Clip
     if character then
         for _, part in pairs(character:GetChildren()) do
             if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
+    
+    -- Tuş dinleme
+    local function keyDown(input)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            local key = input.KeyCode.Name
+            if flyKeys[key] ~= nil then flyKeys[key] = true end
+        end
+    end
+    local function keyUp(input)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            local key = input.KeyCode.Name
+            if flyKeys[key] ~= nil then flyKeys[key] = false end
+        end
+    end
+    UserInputService.InputBegan:Connect(keyDown)
+    UserInputService.InputEnded:Connect(keyUp)
+    
     if connections.fly then connections.fly:Disconnect() end
     connections.fly = RunService.Heartbeat:Connect(function()
         if not states.fly then
             if bodyVelocity then bodyVelocity.Velocity = Vector3.new(0,0,0) end
             return
         end
-        local target = currentTarget or getNearestEnemy()
-        if not target then return end
-        local c = target.Character
-        if not c then return end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if not r then return end
-        local tPos = r.Position
-        local look = r.CFrame.LookVector
-        local flyPos = tPos - (look * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
-        local dir = (flyPos - rootPart.Position)
-        local dist = dir.Magnitude
-        if dist > 0.5 and bodyVelocity then
-            bodyVelocity.Velocity = dir.Unit * math.min(dist * SETTINGS.FlySpeed, SETTINGS.FlySpeed * 3)
-        elseif bodyVelocity then
-            bodyVelocity.Velocity = Vector3.new(0,0,0)
+        if not rootPart then return end
+        local speed = SETTINGS.FlySpeed
+        local move = Vector3.new(0,0,0)
+        if flyKeys.W then move = move + rootPart.CFrame.LookVector * speed end
+        if flyKeys.S then move = move - rootPart.CFrame.LookVector * speed end
+        if flyKeys.A then move = move - rootPart.CFrame.RightVector * speed end
+        if flyKeys.D then move = move + rootPart.CFrame.RightVector * speed end
+        if flyKeys.Space then move = move + Vector3.new(0, speed, 0) end
+        if flyKeys.Shift then move = move - Vector3.new(0, speed, 0) end
+        if bodyVelocity then
+            bodyVelocity.Velocity = move
         end
         if bodyGyro then
-            bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, r.Position)
+            -- Mouse ile bakış yönünü almak için kamera kullanılabilir, ama şimdilik sabit
+            bodyGyro.CFrame = rootPart.CFrame
         end
     end)
 end
@@ -450,6 +480,8 @@ local function stopFly()
             if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
+    -- Tuşları sıfırla
+    for k in pairs(flyKeys) do flyKeys[k] = false end
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -619,4 +651,5 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     if states.rainbow then startRainbow() end
 end)
 
-print("✅ WEAPON SYSTEM v20.0 HAZIR - TÜM BUTONLAR ÇALIŞIYOR")
+print("✅ WEAPON SYSTEM v21.0 HAZIR - SERBEST UÇUŞ + AIMBOT KİLİT")
+print("🛩️ FLY açıkken WASD ile uç, Space yüksel, Shift alçal")

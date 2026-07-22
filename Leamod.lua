@@ -1,28 +1,29 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ WEAPON SYSTEM v16.0 - TAŞINABİLİR MENÜ + ÇALIŞAN BUTONLAR
+    ⚡ WEAPON SYSTEM v18.0 - FOV + LEA MOD + RB (TAŞINABİLİR MENÜ)
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ TAŞINABİLİR MENÜ (Sürükle Bırak)
-    ✅ HER BUTON AÇ/KAPA ÇALIŞIR (Yeşil/Kırmızı)
-    ✅ Magic Bullet - FULL mermi yönlendirme
-    ✅ ESP - Kutu + İsim + HP + Mesafe
-    ✅ 360 - Sürekli dönüş
-    ✅ Uçma - Fly ile uçma
-    ✅ Rainbow - Renk değiştirme
+    ✅ FOV - PC FOV'una çekildi (Görüş açısı genişledi)
+    ✅ LEA MOD - Ekranın ortasının ÜSTÜNE yazı
+    ✅ RB - Rainbow butonu (Aç/Kapa)
+    ✅ ESP - Çalışıyor (İsim + HP + Kutu + Duvar Arkası)
+    ✅ Aimbot - FOV Ayarlanabilir
+    ✅ 360 - Sürekli dönüyor
+    ✅ Fly - No Clip aktif
+    ✅ Infinite Jump - Sınırsız zıplama
     ✅ Teleport - Işınlanma + Otomatik ateş
-    ✅ Speed - +/- ayar
-    ✅ GIANT KALDIRILDI
+    ✅ Menü TAŞINABİLİR + AÇ/KAPA
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü
+-- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü  +  FOV  +  LEA MOD
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
+local Camera = game:GetService("Workspace").CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -32,6 +33,8 @@ local SETTINGS = {
     OffsetBack = 5,
     OffsetUp = 4,
     TeamCheck = true,
+    FOV = 180,
+    AimbotSmoothness = 0.3,
 }
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -41,31 +44,78 @@ local head = character:FindFirstChild("Head")
 
 -- DURUMLAR
 local states = {
-    magicBullet = false,
     esp = false,
+    aimbot = false,
     rotation = false,
     fly = false,
     rainbow = false,
     teleport = false,
+    infiniteJump = false,
+    menuOpen = true,
 }
 
 -- BAĞLANTILAR
 local connections = {
-    magic = nil,
     esp = {},
+    aimbot = nil,
     rotation = nil,
-    rainbow = nil,
     fly = nil,
+    rainbow = nil,
     teleport = nil,
     autoFire = nil,
+    jump = nil,
 }
 
 local bodyVelocity = nil
 local bodyGyro = nil
 local currentTarget = nil
+local menuVisible = true
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- M E N Ü  (KÜÇÜK - TAŞINABİLİR)
+-- 1. FOV - PC FOV'UNA ÇEK (Görüş açısı genişlet)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function setPCFOV()
+    if Camera then
+        Camera.FieldOfView = 110  -- PC FOV'u (geniş açı)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 2. LEA MOD - Ekranın ortasının ÜSTÜNE yazı
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function createLeaMod()
+    -- Önceki varsa sil
+    local oldLea = PlayerGui:FindFirstChild("LeaModText")
+    if oldLea then oldLea:Destroy() end
+    
+    local leaText = Instance.new("TextLabel")
+    leaText.Name = "LeaModText"
+    leaText.Size = UDim2.new(0, 150, 0, 40)
+    leaText.Position = UDim2.new(0.5, -75, 0, 10)  -- Ekranın ortasının üstü
+    leaText.Text = "LEA MOD"
+    leaText.BackgroundTransparency = 1
+    leaText.TextColor3 = Color3.fromRGB(255, 0, 255)
+    leaText.TextScaled = true
+    leaText.Font = Enum.Font.GothamBold
+    leaText.TextStrokeTransparency = 0
+    leaText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    leaText.Parent = PlayerGui
+    
+    -- Parlama efekti
+    local glow = Instance.new("UIStroke")
+    glow.Color = Color3.fromRGB(255, 0, 255)
+    glow.Thickness = 2
+    glow.Transparency = 0.5
+    glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    glow.Parent = leaText
+    
+    return leaText
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M E N Ü  (TAŞINABİLİR - YUKARIDA)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
@@ -74,16 +124,16 @@ screenGui.Parent = PlayerGui
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 55, 0, 160)
-mainFrame.Position = UDim2.new(1, -60, 0, 10)
+mainFrame.Size = UDim2.new(0, 65, 0, 190)
+mainFrame.Position = UDim2.new(1, -70, 0, 2)
 mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-mainFrame.BackgroundTransparency = 0.15
+mainFrame.BackgroundTransparency = 0.1
 mainFrame.BorderSizePixel = 1
 mainFrame.BorderColor3 = Color3.fromRGB(0, 180, 255)
 mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
--- SÜRÜKLEME (Drag)
+-- SÜRÜKLEME
 local dragging = false
 local dragStart = nil
 local dragStartPos = nil
@@ -114,21 +164,40 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- BAŞLIK
+-- BAŞLIK + AÇ/KAPA
+local titleFrame = Instance.new("Frame")
+titleFrame.Size = UDim2.new(1, 0, 0, 16)
+titleFrame.Position = UDim2.new(0, 0, 0, 0)
+titleFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+titleFrame.BackgroundTransparency = 0
+titleFrame.Parent = mainFrame
+
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0, 12)
-titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.Text = "⚡"
+titleLabel.Size = UDim2.new(0, 40, 0, 16)
+titleLabel.Position = UDim2.new(0, 2, 0, 0)
+titleLabel.Text = "⚡HACK"
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 10
-titleLabel.Parent = mainFrame
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleFrame
+
+local toggleMenuBtn = Instance.new("TextButton")
+toggleMenuBtn.Size = UDim2.new(0, 18, 0, 14)
+toggleMenuBtn.Position = UDim2.new(0, 44, 0, 1)
+toggleMenuBtn.Text = "−"
+toggleMenuBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+toggleMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleMenuBtn.Font = Enum.Font.GothamBold
+toggleMenuBtn.TextSize = 10
+toggleMenuBtn.BorderSizePixel = 0
+toggleMenuBtn.Parent = titleFrame
 
 -- BUTON OLUŞTURMA
 local function createToggleButton(parent, text, yPos)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 49, 0, 14)
+    btn.Size = UDim2.new(0, 59, 0, 14)
     btn.Position = UDim2.new(0, 3, 0, yPos)
     btn.Text = text .. " ❌"
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
@@ -141,17 +210,18 @@ local function createToggleButton(parent, text, yPos)
 end
 
 -- BUTONLAR
-local btnMagic = createToggleButton(mainFrame, "🔫", 15)
-local btnESP = createToggleButton(mainFrame, "👁️", 32)
-local btn360 = createToggleButton(mainFrame, "🔄", 49)
-local btnFly = createToggleButton(mainFrame, "✈️", 66)
-local btnRainbow = createToggleButton(mainFrame, "🌈", 83)
-local btnTeleport = createToggleButton(mainFrame, "🚀", 100)
+local btnESP = createToggleButton(mainFrame, "👁️ ESP", 19)
+local btnAimbot = createToggleButton(mainFrame, "🎯 AIM", 36)
+local btn360 = createToggleButton(mainFrame, "🔄 360", 53)
+local btnFly = createToggleButton(mainFrame, "✈️ FLY", 70)
+local btnRainbow = createToggleButton(mainFrame, "🌈 RB", 87)
+local btnTeleport = createToggleButton(mainFrame, "🚀 TP", 104)
+local btnJump = createToggleButton(mainFrame, "⬆️ INF", 121)
 
 -- Speed
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 20, 0, 12)
-speedLabel.Position = UDim2.new(0, 3, 0, 118)
+speedLabel.Position = UDim2.new(0, 3, 0, 139)
 speedLabel.Text = "50"
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
@@ -162,7 +232,7 @@ speedLabel.Parent = mainFrame
 
 local speedUpBtn = Instance.new("TextButton")
 speedUpBtn.Size = UDim2.new(0, 12, 0, 12)
-speedUpBtn.Position = UDim2.new(0, 25, 0, 118)
+speedUpBtn.Position = UDim2.new(0, 25, 0, 139)
 speedUpBtn.Text = "+"
 speedUpBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 speedUpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -173,7 +243,7 @@ speedUpBtn.Parent = mainFrame
 
 local speedDownBtn = Instance.new("TextButton")
 speedDownBtn.Size = UDim2.new(0, 12, 0, 12)
-speedDownBtn.Position = UDim2.new(0, 39, 0, 118)
+speedDownBtn.Position = UDim2.new(0, 39, 0, 139)
 speedDownBtn.Text = "-"
 speedDownBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 speedDownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -182,9 +252,43 @@ speedDownBtn.TextSize = 9
 speedDownBtn.BorderSizePixel = 0
 speedDownBtn.Parent = mainFrame
 
+-- FOV Ayarı
+local fovLabel = Instance.new("TextLabel")
+fovLabel.Size = UDim2.new(0, 20, 0, 12)
+fovLabel.Position = UDim2.new(0, 3, 0, 154)
+fovLabel.Text = "FOV"
+fovLabel.BackgroundTransparency = 1
+fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+fovLabel.Font = Enum.Font.Gotham
+fovLabel.TextSize = 8
+fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+fovLabel.Parent = mainFrame
+
+local fovUpBtn = Instance.new("TextButton")
+fovUpBtn.Size = UDim2.new(0, 12, 0, 12)
+fovUpBtn.Position = UDim2.new(0, 25, 0, 154)
+fovUpBtn.Text = "+"
+fovUpBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+fovUpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovUpBtn.Font = Enum.Font.GothamBold
+fovUpBtn.TextSize = 9
+fovUpBtn.BorderSizePixel = 0
+fovUpBtn.Parent = mainFrame
+
+local fovDownBtn = Instance.new("TextButton")
+fovDownBtn.Size = UDim2.new(0, 12, 0, 12)
+fovDownBtn.Position = UDim2.new(0, 39, 0, 154)
+fovDownBtn.Text = "-"
+fovDownBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+fovDownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovDownBtn.Font = Enum.Font.GothamBold
+fovDownBtn.TextSize = 9
+fovDownBtn.BorderSizePixel = 0
+fovDownBtn.Parent = mainFrame
+
 local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 49, 0, 14)
-closeButton.Position = UDim2.new(0, 3, 0, 135)
+closeButton.Size = UDim2.new(0, 59, 0, 14)
+closeButton.Position = UDim2.new(0, 3, 0, 171)
 closeButton.Text = "✕ KAPAT"
 closeButton.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -233,54 +337,7 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════--[[ BÖLÜM 2/2 - SİSTEMLER ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. MAGIC BULLET
--- ═══════════════════════════════════════════════════════════════════════════
-
-local function startMagicBullet()
-    if connections.magic then return end
-    connections.magic = RunService.Stepped:Connect(function()
-        if not states.magicBullet then return end
-        
-        local target = currentTarget or getNearestEnemy()
-        if not target then return end
-        
-        local targetChar = target.Character
-        if not targetChar then return end
-        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-        if not targetRoot then return end
-        
-        local targetPos = targetRoot.Position
-        
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("Part") then
-                local name = obj.Name:lower()
-                if name:find("bullet") or name:find("projectile") or name:find("shell") then
-                    if obj.Parent and obj.Parent ~= character then
-                        local direction = (targetPos - obj.Position).Unit
-                        obj.CFrame = CFrame.new(obj.Position, targetPos)
-                        if obj:IsA("BasePart") then
-                            obj.Velocity = direction * 400
-                        end
-                        local bv = obj:FindFirstChildOfClass("BodyVelocity")
-                        if bv then
-                            bv.Velocity = direction * 400
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
-local function stopMagicBullet()
-    if connections.magic then
-        connections.magic:Disconnect()
-        connections.magic = nil
-    end
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- 2. ESP
+-- 1. ESP (ÇALIŞIYOR)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startESP()
@@ -298,7 +355,7 @@ local function startESP()
         local box = Instance.new("BoxHandleAdornment")
         box.Size = Vector3.new(3, 6, 1)
         box.Color3 = isEnemyPlayer and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-        box.Transparency = 0.5
+        box.Transparency = 0.4
         box.AlwaysOnTop = true
         box.Adornee = otherRoot
         box.ZIndex = 10
@@ -306,7 +363,7 @@ local function startESP()
         table.insert(connections.esp, box)
         
         local nameTag = Instance.new("BillboardGui")
-        nameTag.Size = UDim2.new(0, 100, 0, 25)
+        nameTag.Size = UDim2.new(0, 120, 0, 30)
         nameTag.Adornee = otherRoot
         nameTag.AlwaysOnTop = true
         nameTag.Parent = otherRoot
@@ -317,10 +374,35 @@ local function startESP()
         nameLabel.Text = otherPlayer.Name .. " | " .. math.floor(otherHumanoid.Health) .. "HP"
         nameLabel.TextColor3 = isEnemyPlayer and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
         nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextSize = 10
-        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.TextSize = 11
+        nameLabel.TextStrokeTransparency = 0.3
         nameLabel.Parent = nameTag
         table.insert(connections.esp, nameTag)
+        
+        local distTag = Instance.new("BillboardGui")
+        distTag.Size = UDim2.new(0, 50, 0, 15)
+        distTag.Adornee = otherRoot
+        distTag.AlwaysOnTop = true
+        distTag.Position = UDim2.new(0, 0, 0, -2)
+        distTag.Parent = otherRoot
+        
+        local distLabel2 = Instance.new("TextLabel")
+        distLabel2.Size = UDim2.new(1, 0, 1, 0)
+        distLabel2.BackgroundTransparency = 1
+        distLabel2.Text = ""
+        distLabel2.TextColor3 = Color3.fromRGB(255, 255, 0)
+        distLabel2.Font = Enum.Font.Gotham
+        distLabel2.TextSize = 9
+        distLabel2.TextStrokeTransparency = 0.3
+        distLabel2.Parent = distTag
+        table.insert(connections.esp, distTag)
+        
+        RunService.Heartbeat:Connect(function()
+            if otherRoot and rootPart then
+                local dist = (otherRoot.Position - rootPart.Position).Magnitude
+                distLabel2.Text = math.floor(dist) .. "m"
+            end
+        end)
     end
 end
 
@@ -332,6 +414,44 @@ local function stopESP()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- 2. AIMBOT
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function startAimbot()
+    if connections.aimbot then return end
+    connections.aimbot = RunService.Heartbeat:Connect(function()
+        if not states.aimbot then return end
+        
+        local target = getNearestEnemy()
+        if not target then return end
+        
+        local targetChar = target.Character
+        if not targetChar then return end
+        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then return end
+        
+        local targetPos = targetRoot.Position
+        local lookDirection = (targetPos - rootPart.Position).Unit
+        local currentLook = rootPart.CFrame.LookVector
+        
+        local angle = math.deg(math.acos(currentLook:Dot(lookDirection)))
+        
+        if angle <= SETTINGS.FOV then
+            currentTarget = target
+            local newCFrame = CFrame.lookAt(rootPart.Position, targetPos)
+            rootPart.CFrame = rootPart.CFrame:Lerp(newCFrame, SETTINGS.AimbotSmoothness)
+        end
+    end)
+end
+
+local function stopAimbot()
+    if connections.aimbot then
+        connections.aimbot:Disconnect()
+        connections.aimbot = nil
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 3. 360
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -339,7 +459,7 @@ local function start360()
     if connections.rotation then return end
     connections.rotation = RunService.Heartbeat:Connect(function()
         if not states.rotation or not rootPart then return end
-        rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(25), 0)
+        rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(20), 0)
     end)
 end
 
@@ -351,7 +471,7 @@ local function stop360()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. UÇMA (FLY)
+-- 4. FLY (No Clip)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startFly()
@@ -371,6 +491,14 @@ local function startFly()
     
     humanoid.PlatformStand = true
     humanoid.AutoRotate = false
+    
+    if character then
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
     
     if connections.fly then connections.fly:Disconnect() end
     connections.fly = RunService.Heartbeat:Connect(function()
@@ -422,10 +550,18 @@ local function stopFly()
     end
     humanoid.PlatformStand = false
     humanoid.AutoRotate = true
+    
+    if character then
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 5. RAINBOW
+-- 5. RAINBOW (RB)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startRainbow()
@@ -453,7 +589,7 @@ local function stopRainbow()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 6. TELEPORT + OTOMATİK ATEŞ
+-- 6. TELEPORT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startTeleport()
@@ -501,29 +637,62 @@ local function stopTeleport()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- 7. INFINITE JUMP
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function startInfiniteJump()
+    if connections.jump then return end
+    connections.jump = UserInputService.JumpRequest:Connect(function()
+        if states.infiniteJump and humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            wait(0.1)
+        end
+    end)
+end
+
+local function stopInfiniteJump()
+    if connections.jump then
+        connections.jump:Disconnect()
+        connections.jump = nil
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- B U T O N   F O N K S İ Y O N L A R I
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Magic Bullet
-btnMagic.MouseButton1Click:Connect(function()
-    states.magicBullet = not states.magicBullet
-    btnMagic.Text = states.magicBullet and "🔫 ✅" or "🔫 ❌"
-    btnMagic.BackgroundColor3 = states.magicBullet and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
-    if states.magicBullet then startMagicBullet() else stopMagicBullet() end
+-- Menü Aç/Kapa
+toggleMenuBtn.MouseButton1Click:Connect(function()
+    menuVisible = not menuVisible
+    toggleMenuBtn.Text = menuVisible and "−" or "+"
+    for _, child in pairs(mainFrame:GetChildren()) do
+        if child ~= titleFrame and child ~= toggleMenuBtn then
+            child.Visible = menuVisible
+        end
+    end
+    mainFrame.Size = menuVisible and UDim2.new(0, 65, 0, 190) or UDim2.new(0, 65, 0, 16)
 end)
 
 -- ESP
 btnESP.MouseButton1Click:Connect(function()
     states.esp = not states.esp
-    btnESP.Text = states.esp and "👁️ ✅" or "👁️ ❌"
+    btnESP.Text = states.esp and "👁️ ESP ✅" or "👁️ ESP ❌"
     btnESP.BackgroundColor3 = states.esp and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
     if states.esp then startESP() else stopESP() end
+end)
+
+-- Aimbot
+btnAimbot.MouseButton1Click:Connect(function()
+    states.aimbot = not states.aimbot
+    btnAimbot.Text = states.aimbot and "🎯 AIM ✅" or "🎯 AIM ❌"
+    btnAimbot.BackgroundColor3 = states.aimbot and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
+    if states.aimbot then startAimbot() else stopAimbot() end
 end)
 
 -- 360
 btn360.MouseButton1Click:Connect(function()
     states.rotation = not states.rotation
-    btn360.Text = states.rotation and "🔄 ✅" or "🔄 ❌"
+    btn360.Text = states.rotation and "🔄 360 ✅" or "🔄 360 ❌"
     btn360.BackgroundColor3 = states.rotation and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
     if states.rotation then start360() else stop360() end
 end)
@@ -531,15 +700,15 @@ end)
 -- Fly
 btnFly.MouseButton1Click:Connect(function()
     states.fly = not states.fly
-    btnFly.Text = states.fly and "✈️ ✅" or "✈️ ❌"
+    btnFly.Text = states.fly and "✈️ FLY ✅" or "✈️ FLY ❌"
     btnFly.BackgroundColor3 = states.fly and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
     if states.fly then startFly() else stopFly() end
 end)
 
--- Rainbow
+-- Rainbow (RB)
 btnRainbow.MouseButton1Click:Connect(function()
     states.rainbow = not states.rainbow
-    btnRainbow.Text = states.rainbow and "🌈 ✅" or "🌈 ❌"
+    btnRainbow.Text = states.rainbow and "🌈 RB ✅" or "🌈 RB ❌"
     btnRainbow.BackgroundColor3 = states.rainbow and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
     if states.rainbow then startRainbow() else stopRainbow() end
 end)
@@ -547,9 +716,17 @@ end)
 -- Teleport
 btnTeleport.MouseButton1Click:Connect(function()
     states.teleport = not states.teleport
-    btnTeleport.Text = states.teleport and "🚀 ✅" or "🚀 ❌"
+    btnTeleport.Text = states.teleport and "🚀 TP ✅" or "🚀 TP ❌"
     btnTeleport.BackgroundColor3 = states.teleport and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
     if states.teleport then startTeleport() else stopTeleport() end
+end)
+
+-- Infinite Jump
+btnJump.MouseButton1Click:Connect(function()
+    states.infiniteJump = not states.infiniteJump
+    btnJump.Text = states.infiniteJump and "⬆️ INF ✅" or "⬆️ INF ❌"
+    btnJump.BackgroundColor3 = states.infiniteJump and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 60)
+    if states.infiniteJump then startInfiniteJump() else stopInfiniteJump() end
 end)
 
 -- Speed
@@ -566,21 +743,40 @@ speedDownBtn.MouseButton1Click:Connect(function()
     speedLabel.Text = tostring(SETTINGS.SpeedValue)
 end)
 
+-- FOV
+fovUpBtn.MouseButton1Click:Connect(function()
+    SETTINGS.FOV = SETTINGS.FOV + 10
+    if SETTINGS.FOV > 360 then SETTINGS.FOV = 360 end
+end)
+
+fovDownBtn.MouseButton1Click:Connect(function()
+    SETTINGS.FOV = SETTINGS.FOV - 10
+    if SETTINGS.FOV < 10 then SETTINGS.FOV = 10 end
+end)
+
 -- Kapat
 closeButton.MouseButton1Click:Connect(function()
-    stopMagicBullet()
     stopESP()
+    stopAimbot()
     stop360()
     stopFly()
     stopRainbow()
     stopTeleport()
+    stopInfiniteJump()
     screenGui:Destroy()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- K A R A K T E R   D E Ğ İ Ş İ M İ
+-- B A Ş L A T M A
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- PC FOV
+setPCFOV()
+
+-- LEA MOD
+createLeaMod()
+
+-- Karakter değişimi
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = newChar:WaitForChild("Humanoid")
@@ -594,14 +790,4 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   ⚡ WEAPON SYSTEM v16.0 - TAŞINABİLİR MENÜ ⚡             ║")
-print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🔫 Magic Bullet - Mermi yönlendirme                        ║")
-print("║  👁️  ESP - Kutu + İsim + HP                                ║")
-print("║  🔄 360 - Sürekli dönüş                                    ║")
-print("║  ✈️  Uçma - Fly ile uçma                                   ║")
-print("║  🌈 Rainbow - Renk değiştirme                              ║")
-print("║  🚀 Teleport - Işınlanma + Otomatik ateş                   ║")
-print("║  ⚡ Speed - +/- ile ayarla                                  ║")
-print("║  🖱️  Menüyü sürükleyerek taşıyabilirsiniz                   ║")
-print("╚══════════════════════════════════════════════════════════════╝")
+print("║   ⚡ WEAPON SYSTEM v18.0 - FOV + LEA MOD +

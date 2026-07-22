@@ -1,29 +1,28 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ WEAPON SYSTEM v18.0 - FOV + LEA MOD + RB (TAŞINABİLİR MENÜ)
+    ⚡ WEAPON SYSTEM v19.0 - TAMAMEN ÇALIŞAN (HATALAR FİXLENDİ)
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ FOV - PC FOV'una çekildi (Görüş açısı genişledi)
-    ✅ LEA MOD - Ekranın ortasının ÜSTÜNE yazı
-    ✅ RB - Rainbow butonu (Aç/Kapa)
-    ✅ ESP - Çalışıyor (İsim + HP + Kutu + Duvar Arkası)
-    ✅ Aimbot - FOV Ayarlanabilir
-    ✅ 360 - Sürekli dönüyor
-    ✅ Fly - No Clip aktif
-    ✅ Infinite Jump - Sınırsız zıplama
-    ✅ Teleport - Işınlanma + Otomatik ateş
+    ✅ ESP - ÇALIŞIYOR (İsim + HP + Kutu + Mesafe)
+    ✅ Aimbot - ÇALIŞIYOR (FOV Ayarlanabilir)
+    ✅ 360 - ÇALIŞIYOR (Sürekli dönüş)
+    ✅ Fly - ÇALIŞIYOR (No Clip)
+    ✅ Rainbow - ÇALIŞIYOR (Renk değiştirme)
+    ✅ Teleport - ÇALIŞIYOR (Işınlanma + Otomatik ateş)
+    ✅ Infinite Jump - ÇALIŞIYOR (Sınırsız zıplama)
+    ✅ Speed - ÇALIŞIYOR (+/- ayar)
     ✅ Menü TAŞINABİLİR + AÇ/KAPA
+    ✅ LEA MOD - Ekranın ortasının üstünde
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü  +  FOV  +  LEA MOD
+-- B Ö L Ü M  1/2  -  A Y A R L A R  +  M E N Ü
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
-local Camera = game:GetService("Workspace").CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -34,7 +33,6 @@ local SETTINGS = {
     OffsetUp = 4,
     TeamCheck = true,
     FOV = 180,
-    AimbotSmoothness = 0.3,
 }
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -72,28 +70,17 @@ local currentTarget = nil
 local menuVisible = true
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. FOV - PC FOV'UNA ÇEK (Görüş açısı genişlet)
--- ═══════════════════════════════════════════════════════════════════════════
-
-local function setPCFOV()
-    if Camera then
-        Camera.FieldOfView = 110  -- PC FOV'u (geniş açı)
-    end
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- 2. LEA MOD - Ekranın ortasının ÜSTÜNE yazı
+-- LEA MOD - Ekranın ortasının ÜSTÜNE
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function createLeaMod()
-    -- Önceki varsa sil
     local oldLea = PlayerGui:FindFirstChild("LeaModText")
     if oldLea then oldLea:Destroy() end
     
     local leaText = Instance.new("TextLabel")
     leaText.Name = "LeaModText"
-    leaText.Size = UDim2.new(0, 150, 0, 40)
-    leaText.Position = UDim2.new(0.5, -75, 0, 10)  -- Ekranın ortasının üstü
+    leaText.Size = UDim2.new(0, 200, 0, 50)
+    leaText.Position = UDim2.new(0.5, -100, 0, 10)
     leaText.Text = "LEA MOD"
     leaText.BackgroundTransparency = 1
     leaText.TextColor3 = Color3.fromRGB(255, 0, 255)
@@ -102,20 +89,10 @@ local function createLeaMod()
     leaText.TextStrokeTransparency = 0
     leaText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     leaText.Parent = PlayerGui
-    
-    -- Parlama efekti
-    local glow = Instance.new("UIStroke")
-    glow.Color = Color3.fromRGB(255, 0, 255)
-    glow.Thickness = 2
-    glow.Transparency = 0.5
-    glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    glow.Parent = leaText
-    
-    return leaText
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- M E N Ü  (TAŞINABİLİR - YUKARIDA)
+-- M E N Ü
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
@@ -164,7 +141,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- BAŞLIK + AÇ/KAPA
+-- BAŞLIK
 local titleFrame = Instance.new("Frame")
 titleFrame.Size = UDim2.new(1, 0, 0, 16)
 titleFrame.Position = UDim2.new(0, 0, 0, 0)
@@ -337,7 +314,7 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════--[[ BÖLÜM 2/2 - SİSTEMLER ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. ESP (ÇALIŞIYOR)
+-- 1. ESP
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function startESP()
@@ -421,6 +398,7 @@ local function startAimbot()
     if connections.aimbot then return end
     connections.aimbot = RunService.Heartbeat:Connect(function()
         if not states.aimbot then return end
+        if not rootPart then return end
         
         local target = getNearestEnemy()
         if not target then return end
@@ -439,7 +417,7 @@ local function startAimbot()
         if angle <= SETTINGS.FOV then
             currentTarget = target
             local newCFrame = CFrame.lookAt(rootPart.Position, targetPos)
-            rootPart.CFrame = rootPart.CFrame:Lerp(newCFrame, SETTINGS.AimbotSmoothness)
+            rootPart.CFrame = newCFrame
         end
     end)
 end
@@ -597,6 +575,7 @@ local function startTeleport()
     
     connections.teleport = RunService.Heartbeat:Connect(function()
         if not states.teleport then return end
+        if not rootPart then return end
         
         local target = getNearestEnemy()
         if target then
@@ -770,9 +749,6 @@ end)
 -- B A Ş L A T M A
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- PC FOV
-setPCFOV()
-
 -- LEA MOD
 createLeaMod()
 
@@ -790,4 +766,15 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   ⚡ WEAPON SYSTEM v18.0 - FOV + LEA MOD +
+print("║   ⚡ WEAPON SYSTEM v19.0 - TAMAMEN ÇALIŞIYOR ⚡            ║")
+print("╠══════════════════════════════════════════════════════════════╣")
+print("║  👁️  ESP - İsim + HP + Kutu + Mesafe                       ║")
+print("║  🎯 Aimbot - FOV Ayarlanabilir                             ║")
+print("║  🔄 360 - Sürekli dönüş                                    ║")
+print("║  ✈️  FLY - No Clip aktif                                   ║")
+print("║  🌈 RB - Rainbow renk değiştirme                           ║")
+print("║  🚀 Teleport - Işınlanma + Otomatik ateş                   ║")
+print("║  ⬆️ Infinite Jump - Sınırsız zıplama                       ║")
+print("║  ⚡ Speed - +/- ayar                                       ║")
+print("║  📌 LEA MOD - Ekranın ortasının üstünde                    ║")
+print("╚══════════════════════════════════════════════════════════════╝")

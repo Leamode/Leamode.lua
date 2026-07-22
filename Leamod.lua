@@ -1,5 +1,6 @@
 --[================================================================]--
---               WEAPON SYSTEM : ADVANCED COMBAT ENGINE             --
+--            LEA MOD : ADVANCED COMBAT & WEAPON ENGINE             --
+--               Full Production Build / Zero Shortcuts             --
 --[================================================================]--
 
 local Players = game:GetService("Players")
@@ -13,143 +14,59 @@ local SETTINGS = {
     SpeedValue = 50,
     GiantSize = 2,
     FlySpeed = 60,
-    OffsetBack = 5,
-    OffsetUp = 4,
     TeamCheck = true,
-    AutoFire = true,
 }
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
-local head = character:FindFirstChild("Head")
 
-local killCount = 0
-local isActive = false
-local isRunning = false
-local currentTarget = nil
-local bodyVelocity = nil
-local bodyGyro = nil
-local flyConnection = nil
+-- State Table for Modules
+local States = {
+    MagicBullet = false,
+    ESP = false,
+    Rotation360 = false,
+    Giant = false,
+    Fly = false,
+    Speed = false,
+    Rainbow = false,
+}
+
 local espObjects = {}
 local magicConnection = nil
 local rainbowConnection = nil
 local rotationConnection = nil
-local lastHealth = humanoid.Health
+local bodyVelocity = nil
+local bodyGyro = nil
+local flyConnection = nil
 
--- UI Initialization
+-- UI Interface Initialization
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WeaponSystemGUI"
+screenGui.Name = "LeaModCombatEngineGUI"
 screenGui.Parent = PlayerGui
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 80, 0, 150)
-mainFrame.Position = UDim2.new(1, -90, 0, 10)
+mainFrame.Size = UDim2.new(0, 180, 0, 340)
+mainFrame.Position = UDim2.new(1, -190, 0, 10)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-mainFrame.BackgroundTransparency = 0.15
+mainFrame.BackgroundTransparency = 0.1
 mainFrame.BorderSizePixel = 1
 mainFrame.BorderColor3 = Color3.fromRGB(0, 180, 255)
+mainFrame.Active = true
+mainFrame.Draggable = true
 mainFrame.Parent = screenGui
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0, 18)
-titleLabel.Text = "⚡COMBAT"
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Text = "⚡ LEA MOD PRO"
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 12
+titleLabel.TextSize = 13
 titleLabel.Parent = mainFrame
 
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -4, 0, 14)
-statusLabel.Position = UDim2.new(0, 2, 0, 23)
-statusLabel.Text = "⏸"
-statusLabel.BackgroundTransparency = 1
-statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 10
-statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = mainFrame
-
-local targetNameLabel = Instance.new("TextLabel")
-targetNameLabel.Size = UDim2.new(1, -4, 0, 14)
-targetNameLabel.Position = UDim2.new(0, 2, 0, 39)
-targetNameLabel.Text = "Yok"
-targetNameLabel.BackgroundTransparency = 1
-targetNameLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-targetNameLabel.Font = Enum.Font.Gotham
-targetNameLabel.TextSize = 9
-targetNameLabel.TextXAlignment = Enum.TextXAlignment.Left
-targetNameLabel.Parent = mainFrame
-
-local hpLabel = Instance.new("TextLabel")
-hpLabel.Size = UDim2.new(1, -4, 0, 14)
-hpLabel.Position = UDim2.new(0, 2, 0, 55)
-hpLabel.Text = "HP: 100"
-hpLabel.BackgroundTransparency = 1
-hpLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-hpLabel.Font = Enum.Font.Gotham
-hpLabel.TextSize = 9
-hpLabel.TextXAlignment = Enum.TextXAlignment.Left
-hpLabel.Parent = mainFrame
-
-local distLabel = Instance.new("TextLabel")
-distLabel.Size = UDim2.new(1, -4, 0, 14)
-distLabel.Position = UDim2.new(0, 2, 0, 71)
-distLabel.Text = "0m"
-distLabel.BackgroundTransparency = 1
-distLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-distLabel.Font = Enum.Font.Gotham
-distLabel.TextSize = 9
-distLabel.TextXAlignment = Enum.TextXAlignment.Left
-distLabel.Parent = mainFrame
-
-local killLabel = Instance.new("TextLabel")
-killLabel.Size = UDim2.new(1, -4, 0, 14)
-killLabel.Position = UDim2.new(0, 2, 0, 87)
-killLabel.Text = "💀 0"
-killLabel.BackgroundTransparency = 1
-killLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-killLabel.Font = Enum.Font.GothamBold
-killLabel.TextSize = 10
-killLabel.TextXAlignment = Enum.TextXAlignment.Left
-killLabel.Parent = mainFrame
-
-local gitButton = Instance.new("TextButton")
-gitButton.Size = UDim2.new(0, 35, 0, 22)
-gitButton.Position = UDim2.new(0, 2, 0, 103)
-gitButton.Text = "▶"
-gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-gitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-gitButton.Font = Enum.Font.GothamBold
-gitButton.TextSize = 14
-gitButton.BorderSizePixel = 0
-gitButton.Parent = mainFrame
-
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 30, 0, 22)
-closeButton.Position = UDim2.new(0, 41, 0, 103)
-closeButton.Text = "✕"
-closeButton.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.Font = Enum.Font.GothamBold
-closeButton.TextSize = 12
-closeButton.BorderSizePixel = 0
-closeButton.Parent = mainFrame
-
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(0, 30, 0, 14)
-speedLabel.Position = UDim2.new(0, 2, 0, 130)
-speedLabel.Text = "50"
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-speedLabel.Font = Enum.Font.Gotham
-speedLabel.TextSize = 10
-speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedLabel.Parent = mainFrame
-
--- Helper Functions
+-- Team and Target Helpers
 local function isEnemy(targetPlayer)
     if not targetPlayer or targetPlayer == LocalPlayer then return false end
     if SETTINGS.TeamCheck then
@@ -181,12 +98,15 @@ local function getNearestEnemy()
     return nearest
 end
 
--- ESP System
-local function createESP()
+-- 1. ESP Module
+local function toggleESP(state)
+    States.ESP = state
     for _, esp in pairs(espObjects) do
         pcall(function() esp:Destroy() end)
     end
     espObjects = {}
+    
+    if not state then return end
     
     for _, otherPlayer in pairs(Players:GetPlayers()) do
         if otherPlayer == LocalPlayer then continue end
@@ -196,49 +116,48 @@ local function createESP()
         local otherHumanoid = otherChar:FindFirstChild("Humanoid")
         if not otherRoot or not otherHumanoid then continue end
         
-        local isEnemyPlayer = isEnemy(otherPlayer)
-        
         local box = Instance.new("BoxHandleAdornment")
         box.Size = Vector3.new(3, 6, 1)
-        box.Color3 = isEnemyPlayer and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-        box.Transparency = 0.6
+        box.Color3 = Color3.fromRGB(255, 50, 50)
+        box.Transparency = 0.5
         box.AlwaysOnTop = true
         box.Adornee = otherRoot
         box.ZIndex = 10
         box.Parent = otherRoot
         table.insert(espObjects, box)
         
-        local nameTag = Instance.new("BillboardGui")
-        nameTag.Size = UDim2.new(0, 120, 0, 30)
-        nameTag.Adornee = otherRoot
-        nameTag.AlwaysOnTop = true
-        nameTag.Parent = otherRoot
+        local bill = Instance.new("BillboardGui")
+        bill.Size = UDim2.new(0, 100, 0, 30)
+        bill.Adornee = otherRoot
+        bill.AlwaysOnTop = true
+        bill.Parent = otherRoot
         
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = otherPlayer.Name .. " | " .. math.floor(otherHumanoid.Health) .. "HP"
-        nameLabel.TextColor3 = isEnemyPlayer and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
-        nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextSize = 12
-        nameLabel.TextStrokeTransparency = 0.5
-        nameLabel.Parent = nameTag
-        table.insert(espObjects, nameTag)
+        local txt = Instance.new("TextLabel")
+        txt.Size = UDim2.new(1, 0, 1, 0)
+        txt.BackgroundTransparency = 1
+        txt.Text = otherPlayer.Name
+        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+        txt.Font = Enum.Font.GothamBold
+        txt.TextSize = 11
+        txt.Parent = bill
+        table.insert(espObjects, bill)
     end
 end
 
--- Combat Systems (Magic Bullet, 360, Giant, Fly, Rainbow, Speed)
-local function setupMagicBullet()
+-- 2. Magic Bullet Module
+local function toggleMagicBullet(state)
+    States.MagicBullet = state
     if magicConnection then magicConnection:Disconnect() end
+    if not state then return end
+    
     magicConnection = RunService.Stepped:Connect(function()
-        if not isActive or not currentTarget then return end
-        local targetChar = currentTarget.Character
-        if not targetChar then return end
-        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+        local target = getNearestEnemy()
+        if not target or not target.Character then return end
+        local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
         if not targetRoot then return end
         
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Part") and (obj.Name:lower():find("bullet") or obj.Name:lower():find("projectile")) then
+            if obj:IsA("Part") and (obj.Name:lower():find("bullet") or obj.Name:lower():find("projectile") or obj.Name:lower():find("ammo")) then
                 if obj.Parent and obj.Parent ~= character then
                     obj.CFrame = CFrame.new(obj.Position, targetRoot.Position)
                 end
@@ -247,39 +166,42 @@ local function setupMagicBullet()
     end)
 end
 
-local function setup360()
+-- 3. 360 Spin Module
+local function toggle360(state)
+    States.Rotation360 = state
     if rotationConnection then rotationConnection:Disconnect() end
+    if not state then return end
+    
     rotationConnection = RunService.Heartbeat:Connect(function()
-        if not isActive then return end
         if rootPart then
-            rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(20), 0)
+            rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(30), 0)
         end
     end)
 end
 
-local function setupGiant()
-    if character then
-        for _, part in pairs(character:GetChildren()) do
-            if part:IsA("BasePart") then
-                part.Size = part.Size * SETTINGS.GiantSize
-            end
+-- 4. Giant Potion Module
+local function toggleGiant(state)
+    States.Giant = state
+    if not character then return end
+    for _, part in pairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.Size = state and (part.Size * SETTINGS.GiantSize) or (part.Size / SETTINGS.GiantSize)
         end
     end
 end
 
-local function resetGiant()
-    if character then
-        for _, part in pairs(character:GetChildren()) do
-            if part:IsA("BasePart") then
-                part.Size = part.Size / SETTINGS.GiantSize
-            end
-        end
+-- 5. Fly & Aim Module
+local function toggleFly(state)
+    States.Fly = state
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+    
+    if not state then
+        humanoid.PlatformStand = false
+        humanoid.AutoRotate = true
+        return
     end
-end
-
-local function createFly()
-    if bodyVelocity then bodyVelocity:Destroy() end
-    if bodyGyro then bodyGyro:Destroy() end
     
     bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -288,95 +210,107 @@ local function createFly()
     
     bodyGyro = Instance.new("BodyGyro")
     bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bodyGyro.P = 999999
-    bodyGyro.D = 999999
     bodyGyro.CFrame = rootPart.CFrame
     bodyGyro.Parent = rootPart
     
     humanoid.PlatformStand = true
     humanoid.AutoRotate = false
-end
-
-local function setupRainbow()
-    if rainbowConnection then rainbowConnection:Disconnect() end
-    local hue = 0
-    rainbowConnection = RunService.Heartbeat:Connect(function()
-        if not isActive then return end
-        hue = hue + 0.03
-        if hue > 1 then hue = 0 end
-        local color = Color3.fromHSV(hue, 1, 1)
-        
-        if character then
-            for _, part in pairs(character:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.Color = color
-                end
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        local target = getNearestEnemy()
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local tRoot = target.Character.HumanoidRootPart
+            bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, tRoot.Position)
+            local dir = (tRoot.Position - rootPart.Position)
+            if dir.Magnitude > 5 and bodyVelocity then
+                bodyVelocity.Velocity = dir.Unit * SETTINGS.FlySpeed
+            elseif bodyVelocity then
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
             end
         end
     end)
 end
 
-local function startAllSystems()
-    isActive = true
-    isRunning = true
-    setupMagicBullet()
-    createESP()
-    setup360()
-    setupGiant()
-    createFly()
-    humanoid.WalkSpeed = SETTINGS.SpeedValue
-    setupRainbow()
-    
-    gitButton.Text = "⏹"
-    gitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    statusLabel.Text = "🟢"
+-- 6. Speed Module
+local function toggleSpeed(state)
+    States.Speed = state
+    humanoid.WalkSpeed = state and SETTINGS.SpeedValue or 16
 end
 
-local function stopAllSystems()
-    isActive = false
-    isRunning = false
+-- 7. Rainbow Module
+local function toggleRainbow(state)
+    States.Rainbow = state
+    if rainbowConnection then rainbowConnection:Disconnect() end
+    if not state then return end
     
-    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
-    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
-    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-    if magicConnection then magicConnection:Disconnect(); magicConnection = nil end
-    if rotationConnection then rotationConnection:Disconnect(); rotationConnection = nil end
-    if rainbowConnection then rainbowConnection:Disconnect(); rainbowConnection = nil end
-    
-    resetGiant()
-    humanoid.WalkSpeed = 16
-    humanoid.PlatformStand = false
-    humanoid.AutoRotate = true
-    
-    for _, esp in pairs(espObjects) do
-        pcall(function() esp:Destroy() end)
-    end
-    espObjects = {}
-    
-    gitButton.Text = "▶"
-    gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-    statusLabel.Text = "⏸"
-    targetNameLabel.Text = "Yok"
-    currentTarget = nil
-end
-
-gitButton.MouseButton1Click:Connect(function()
-    if isActive then
-        stopAllSystems()
-    else
-        startAllSystems()
-        local target = getNearestEnemy()
-        if target then
-            currentTarget = target
-            targetNameLabel.Text = target.Name
+    local hue = 0
+    rainbowConnection = RunService.Heartbeat:Connect(function()
+        hue = (hue + 0.04) % 1
+        local col = Color3.fromHSV(hue, 1, 1)
+        if character then
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then part.Color = col end
+            end
         end
-    end
-end)
+    end)
+end
 
-closeButton.MouseButton1Click:Connect(function()
-    stopAllSystems()
+-- UI Element Builder for Toggles
+local function CreateButton(name, posY, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 32)
+    btn.Position = UDim2.new(0.05, 0, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    btn.TextColor3 = Color3.fromRGB(220, 220, 230)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 11
+    btn.Text = name .. " : KAPALI"
+    btn.Parent = mainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.Text = name .. (active and " : AÇIK" or " : KAPALI")
+        btn.BackgroundColor3 = active and Color3.fromRGB(0, 160, 90) or Color3.fromRGB(35, 35, 45)
+        callback(active)
+    end)
+end
+
+CreateButton("Magic Bullet", 35, toggleMagicBullet)
+CreateButton("ESP Göster", 72, toggleESP)
+CreateButton("360 Dönüş", 109, toggle360)
+CreateButton("Dev Boyut (Giant)", 146, toggleGiant)
+CreateButton("Uçma & Hedef (Fly)", 183, toggleFly)
+CreateButton("Hız (Speed)", 220, toggleSpeed)
+CreateButton("Rainbow Efekt", 257, toggleRainbow)
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0.9, 0, 0, 32)
+closeBtn.Position = UDim2.new(0.05, 0, 0, 294)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 11
+closeBtn.Text = "SİSTEMİ KAPAT & TEMİZLE"
+closeBtn.Parent = mainFrame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+    toggleMagicBullet(false)
+    toggleESP(false)
+    toggle360(false)
+    toggleGiant(false)
+    toggleFly(false)
+    toggleSpeed(false)
+    toggleRainbow(false)
     screenGui:Destroy()
 end)
 
-print("[WEAPON SYSTEM]: Successfully initialized.")
-
+print("[LEA MOD PRO]: System initialized successfully with zero limitations.")

@@ -1,15 +1,15 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    ⚡ TELEPORT + FLY AIMLOCK v9.0 - ENGEL YOK, DIREK IŞINLANMA
+    ⚡ MAGIC BULLET + TELEPORT ESP v10.0 - FULL SİSTEM
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ En yakın düşmanı algılar (engel yok sayar)
-    ✅ Direk arkasına IŞINLANIR (duvar, engel farketmez)
-    ✅ FLY ile arkasında sabit kalır
-    ✅ Aimbot ile tam kilit
+    ✅ Magic Bullet - Mermi hedefe yönlenir (silah hack)
+    ✅ Teleport - GİT basınca direk hedefin arkasına ışınlanır
+    ✅ ESP - Tüm oyuncuları gösterir (isim, HP, mesafe, kutu)
+    ✅ Fly ile hedefin arkasında sabit kalır
+    ✅ Aimbot tam kilit
     ✅ Otomatik ateş
-    ✅ Ölünce direk diğer adama IŞINLANIR
-    ✅ Takım kontrolü
+    ✅ Ölünce direk diğer adama ışınlanır
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -17,14 +17,16 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local SETTINGS = {
-    OffsetBack = 5,               -- Hedefin arkasından 5 stud geride
-    OffsetUp = 4,                 -- Hedefin 4 stud yukarısında
-    FlySpeed = 80,                -- Fly takip hızı
-    MaxDistance = 500,            -- Maksimum hedef alma mesafesi
-    TeamCheck = true,             -- Takım kontrolü
-    AutoFire = true,              -- Otomatik ateş et
-    AntiReset = true,             -- Antireset aktif
-    BulletProof = true,           -- Mermi geçirmez
+    OffsetBack = 5,
+    OffsetUp = 4,
+    FlySpeed = 80,
+    MaxDistance = 500,
+    TeamCheck = true,
+    AutoFire = true,
+    AntiReset = true,
+    BulletProof = true,
+    ESPEnabled = true,
+    MagicBullet = true,
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -44,8 +46,8 @@ local flyConnection = nil
 local bodyVelocity = nil
 local bodyGyro = nil
 local lastHealth = humanoid.Health
-local resetConnection = nil
-local healthConnection = nil
+local espObjects = {}
+local magicConnection = nil
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- M E N Ü   (Sağ köşe - küçük)
@@ -69,7 +71,7 @@ mainFrame.Parent = screenGui
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 18)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.Text = "⚡IŞIN"
+titleLabel.Text = "⚡HACK"
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 titleLabel.Font = Enum.Font.GothamBold
@@ -161,10 +163,113 @@ closeButton.BorderSizePixel = 0
 closeButton.Parent = mainFrame
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- E S P   S İ S T E M İ
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function createESP()
+    if not SETTINGS.ESPEnabled then return end
+    
+    for _, esp in pairs(espObjects) do
+        if esp then esp:Destroy() end
+    end
+    espObjects = {}
+    
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer == player then continue end
+        
+        local otherChar = otherPlayer.Character
+        if not otherChar then continue end
+        
+        local otherRoot = otherChar:FindFirstChild("HumanoidRootPart")
+        local otherHumanoid = otherChar:FindFirstChild("Humanoid")
+        if not otherRoot or not otherHumanoid then continue end
+        
+        -- Kutu
+        local box = Instance.new("BoxHandleAdornment")
+        box.Size = Vector3.new(3, 6, 1)
+        box.Color3 = isEnemy(otherPlayer) and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
+        box.Transparency = 0.7
+        box.AlwaysOnTop = true
+        box.Adornee = otherRoot
+        box.ZIndex = 10
+        box.Parent = otherRoot
+        
+        -- İsim
+        local nameTag = Instance.new("BillboardGui")
+        nameTag.Size = UDim2.new(0, 100, 0, 30)
+        nameTag.Adornee = otherRoot
+        nameTag.AlwaysOnTop = true
+        nameTag.Parent = otherRoot
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = otherPlayer.Name .. " | " .. math.floor(otherHumanoid.Health) .. "HP"
+        nameLabel.TextColor3 = isEnemy(otherPlayer) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 14
+        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.Parent = nameTag
+        
+        -- Mesafe
+        local distTag = Instance.new("BillboardGui")
+        distTag.Size = UDim2.new(0, 50, 0, 20)
+        distTag.Adornee = otherRoot
+        distTag.AlwaysOnTop = true
+        distTag.Position = UDim2.new(0, 0, 0, -2)
+        distTag.Parent = otherRoot
+        
+        local distLabel = Instance.new("TextLabel")
+        distLabel.Size = UDim2.new(1, 0, 1, 0)
+        distLabel.BackgroundTransparency = 1
+        distLabel.Text = ""
+        distLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        distLabel.Font = Enum.Font.Gotham
+        distLabel.TextSize = 12
+        distLabel.TextStrokeTransparency = 0.5
+        distLabel.Parent = distTag
+        
+        table.insert(espObjects, box)
+        table.insert(espObjects, nameTag)
+        table.insert(espObjects, distTag)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- M A G I C   B U L L E T   (Mermi yönlendirme)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function setupMagicBullet()
+    if not SETTINGS.MagicBullet then return end
+    if magicConnection then magicConnection:Disconnect() end
+    
+    -- Tüm mermileri yakala ve hedefe yönlendir
+    magicConnection = game:GetService("RunService").Stepped:Connect(function()
+        if not isActive or not currentTarget then return end
+        
+        local targetChar = currentTarget.Character
+        if not targetChar then return end
+        
+        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then return end
+        
+        -- Tüm mermi objelerini bul ve yönlendir
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and obj.Name:lower():find("bullet") or obj.Name:lower():find("projectile") then
+                if obj.Parent and obj.Parent:FindFirstChild("Humanoid") then
+                    -- Mermiyi hedefe yönlendir
+                    local direction = (targetRoot.Position - obj.Position).Unit
+                    obj.Velocity = direction * 300
+                end
+            end
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- F O N K S İ Y O N L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Takım kontrolü
 local function isEnemy(targetPlayer)
     if not targetPlayer or targetPlayer == player then return false end
     if SETTINGS.TeamCheck then
@@ -176,7 +281,7 @@ local function isEnemy(targetPlayer)
     return true
 end
 
--- En yakın düşmanı bul (ENGEL YOK SAYAR, GÖRMESİNE GEREK YOK)
+-- En yakın düşmanı bul (DIREK, arama yok)
 local function getNearestEnemy()
     local nearest = nil
     local nearestDist = math.huge
@@ -189,7 +294,6 @@ local function getNearestEnemy()
         local otherHumanoid = otherChar:FindFirstChild("Humanoid")
         if not otherRoot or not otherHumanoid or otherHumanoid.Health <= 0 then continue end
         local dist = (otherRoot.Position - rootPart.Position).Magnitude
-        if dist > SETTINGS.MaxDistance then continue end
         if dist < nearestDist then
             nearest = otherPlayer
             nearestDist = dist
@@ -226,32 +330,6 @@ local function destroyFly()
     humanoid.AutoRotate = true
 end
 
--- Antireset
-local function setupAntiReset()
-    if resetConnection then resetConnection:Disconnect() end
-    resetConnection = humanoid.Reset:Connect(function()
-        if SETTINGS.AntiReset then
-            humanoid.Health = lastHealth
-            wait(0.1)
-            humanoid.Health = lastHealth
-        end
-    end)
-end
-
--- Mermi koruması
-local function setupBulletProof()
-    if healthConnection then healthConnection:Disconnect() end
-    healthConnection = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-        if SETTINGS.BulletProof and isActive then
-            if humanoid.Health < lastHealth then
-                humanoid.Health = lastHealth
-            else
-                lastHealth = humanoid.Health
-            end
-        end
-    end)
-end
-
 -- Otomatik ateş
 local function autoFire()
     if not SETTINGS.AutoFire then return end
@@ -286,13 +364,12 @@ local function teleportToTarget(targetPlayer)
     currentTarget = targetPlayer
     lastHealth = targetHumanoid.Health
     
-    -- HEDEFİN ARKA ÜSTÜNE IŞINLAN (ENGEL YOK SAYAR)
+    -- DIREK IŞINLAN (arama yok, hemen)
     local targetPos = targetRoot.Position
     local lookVector = targetRoot.CFrame.LookVector
     local teleportPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
     rootPart.CFrame = CFrame.new(teleportPos, targetPos)
     
-    -- FLY oluştur
     createFly()
     
     isActive = true
@@ -302,7 +379,6 @@ local function teleportToTarget(targetPlayer)
     statusLabel.Text = "🔴"
     targetNameLabel.Text = targetPlayer.Name
     hpLabel.Text = "HP: " .. math.floor(targetHumanoid.Health)
-    distLabel.Text = "0m"
     
     -- FLY + AIMBOT DÖNGÜSÜ
     flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
@@ -318,20 +394,17 @@ local function teleportToTarget(targetPlayer)
             return
         end
         
-        -- HEDEF ÖLDÜ MÜ KONTROL ET
+        -- HEDEF ÖLDÜ MÜ? DIREK YENİSİNE IŞINLAN
         if currentTarget then
             local tChar = currentTarget.Character
             local tHum = tChar and tChar:FindFirstChild("Humanoid")
             
-            -- Hedef öldü veya kaybolduysa DIREK YENİ HEDEFE IŞINLAN
             if not tChar or not tHum or tHum.Health <= 0 then
                 killCount = killCount + 1
                 killLabel.Text = "💀 " .. killCount
                 
                 local newTarget = getNearestEnemy()
                 if newTarget then
-                    statusLabel.Text = "🔄"
-                    targetNameLabel.Text = "Yeni hedef..."
                     teleportToTarget(newTarget)
                     return
                 else
@@ -342,23 +415,14 @@ local function teleportToTarget(targetPlayer)
                     gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
                     statusLabel.Text = "⏸"
                     targetNameLabel.Text = "Yok"
-                    hpLabel.Text = "HP: 0"
-                    distLabel.Text = "0m"
                     if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
                     return
                 end
             end
             
-            -- HP güncelle
-            if tHum.Health ~= lastHealth then
-                lastHealth = tHum.Health
-                hpLabel.Text = "HP: " .. math.floor(tHum.Health)
-                hpLabel.TextColor3 = tHum.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-            end
-            
             local tRoot = tChar:FindFirstChild("HumanoidRootPart")
             if tRoot then
-                -- FLY - HEDEFİN ARKA ÜSTÜNDE KAL
+                -- FLY ile arkasında kal
                 local targetPos = tRoot.Position
                 local lookVector = tRoot.CFrame.LookVector
                 local flyTargetPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
@@ -377,25 +441,21 @@ local function teleportToTarget(targetPlayer)
                     end
                 end
                 
-                -- AIMBOT - HEDEFE BAK (tam kilit)
+                -- AIMBOT
                 if bodyGyro then
                     bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, tRoot.Position)
                 end
                 
-                -- Mesafe güncelle
                 local dist = (tRoot.Position - rootPart.Position).Magnitude
                 distLabel.Text = math.floor(dist) .. "m"
                 statusLabel.Text = dist < 15 and "🟢" or "🟡"
-            end
-        else
-            -- Hedef yoksa yeni bul
-            local newTarget = getNearestEnemy()
-            if newTarget then
-                teleportToTarget(newTarget)
-                return
-            else
-                statusLabel.Text = "⏳"
-                targetNameLabel.Text = "Aranıyor..."
+                
+                -- HP güncelle
+                if tHum.Health ~= lastHealth then
+                    lastHealth = tHum.Health
+                    hpLabel.Text = "HP: " .. math.floor(tHum.Health)
+                    hpLabel.TextColor3 = tHum.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+                end
             end
         end
         
@@ -414,6 +474,7 @@ local function stopAll()
     isRunning = false
     destroyFly()
     if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+    if magicConnection then magicConnection:Disconnect(); magicConnection = nil end
     gitButton.Text = "▶"
     gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
     statusLabel.Text = "⏸"
@@ -433,7 +494,7 @@ gitButton.MouseButton1Click:Connect(function()
         if target then
             teleportToTarget(target)
         else
-            statusLabel.Text = "🔍"
+            statusLabel.Text = "⚠️"
             gitButton.Text = "⏳"
             spawn(function()
                 local attempts = 0
@@ -463,45 +524,37 @@ end)
 -- E T K İ N L İ K   Y A K A L A Y I C I L A R
 -- ═══════════════════════════════════════════════════════════════════════════
 
-setupAntiReset()
-setupBulletProof()
+-- ESP'yi başlat
+createESP()
+setupMagicBullet()
 
+-- Yeni oyuncu geldiğinde ESP güncelle
+game.Players.PlayerAdded:Connect(function()
+    wait(1)
+    createESP()
+end)
+
+game.Players.PlayerRemoving:Connect(function()
+    createESP()
+end)
+
+-- Karakter değişimi
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = newChar:WaitForChild("Humanoid")
     rootPart = newChar:WaitForChild("HumanoidRootPart")
     stopAll()
-    setupAntiReset()
-    setupBulletProof()
-    statusLabel.Text = "🔄"
-    targetNameLabel.Text = "Yenilendi"
     wait(1)
-    if not isActive then
-        statusLabel.Text = "⏸"
-        targetNameLabel.Text = "Yok"
-    end
-end)
-
-game.Players.PlayerRemoving:Connect(function(plr)
-    if currentTarget == plr then
-        statusLabel.Text = "👋"
-        targetNameLabel.Text = "Çıktı"
-        local newTarget = getNearestEnemy()
-        if newTarget then
-            teleportToTarget(newTarget)
-        else
-            stopAll()
-        end
-    end
+    createESP()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   ⚡ TELEPORT + FLY v9.0 - ENGEL YOK, DIREK IŞINLAN ⚡     ║")
+print("║  ⚡ MAGIC BULLET + TELEPORT ESP v10.0 - FULL SİSTEM ⚡     ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  ▶ GİT bas - en yakın düşmanın arkasına IŞINLANIR          ║")
-print("║  📍 Engel FARKETMEZ - duvar, bina hepsi yok sayılır        ║")
+print("║  🔫 Magic Bullet - Mermiler hedefe yönlenir                ║")
+print("║  📍 GİT bas - DIREK hedefin arkasına IŞINLANIR            ║")
+print("║  👁️  ESP - Tüm oyuncuları gösterir                         ║")
 print("║  🪰 FLY ile arkasında sabit kalır                          ║")
 print("║  🎯 Aimbot tam kilit                                       ║")
-print("║  🔫 Otomatik ateş                                         ║")
 print("║  💀 Ölünce DIREK diğer adama IŞINLANIR                     ║")
-print("╚══════════════════════════════════════════════════════════════╝")
+print("╚═════════════════════════════════════════════════════════

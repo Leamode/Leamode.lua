@@ -1,89 +1,65 @@
---[[
-    ═══════════════════════════════════════════════════════════════════════════
-    ⚡ MAGIC BULLET + TELEPORT ESP v10.0 - FULL SİSTEM
-    ═══════════════════════════════════════════════════════════════════════════
-    
-    ✅ Magic Bullet - Mermi hedefe yönlenir (silah hack)
-    ✅ Teleport - GİT basınca direk hedefin arkasına ışınlanır
-    ✅ ESP - Tüm oyuncuları gösterir (isim, HP, mesafe, kutu)
-    ✅ Fly ile hedefin arkasında sabit kalır
-    ✅ Aimbot tam kilit
-    ✅ Otomatik ateş
-    ✅ Ölünce direk diğer adama ışınlanır
-]]
+--[================================================================]--
+--               WEAPON SYSTEM : ADVANCED COMBAT ENGINE             --
+--[================================================================]--
 
--- ═══════════════════════════════════════════════════════════════════════════
--- A Y A R L A R
--- ═══════════════════════════════════════════════════════════════════════════
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local SETTINGS = {
+    SpeedValue = 50,
+    GiantSize = 2,
+    FlySpeed = 60,
     OffsetBack = 5,
     OffsetUp = 4,
-    FlySpeed = 80,
-    MaxDistance = 500,
     TeamCheck = true,
     AutoFire = true,
-    AntiReset = true,
-    BulletProof = true,
-    ESPEnabled = true,
-    MagicBullet = true,
 }
 
--- ═══════════════════════════════════════════════════════════════════════════
--- B A Ş L A N G I Ç
--- ═══════════════════════════════════════════════════════════════════════════
-
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
+local head = character:FindFirstChild("Head")
 
 local killCount = 0
-local currentTarget = nil
 local isActive = false
 local isRunning = false
-local flyConnection = nil
+local currentTarget = nil
 local bodyVelocity = nil
 local bodyGyro = nil
-local lastHealth = humanoid.Health
+local flyConnection = nil
 local espObjects = {}
 local magicConnection = nil
+local rainbowConnection = nil
+local rotationConnection = nil
+local lastHealth = humanoid.Health
 
--- ═══════════════════════════════════════════════════════════════════════════
--- M E N Ü   (Sağ köşe - küçük)
--- ═══════════════════════════════════════════════════════════════════════════
-
+-- UI Initialization
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AimlockGUI"
-screenGui.Parent = player.PlayerGui
+screenGui.Name = "WeaponSystemGUI"
+screenGui.Parent = PlayerGui
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 75, 0, 120)
-mainFrame.Position = UDim2.new(1, -85, 0, 10)
+mainFrame.Size = UDim2.new(0, 80, 0, 150)
+mainFrame.Position = UDim2.new(1, -90, 0, 10)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 mainFrame.BackgroundTransparency = 0.15
 mainFrame.BorderSizePixel = 1
-mainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
-mainFrame.ClipsDescendants = true
+mainFrame.BorderColor3 = Color3.fromRGB(0, 180, 255)
 mainFrame.Parent = screenGui
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 18)
-titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.Text = "⚡HACK"
+titleLabel.Text = "⚡COMBAT"
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+titleLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 12
 titleLabel.Parent = mainFrame
-
-local line = Instance.new("Frame")
-line.Size = UDim2.new(1, -10, 0, 1)
-line.Position = UDim2.new(0, 5, 0, 20)
-line.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-line.BackgroundTransparency = 0.5
-line.Parent = mainFrame
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -4, 0, 14)
@@ -162,131 +138,34 @@ closeButton.TextSize = 12
 closeButton.BorderSizePixel = 0
 closeButton.Parent = mainFrame
 
--- ═══════════════════════════════════════════════════════════════════════════
--- E S P   S İ S T E M İ
--- ═══════════════════════════════════════════════════════════════════════════
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 30, 0, 14)
+speedLabel.Position = UDim2.new(0, 2, 0, 130)
+speedLabel.Text = "50"
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 10
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = mainFrame
 
-local function createESP()
-    if not SETTINGS.ESPEnabled then return end
-    
-    for _, esp in pairs(espObjects) do
-        if esp then esp:Destroy() end
-    end
-    espObjects = {}
-    
-    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
-        if otherPlayer == player then continue end
-        
-        local otherChar = otherPlayer.Character
-        if not otherChar then continue end
-        
-        local otherRoot = otherChar:FindFirstChild("HumanoidRootPart")
-        local otherHumanoid = otherChar:FindFirstChild("Humanoid")
-        if not otherRoot or not otherHumanoid then continue end
-        
-        -- Kutu
-        local box = Instance.new("BoxHandleAdornment")
-        box.Size = Vector3.new(3, 6, 1)
-        box.Color3 = isEnemy(otherPlayer) and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-        box.Transparency = 0.7
-        box.AlwaysOnTop = true
-        box.Adornee = otherRoot
-        box.ZIndex = 10
-        box.Parent = otherRoot
-        
-        -- İsim
-        local nameTag = Instance.new("BillboardGui")
-        nameTag.Size = UDim2.new(0, 100, 0, 30)
-        nameTag.Adornee = otherRoot
-        nameTag.AlwaysOnTop = true
-        nameTag.Parent = otherRoot
-        
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = otherPlayer.Name .. " | " .. math.floor(otherHumanoid.Health) .. "HP"
-        nameLabel.TextColor3 = isEnemy(otherPlayer) and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
-        nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextSize = 14
-        nameLabel.TextStrokeTransparency = 0.5
-        nameLabel.Parent = nameTag
-        
-        -- Mesafe
-        local distTag = Instance.new("BillboardGui")
-        distTag.Size = UDim2.new(0, 50, 0, 20)
-        distTag.Adornee = otherRoot
-        distTag.AlwaysOnTop = true
-        distTag.Position = UDim2.new(0, 0, 0, -2)
-        distTag.Parent = otherRoot
-        
-        local distLabel = Instance.new("TextLabel")
-        distLabel.Size = UDim2.new(1, 0, 1, 0)
-        distLabel.BackgroundTransparency = 1
-        distLabel.Text = ""
-        distLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-        distLabel.Font = Enum.Font.Gotham
-        distLabel.TextSize = 12
-        distLabel.TextStrokeTransparency = 0.5
-        distLabel.Parent = distTag
-        
-        table.insert(espObjects, box)
-        table.insert(espObjects, nameTag)
-        table.insert(espObjects, distTag)
-    end
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- M A G I C   B U L L E T   (Mermi yönlendirme)
--- ═══════════════════════════════════════════════════════════════════════════
-
-local function setupMagicBullet()
-    if not SETTINGS.MagicBullet then return end
-    if magicConnection then magicConnection:Disconnect() end
-    
-    -- Tüm mermileri yakala ve hedefe yönlendir
-    magicConnection = game:GetService("RunService").Stepped:Connect(function()
-        if not isActive or not currentTarget then return end
-        
-        local targetChar = currentTarget.Character
-        if not targetChar then return end
-        
-        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-        if not targetRoot then return end
-        
-        -- Tüm mermi objelerini bul ve yönlendir
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Part") and obj.Name:lower():find("bullet") or obj.Name:lower():find("projectile") then
-                if obj.Parent and obj.Parent:FindFirstChild("Humanoid") then
-                    -- Mermiyi hedefe yönlendir
-                    local direction = (targetRoot.Position - obj.Position).Unit
-                    obj.Velocity = direction * 300
-                end
-            end
-        end
-    end)
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- F O N K S İ Y O N L A R
--- ═══════════════════════════════════════════════════════════════════════════
-
+-- Helper Functions
 local function isEnemy(targetPlayer)
-    if not targetPlayer or targetPlayer == player then return false end
+    if not targetPlayer or targetPlayer == LocalPlayer then return false end
     if SETTINGS.TeamCheck then
-        if player.Team and targetPlayer.Team then
-            return player.Team ~= targetPlayer.Team
+        if LocalPlayer.Team and targetPlayer.Team then
+            return LocalPlayer.Team ~= targetPlayer.Team
         end
         return true
     end
     return true
 end
 
--- En yakın düşmanı bul (DIREK, arama yok)
 local function getNearestEnemy()
     local nearest = nil
     local nearestDist = math.huge
-    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
-        if otherPlayer == player then continue end
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer == LocalPlayer then continue end
         if not isEnemy(otherPlayer) then continue end
         local otherChar = otherPlayer.Character
         if not otherChar then continue end
@@ -302,10 +181,105 @@ local function getNearestEnemy()
     return nearest
 end
 
--- FLY oluştur
+-- ESP System
+local function createESP()
+    for _, esp in pairs(espObjects) do
+        pcall(function() esp:Destroy() end)
+    end
+    espObjects = {}
+    
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer == LocalPlayer then continue end
+        local otherChar = otherPlayer.Character
+        if not otherChar then continue end
+        local otherRoot = otherChar:FindFirstChild("HumanoidRootPart")
+        local otherHumanoid = otherChar:FindFirstChild("Humanoid")
+        if not otherRoot or not otherHumanoid then continue end
+        
+        local isEnemyPlayer = isEnemy(otherPlayer)
+        
+        local box = Instance.new("BoxHandleAdornment")
+        box.Size = Vector3.new(3, 6, 1)
+        box.Color3 = isEnemyPlayer and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
+        box.Transparency = 0.6
+        box.AlwaysOnTop = true
+        box.Adornee = otherRoot
+        box.ZIndex = 10
+        box.Parent = otherRoot
+        table.insert(espObjects, box)
+        
+        local nameTag = Instance.new("BillboardGui")
+        nameTag.Size = UDim2.new(0, 120, 0, 30)
+        nameTag.Adornee = otherRoot
+        nameTag.AlwaysOnTop = true
+        nameTag.Parent = otherRoot
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = otherPlayer.Name .. " | " .. math.floor(otherHumanoid.Health) .. "HP"
+        nameLabel.TextColor3 = isEnemyPlayer and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 12
+        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.Parent = nameTag
+        table.insert(espObjects, nameTag)
+    end
+end
+
+-- Combat Systems (Magic Bullet, 360, Giant, Fly, Rainbow, Speed)
+local function setupMagicBullet()
+    if magicConnection then magicConnection:Disconnect() end
+    magicConnection = RunService.Stepped:Connect(function()
+        if not isActive or not currentTarget then return end
+        local targetChar = currentTarget.Character
+        if not targetChar then return end
+        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then return end
+        
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and (obj.Name:lower():find("bullet") or obj.Name:lower():find("projectile")) then
+                if obj.Parent and obj.Parent ~= character then
+                    obj.CFrame = CFrame.new(obj.Position, targetRoot.Position)
+                end
+            end
+        end
+    end)
+end
+
+local function setup360()
+    if rotationConnection then rotationConnection:Disconnect() end
+    rotationConnection = RunService.Heartbeat:Connect(function()
+        if not isActive then return end
+        if rootPart then
+            rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(20), 0)
+        end
+    end)
+end
+
+local function setupGiant()
+    if character then
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Size = part.Size * SETTINGS.GiantSize
+            end
+        end
+    end
+end
+
+local function resetGiant()
+    if character then
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Size = part.Size / SETTINGS.GiantSize
+            end
+        end
+    end
+end
+
 local function createFly()
-    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
-    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if bodyGyro then bodyGyro:Destroy() end
     
     bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -323,158 +297,62 @@ local function createFly()
     humanoid.AutoRotate = false
 end
 
-local function destroyFly()
-    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
-    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
-    humanoid.PlatformStand = false
-    humanoid.AutoRotate = true
-end
-
--- Otomatik ateş
-local function autoFire()
-    if not SETTINGS.AutoFire then return end
-    local mouse = player:GetMouse()
-    if mouse then
-        mouse.Button1Down:Fire()
-        wait(0.05)
-        mouse.Button1Up:Fire()
-    end
-end
-
--- ═══════════════════════════════════════════════════════════════════════════
--- HEDEFE IŞINLAN + FLY + KİLİT
--- ═══════════════════════════════════════════════════════════════════════════
-
-local function teleportToTarget(targetPlayer)
-    if not targetPlayer then return false end
-    
-    local targetChar = targetPlayer.Character
-    if not targetChar then return false end
-    
-    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-    local targetHumanoid = targetChar:FindFirstChild("Humanoid")
-    if not targetRoot or not targetHumanoid or targetHumanoid.Health <= 0 then
-        return false
-    end
-    
-    -- Önceki bağlantıları temizle
-    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-    destroyFly()
-    
-    currentTarget = targetPlayer
-    lastHealth = targetHumanoid.Health
-    
-    -- DIREK IŞINLAN (arama yok, hemen)
-    local targetPos = targetRoot.Position
-    local lookVector = targetRoot.CFrame.LookVector
-    local teleportPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
-    rootPart.CFrame = CFrame.new(teleportPos, targetPos)
-    
-    createFly()
-    
-    isActive = true
-    isRunning = true
-    gitButton.Text = "⏹"
-    gitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    statusLabel.Text = "🔴"
-    targetNameLabel.Text = targetPlayer.Name
-    hpLabel.Text = "HP: " .. math.floor(targetHumanoid.Health)
-    
-    -- FLY + AIMBOT DÖNGÜSÜ
-    flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not isActive or not isRunning then
-            destroyFly()
-            isActive = false
-            isRunning = false
-            gitButton.Text = "▶"
-            gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            statusLabel.Text = "⏸"
-            targetNameLabel.Text = "Yok"
-            if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-            return
-        end
+local function setupRainbow()
+    if rainbowConnection then rainbowConnection:Disconnect() end
+    local hue = 0
+    rainbowConnection = RunService.Heartbeat:Connect(function()
+        if not isActive then return end
+        hue = hue + 0.03
+        if hue > 1 then hue = 0 end
+        local color = Color3.fromHSV(hue, 1, 1)
         
-        -- HEDEF ÖLDÜ MÜ? DIREK YENİSİNE IŞINLAN
-        if currentTarget then
-            local tChar = currentTarget.Character
-            local tHum = tChar and tChar:FindFirstChild("Humanoid")
-            
-            if not tChar or not tHum or tHum.Health <= 0 then
-                killCount = killCount + 1
-                killLabel.Text = "💀 " .. killCount
-                
-                local newTarget = getNearestEnemy()
-                if newTarget then
-                    teleportToTarget(newTarget)
-                    return
-                else
-                    destroyFly()
-                    isActive = false
-                    isRunning = false
-                    gitButton.Text = "▶"
-                    gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-                    statusLabel.Text = "⏸"
-                    targetNameLabel.Text = "Yok"
-                    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-                    return
+        if character then
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Color = color
                 end
             end
-            
-            local tRoot = tChar:FindFirstChild("HumanoidRootPart")
-            if tRoot then
-                -- FLY ile arkasında kal
-                local targetPos = tRoot.Position
-                local lookVector = tRoot.CFrame.LookVector
-                local flyTargetPos = targetPos - (lookVector * SETTINGS.OffsetBack) + Vector3.new(0, SETTINGS.OffsetUp, 0)
-                
-                local direction = (flyTargetPos - rootPart.Position)
-                local distance = direction.Magnitude
-                
-                if distance > 0.5 then
-                    local speed = math.min(distance * SETTINGS.FlySpeed, SETTINGS.FlySpeed * 3)
-                    if bodyVelocity then
-                        bodyVelocity.Velocity = direction.Unit * speed
-                    end
-                else
-                    if bodyVelocity then
-                        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                    end
-                end
-                
-                -- AIMBOT
-                if bodyGyro then
-                    bodyGyro.CFrame = CFrame.lookAt(rootPart.Position, tRoot.Position)
-                end
-                
-                local dist = (tRoot.Position - rootPart.Position).Magnitude
-                distLabel.Text = math.floor(dist) .. "m"
-                statusLabel.Text = dist < 15 and "🟢" or "🟡"
-                
-                -- HP güncelle
-                if tHum.Health ~= lastHealth then
-                    lastHealth = tHum.Health
-                    hpLabel.Text = "HP: " .. math.floor(tHum.Health)
-                    hpLabel.TextColor3 = tHum.Health > 50 and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-                end
-            end
-        end
-        
-        -- Otomatik ateş
-        if SETTINGS.AutoFire then
-            autoFire()
         end
     end)
-    
-    return true
 end
 
--- Durdur
-local function stopAll()
+local function startAllSystems()
+    isActive = true
+    isRunning = true
+    setupMagicBullet()
+    createESP()
+    setup360()
+    setupGiant()
+    createFly()
+    humanoid.WalkSpeed = SETTINGS.SpeedValue
+    setupRainbow()
+    
+    gitButton.Text = "⏹"
+    gitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    statusLabel.Text = "🟢"
+end
+
+local function stopAllSystems()
     isActive = false
     isRunning = false
-    destroyFly()
+    
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
     if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
     if magicConnection then magicConnection:Disconnect(); magicConnection = nil end
+    if rotationConnection then rotationConnection:Disconnect(); rotationConnection = nil end
+    if rainbowConnection then rainbowConnection:Disconnect(); rainbowConnection = nil end
+    
+    resetGiant()
+    humanoid.WalkSpeed = 16
+    humanoid.PlatformStand = false
+    humanoid.AutoRotate = true
+    
+    for _, esp in pairs(espObjects) do
+        pcall(function() esp:Destroy() end)
+    end
+    espObjects = {}
+    
     gitButton.Text = "▶"
     gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
     statusLabel.Text = "⏸"
@@ -482,79 +360,23 @@ local function stopAll()
     currentTarget = nil
 end
 
--- ═══════════════════════════════════════════════════════════════════════════
--- B U T O N L A R
--- ═══════════════════════════════════════════════════════════════════════════
-
 gitButton.MouseButton1Click:Connect(function()
     if isActive then
-        stopAll()
+        stopAllSystems()
     else
+        startAllSystems()
         local target = getNearestEnemy()
         if target then
-            teleportToTarget(target)
-        else
-            statusLabel.Text = "⚠️"
-            gitButton.Text = "⏳"
-            spawn(function()
-                local attempts = 0
-                while attempts < 30 do
-                    local t = getNearestEnemy()
-                    if t then
-                        teleportToTarget(t)
-                        return
-                    end
-                    attempts = attempts + 1
-                    wait(0.2)
-                end
-                gitButton.Text = "▶"
-                gitButton.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-                statusLabel.Text = "⚠️"
-            end)
+            currentTarget = target
+            targetNameLabel.Text = target.Name
         end
     end
 end)
 
 closeButton.MouseButton1Click:Connect(function()
-    stopAll()
+    stopAllSystems()
     screenGui:Destroy()
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════
--- E T K İ N L İ K   Y A K A L A Y I C I L A R
--- ═══════════════════════════════════════════════════════════════════════════
+print("[WEAPON SYSTEM]: Successfully initialized.")
 
--- ESP'yi başlat
-createESP()
-setupMagicBullet()
-
--- Yeni oyuncu geldiğinde ESP güncelle
-game.Players.PlayerAdded:Connect(function()
-    wait(1)
-    createESP()
-end)
-
-game.Players.PlayerRemoving:Connect(function()
-    createESP()
-end)
-
--- Karakter değişimi
-player.CharacterAdded:Connect(function(newChar)
-    character = newChar
-    humanoid = newChar:WaitForChild("Humanoid")
-    rootPart = newChar:WaitForChild("HumanoidRootPart")
-    stopAll()
-    wait(1)
-    createESP()
-end)
-
-print("╔══════════════════════════════════════════════════════════════╗")
-print("║  ⚡ MAGIC BULLET + TELEPORT ESP v10.0 - FULL SİSTEM ⚡     ║")
-print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🔫 Magic Bullet - Mermiler hedefe yönlenir                ║")
-print("║  📍 GİT bas - DIREK hedefin arkasına IŞINLANIR            ║")
-print("║  👁️  ESP - Tüm oyuncuları gösterir                         ║")
-print("║  🪰 FLY ile arkasında sabit kalır                          ║")
-print("║  🎯 Aimbot tam kilit                                       ║")
-print("║  💀 Ölünce DIREK diğer adama IŞINLANIR                     ║")
-print("╚═════════════════════════════════════════════════════════

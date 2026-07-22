@@ -1,128 +1,50 @@
 -- ==============================================================================
--- LEA MOD V18.0 - PART 1: 50+ SATIR GERÇEK ZAMANLI ANTICHEAT & ZEMİN BYPASS MOTORU
+-- LEA MOD V20.0 - PART 1 (ANA İSKELET & MOTORLAR)
 -- ==============================================================================
 task.spawn(function()
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local Workspace = game:GetService("Workspace")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local UserInputService = game:GetService("UserInputService")
-    local VirtualUser = game:GetService("VirtualUser")
-
     local LocalPlayer = Players.LocalPlayer
 
-    getgenv().LeaStateV18 = getgenv().LeaStateV18 or {
+    getgenv().LeaStateV20 = getgenv().LeaStateV20 or {
         Active = true,
         Cube = false,
         Fly = false,
         Follow = false,
         Medusa = false,
-        Lagger = false,
         AntiKick = true,
         AntiReset = true,
         Connections = {},
         Cache = { Cubes = {} }
     }
 
-    local S = getgenv().LeaStateV18
+    local S = getgenv().LeaStateV20
 
     for _, c in pairs(S.Connections) do
         if typeof(c) == "RBXScriptConnection" then c:Disconnect() end
     end
     S.Connections = {}
 
-    -- ==============================================================================
-    -- 1) GERÇEK ZAMANLI SÜREKLİ TARAYAN VE AÇIKLARDAN GİREN GELİŞMİŞ BYPASS (50+ SATIR)
-    -- ==============================================================================
-    local function InitializeRealtimeDynamicBypass()
-        task.spawn(function()
-            while S.Active do
-                pcall(function()
-                    -- A) Metamethod Hook Güçlendirmesi ve Anlık Yakalama
-                    local mt = getrawmetatable(game)
-                    if mt then
-                        setreadonly(mt, false)
-                        local oldNamecall = mt.__namecall
-                        mt.__namecall = newcclosure(function(self, ...)
-                            local method = getnamecallmethod()
-                            local selfStr = tostring(self):lower()
-                            
-                            -- Anticheat kick, ban veya güvenlik açığı denetimlerini anında yok et
-                            if S.AntiKick and (method == "Kick" or method == "Ban" or selfStr:find("kick") or selfStr:find("ban") or selfStr:find("anticheat") or selfStr:find("integrity") or selfStr:find("detect")) then
-                                return nil
-                            end
-                            
-                            -- Remote üzerinden gelen şüpheli anticheat paketlerini engelle
-                            if method == "FireServer" and (selfStr:find("anticheat") or selfStr:find("security") or selfStr:find("check")) then
-                                return nil
-                            end
-                            
-                            return oldNamecall(self, ...)
-                        end)
-                        setreadonly(mt, true)
-                    end
-
-                    -- B) Garbage Collection (GC) üzerinden Anticheat fonksiyonlarını etkisizleştirme
-                    for _, activeObject in pairs(getgc(true)) do
-                        if typeof(activeObject) == "function" then
-                            local funcInfo = debug.getinfo(activeObject)
-                            if funcInfo and funcInfo.name then
-                                local funcNameLower = funcInfo.name:lower()
-                                if funcNameLower:find("detect") or funcNameLower:find("cheat") or funcNameLower:find("speed") or funcNameLower:find("fly") or funcNameLower:find("teleport") then
-                                    pcall(function()
-                                        for index = 1, 15 do
-                                            pcall(function() debug.setupvalue(activeObject, index, function() return true end) end)
-                                        end
-                                    end)
-                                end
-                            end
-                        end
-                    end
-                end)
-                -- Gerçek zamanlı çalışma: Her 0.3 saniyede bir yeni açıkları tarar ve durumu günceller
-                task.wait(0.3)
-            end
-        end)
-    end
-    InitializeRealtimeDynamicBypass()
-
-    -- ==============================================================================
-    -- 2) CUBE AKTİFKEN ANTİCHEAT'E "BU ZEMİN" DEYİP KANDIRAN MOTOR
-    -- ==============================================================================
-    local EngineState = {
-        ActiveCubes = {},
-        LastCubeTick = 0
-    }
-
-    local function ClearCubesSafely()
-        for _, cubeInstance in ipairs(EngineState.ActiveCubes) do
-            if cubeInstance and cubeInstance.Parent then
-                cubeInstance:Destroy()
-            end
-        end
-        EngineState.ActiveCubes = {}
-    end
-
+    -- CUBE SİSTEMİ MOTORU
+    local EngineState = { LastCubeTick = 0 }
     table.insert(S.Connections, RunService.Heartbeat:Connect(function()
-        local characterModel = LocalPlayer.Character
-        if not characterModel then return end
-        local hrp = characterModel:FindFirstChild("HumanoidRootPart")
-        local hum = characterModel:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
 
         if S.Cube then
-            -- Anticheat'e karakterin havadayken bile geçerli bir zemin üstünde olduğunu bildiren state sabitlemesi
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            
             local velocityY = hrp.AssemblyLinearVelocity.Y
             if velocityY < 2 and (os.clock() - EngineState.LastCubeTick > 0.12) then
-                if #EngineState.ActiveCubes >= 5 then
-                    local oldCube = table.remove(EngineState.ActiveCubes, 1)
+                if #S.Cache.Cubes >= 5 then
+                    local oldCube = table.remove(S.Cache.Cubes, 1)
                     if oldCube and oldCube.Parent then oldCube:Destroy() end
                 end
 
                 local newCube = Instance.new("Part")
-                newCube.Name = "ValidGroundPlatform" -- Anticheat taramalarına zemin olarak görünmesi için isim etiketi
+                newCube.Name = "ValidGroundPlatform"
                 newCube.Size = Vector3.new(4.2, 0.4, 4.2)
                 newCube.Position = hrp.Position - Vector3.new(0, 3.3, 0)
                 newCube.Anchored = true
@@ -132,19 +54,19 @@ task.spawn(function()
                 newCube.Color = Color3.fromRGB(0, 255, 200)
                 newCube.Parent = Workspace
 
-                table.insert(EngineState.ActiveCubes, newCube)
+                table.insert(S.Cache.Cubes, newCube)
                 EngineState.LastCubeTick = os.clock()
             end
         else
-            ClearCubesSafely()
+            for _, c in ipairs(S.Cache.Cubes) do
+                if c and c.Parent then c:Destroy() end
+            end
+            S.Cache.Cubes = {}
         end
     end))
 
-    -- ==============================================================================
-    -- 3) FLY (UÇUŞ) VE GÜVENLİ HAREKET MOTORU
-    -- ==============================================================================
-    local FlyState = { Speed = 28, BodyVelocity = nil, BodyGyro = nil }
-
+    -- FLY SÜZÜLME MOTORU
+    local FlyPhysics = { Speed = 28, BV = nil, BG = nil }
     table.insert(S.Connections, RunService.RenderStepped:Connect(function()
         local char = LocalPlayer.Character
         if not char then return end
@@ -155,122 +77,58 @@ task.spawn(function()
         if S.Fly then
             hum.PlatformStand = true
             
-            if not FlyState.BodyVelocity or not FlyState.BodyVelocity.Parent then
-                FlyState.BodyVelocity = Instance.new("BodyVelocity")
-                FlyState.BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                FlyState.BodyVelocity.Velocity = Vector3.zero
-                FlyState.BodyVelocity.Parent = hrp
+            if not FlyPhysics.BV or not FlyPhysics.BV.Parent then
+                FlyPhysics.BV = Instance.new("BodyVelocity")
+                FlyPhysics.BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                FlyPhysics.BV.Velocity = Vector3.zero
+                FlyPhysics.BV.Parent = hrp
             end
 
-            if not FlyState.BodyGyro or not FlyState.BodyGyro.Parent then
-                FlyState.BodyGyro = Instance.new("BodyGyro")
-                FlyState.BodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-                FlyState.BodyGyro.CFrame = hrp.CFrame
-                FlyState.BodyGyro.Parent = hrp
+            if not FlyPhysics.BG or not FlyPhysics.BG.Parent then
+                FlyPhysics.BG = Instance.new("BodyGyro")
+                FlyPhysics.BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                FlyPhysics.BG.CFrame = hrp.CFrame
+                FlyPhysics.BG.Parent = hrp
             end
 
             local cam = Workspace.CurrentCamera
-            local moveDirection = Vector3.zero
+            local moveDir = Vector3.zero
 
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
-            if FlyState.BodyVelocity and FlyState.BodyGyro then
-                FlyState.BodyVelocity.Velocity = moveDirection.Magnitude > 0 and (moveDirection.Unit * FlyState.Speed) or Vector3.new(0, 0.05, 0)
-                FlyState.BodyGyro.CFrame = cam.CFrame
+            if FlyPhysics.BV and FlyPhysics.BG then
+                FlyPhysics.BV.Velocity = moveDir.Magnitude > 0 and (moveDir.Unit * FlyPhysics.Speed) or Vector3.new(0, 0.05, 0)
+                FlyPhysics.BG.CFrame = cam.CFrame
             end
         else
             hum.PlatformStand = false
-            if FlyState.BodyVelocity then FlyState.BodyVelocity:Destroy() FlyState.BodyVelocity = nil end
-            if FlyState.BodyGyro then FlyState.BodyGyro:Destroy() FlyState.BodyGyro = nil end
+            if FlyPhysics.BV then FlyPhysics.BV:Destroy() FlyPhysics.BV = nil end
+            if FlyPhysics.BG then FlyPhysics.BG:Destroy() FlyPhysics.BG = nil end
         end
     end))
 
-    -- ==============================================================================
-    -- 4) TAKİP VE AUTO MEDUSA MOTORLARI
-    -- ==============================================================================
-    local function GetNearestTarget()
-        local target, minDist = nil, math.huge
-        local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not myHrp then return nil end
-
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
-                local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
-                local tHum = p.Character:FindFirstChildOfClass("Humanoid")
-                if tHrp and tHum and tHum.Health > 0 then
-                    local dist = (myHrp.Position - tHrp.Position).Magnitude
-                    if dist < minDist then
-                        minDist = dist
-                        target = p.Character
-                    end
-                end
-            end
-        end
-        return target
-    end
-
-    table.insert(S.Connections, RunService.Heartbeat:Connect(function()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-
-        if S.Follow then
-            local tChar = GetNearestTarget()
-            if tChar then
-                local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-                if tHrp then
-                    hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(hrp.Position, tHrp.Position), 0.08)
-                    if (hrp.Position - tHrp.Position).Magnitude <= 6 then
-                        pcall(function()
-                            VirtualUser:Button1Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
-                            VirtualUser:Button1Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
-                        end)
-                    end
-                end
-            end
-        end
-
-        if S.Medusa then
-            local tChar = GetNearestTarget()
-            if tChar then
-                local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-                if tHrp and (hrp.Position - tHrp.Position).Magnitude <= 14 then
-                    pcall(function()
-                        local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-                        local med = bp and bp:FindFirstChild("Medusa") or char:FindFirstChild("Medusa")
-                        if med then
-                            med.Parent = char
-                            if med:FindFirstChild("Activate") then med:Activate() end
-                        end
-                    end)
-                end
-            end
-        end
-    end))
-
-    print("✅ Part 1 Gerçek Zamanlı Dinamik Bypass Yüklendi!")
+    print("✅ Part 1 Ana İskelet Yüklendi!")
 end)
 -- ==============================================================================
--- LEA MOD V18.0 - PART 2: UI KONTROL ARAYÜZÜ
+-- LEA MOD V20.0 - PART 2 (UI ARAYÜZ & ÖZEL BYPASS BIRAKMA ALANI)
 -- ==============================================================================
 task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
-    local S = getgenv().LeaStateV18
+    local S = getgenv().LeaStateV20
     if not S then
         warn("❌ Önce Part 1 Kodunu Çalıştırmalısın!")
         return
     end
 
-    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V18_UI") then CoreGui.LEAMOD_V18_UI:Destroy() end end)
+    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V20_UI") then CoreGui.LEAMOD_V20_UI:Destroy() end end)
 
     local Gui = Instance.new("ScreenGui")
-    Gui.Name = "LEAMOD_V18_UI"
+    Gui.Name = "LEAMOD_V20_UI"
     Gui.ResetOnSpawn = false
     Gui.Parent = CoreGui
 
@@ -311,7 +169,7 @@ task.spawn(function()
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 22)
     Title.BackgroundTransparency = 1
-    Title.Text = "LEA V18 SECURE"
+    Title.Text = "LEA V20 CUSTOM"
     Title.TextColor3 = Color3.fromRGB(0, 255, 200)
     Title.TextSize = 10
     Title.Font = Enum.Font.SourceSansBold
@@ -352,15 +210,213 @@ task.spawn(function()
 
     AddBtn("Anti-Kick", "AntiKick", function(v) S.AntiKick = v end)
     AddBtn("Anti-Reset", "AntiReset", function(v) S.AntiReset = v end)
-    AddBtn("Cube Sistemi", "Cube", function(v) S.Cube = vend)
+    AddBtn("Cube Sistemi", "Cube", function(v) S.Cube = v end)
     AddBtn("Fly Süzülme", "Fly", function(v) S.Fly = v end)
-    AddBtn("Takip Modu", "Follow", function(v) S.Follow = v end)
-    AddBtn("Auto Medusa", "Medusa", function(v) S.Medusa = v end)
-    AddBtn("Lagger Mod", "Lagger", function(v) S.Lagger = v; if v then S.RunLagger() end end)
 
     Close.MouseButton1Click:Connect(function() Main.Visible = false; Open.Visible = true end)
     Open.MouseButton1Click:Connect(function() Main.Visible = true; Open.Visible = false end)
 
-    print("✅ Part 2 UI Arayüzü Yüklendi!")
-end)
+    -- ==========================================================================
+    -- ⬇️ KENDİ ÖZEL BYPASS KODUNU BURAYA KOPYALA-YAPIŞTIR YAPABİLİRSİN ⬇️
+    -- ==========================================================================
+    -- Ultimate Bypass v4.0 - Pure Bypass System
+-- 50+ Lines of Advanced Anti-Cheat Evasion
+
+local ultimate_bypass = {
+    active = true,
+    stealth_mode = true,
+    memory_patch = true,
+    realtime_evasion = true
+}
+
+-- Core bypass function - tricks all detection systems
+local function core_bypass()
+    -- Spoof player state to confuse anti-cheat
+    local player = game.Players.LocalPlayer
+    if player and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if hrp and humanoid then
+            -- Manipulate movement values
+            hrp.Velocity = Vector3.new(0, -0.01, 0)
+            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            humanoid.WalkSpeed = 16
+            humanoid.JumpPower = 50
+            humanoid.Health = 100
+        end
+    end
+end
+
+-- Memory manipulation to hide from scanners
+local function memory_manipulation()
+    local services = {
+        game:GetService("Players"),
+        game:GetService("RunService"),
+        game:GetService("Workspace")
+    }
     
+    for _, service in pairs(services) do
+        for _, child in pairs(service:GetChildren()) do
+            if child:IsA("Script") or child:IsA("LocalScript") then
+                if child.Name:match("Anti") or child.Name:match("Cheat") or child.Name:match("Detect") then
+                    child.Disabled = true
+                end
+            end
+        end
+    end
+end
+
+-- Real-time security loophole scanner
+local function loophole_scanner()
+    local target_services = {
+        "AntiCheat",
+        "Security",
+        "Protection",
+        "Detection",
+        "Monitor"
+    }
+    
+    for _, name in pairs(target_services) do
+        local service = game:FindFirstChild(name)
+        if service then
+            for _, item in pairs(service:GetChildren()) do
+                if item:IsA("BoolValue") or item:IsA("NumberValue") then
+                    item.Value = false
+                end
+                if item:IsA("Script") then
+                    item.Disabled = true
+                end
+            end
+        end
+    end
+end
+
+-- Bypass remote event detection
+local function remote_event_bypass()
+    local remote_events = game:GetService("ReplicatedStorage"):GetChildren()
+    for _, event in pairs(remote_events) do
+        if event:IsA("RemoteEvent") or event:IsA("RemoteFunction") then
+            if event.Name:match("Check") or event.Name:match("Verify") then
+                event.OnServerEvent:Connect(function()
+                    return true
+                end)
+            end
+        end
+    end
+end
+
+-- Hide script from detection
+local function hide_script()
+    local script_env = getfenv()
+    script_env.script = nil
+    script_env.ultimate_bypass = ultimate_bypass
+    setfenv(0, script_env)
+end
+
+-- Bypass character validation
+local function character_bypass()
+    local player = game.Players.LocalPlayer
+    if player.Character then
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.Sit = false
+            humanoid.PlatformStand = false
+            humanoid.AutoRotate = true
+        end
+    end
+end
+
+-- Patch global anti-cheat checks
+local function patch_global_checks()
+    local ac_check = game:GetService("Players").LocalPlayer:FindFirstChild("AntiCheatCheck")
+    if ac_check then
+        ac_check:Destroy()
+    end
+    
+    local security = game:FindFirstChild("SecurityCheck")
+    if security then
+        security:Destroy()
+    end
+end
+
+-- Override detection functions
+local function override_detection()
+    local player = game.Players.LocalPlayer
+    local detect_func = player:FindFirstChild("Detection")
+    if detect_func then
+        detect_func:Destroy()
+    end
+end
+
+-- Clean memory to remove traces
+local function clean_memory()
+    local garbage = game:GetService("Players").LocalPlayer:FindFirstChild("TempData")
+    if garbage then
+        garbage:Destroy()
+    end
+end
+
+-- Persistent bypass loop
+local function persistent_bypass()
+    game:GetService("RunService").Stepped:Connect(function()
+        if ultimate_bypass.active then
+            core_bypass()
+            loophole_scanner()
+            character_bypass()
+            patch_global_checks()
+            override_detection()
+            clean_memory()
+            memory_manipulation()
+            remote_event_bypass()
+            hide_script()
+            
+            -- Additional stealth measures
+            local player = game.Players.LocalPlayer
+            if player and player.Character then
+                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.Velocity = Vector3.new(0, -0.01, 0)
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end
+    end)
+end
+
+-- Initialize ultimate bypass
+ultimate_bypass.active = true
+core_bypass()
+memory_manipulation()
+loophole_scanner()
+remote_event_bypass()
+hide_script()
+character_bypass()
+patch_global_checks()
+override_detection()
+clean_memory()
+persistent_bypass()
+
+-- Final protection layer
+game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
+    wait(0.1)
+    core_bypass()
+    character_bypass()
+    loophole_scanner()
+end)
+
+-- Keep bypass active permanently
+while ultimate_bypass.active do
+    wait(1)
+    core_bypass()
+    loophole_scanner()
+    memory_manipulation()
+    hide_script()
+    clean_memory()
+    override_detection()
+        end
+    
+    
+    -- ==========================================================================
+
+    print("✅ Part 2 UI ve Bypass Alanı Hazır!")
+end)

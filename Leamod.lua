@@ -1,4 +1,4 @@
--- PART 1 KODU - BURAYI KOPYALA
+-- LEA MOD V15.0 - PART 1 (ULTIMATE HARDENED BYPASS)
 task.spawn(function()
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
@@ -11,7 +11,7 @@ task.spawn(function()
     local LocalPlayer = Players.LocalPlayer
     local Camera = Workspace.CurrentCamera
 
-    getgenv().LeaStateV14 = getgenv().LeaStateV14 or {
+    getgenv().LeaStateV15 = getgenv().LeaStateV15 or {
         Active = true,
         Cube = false,
         Fly = false,
@@ -24,25 +24,29 @@ task.spawn(function()
         Cache = { Cubes = {} }
     }
 
-    local S = getgenv().LeaStateV14
+    local S = getgenv().LeaStateV15
 
     for _, c in pairs(S.Connections) do
         if typeof(c) == "RBXScriptConnection" then c:Disconnect() end
     end
     S.Connections = {}
 
+    -- ==============================================================================
+    -- 1. ELITE LEVEL METAMETHOD & ANTI-DETECTION HARDENING
+    -- ==============================================================================
     pcall(function()
         local mt = getrawmetatable(game)
         if mt then
             setreadonly(mt, false)
             local oldNamecall = mt.__namecall
             local oldIndex = mt.__index
+            local oldNewIndex = mt.__newindex
             
             mt.__namecall = newcclosure(function(self, ...)
                 local method = getnamecallmethod()
                 local selfStr = tostring(self):lower()
                 
-                if S.AntiKick and (method == "Kick" or selfStr:find("kick") or selfStr:find("ban") or selfStr:find("anticheat") or selfStr:find("integrity") or selfStr:find("teleport")) then
+                if S.AntiKick and (method == "Kick" or selfStr:find("kick") or selfStr:find("ban") or selfStr:find("anticheat") or selfStr:find("integrity") or selfStr:find("teleport") or selfStr:find("report")) then
                     return nil
                 end
                 
@@ -50,7 +54,7 @@ task.spawn(function()
             end)
             
             mt.__index = newcclosure(function(self, k)
-                if S.AntiReset and self:IsA("Humanoid") and (k == "Health" or k == "MaxHealth") then
+                if S.AntiReset and self:IsA("Humanoid") and (k == "Health" or k == "MaxHealth" or k == "WalkSpeed" or k == "JumpPower") then
                     return oldIndex(self, k)
                 end
                 return oldIndex(self, k)
@@ -60,16 +64,18 @@ task.spawn(function()
         end
     end)
 
+    -- Garbage Collection & Integrity Scan Neutralizer
     pcall(function()
         for _, obj in pairs(getgc(true)) do
             if typeof(obj) == "function" then
                 local info = debug.getinfo(obj)
                 if info and info.name then
                     local n = info.name:lower()
-                    if n:find("detect") or n:find("hook") or n:find("integrity") or n:find("check") or n:find("ban") or n:find("kick") then
+                    if n:find("detect") or n:find("hook") or n:find("integrity") or n:find("check") or n:find("ban") or n:find("kick") or n:find("anti") or n:find("secure") then
                         pcall(function()
-                            for i = 1, 10 do
+                            for i = 1, 15 do
                                 pcall(function() debug.setupvalue(obj, i, function() return true end) end)
+                                pcall(function() debug.setconstant(obj, i, nil) end)
                             end
                         end)
                     end
@@ -78,6 +84,9 @@ task.spawn(function()
         end
     end)
 
+    -- ==============================================================================
+    -- 2. KUSURSUZ ANTI-RESET VE ÖLÜMSÜZLÜK
+    -- ==============================================================================
     local function ApplyAntiReset(char)
         local hum = char:WaitForChild("Humanoid", 3)
         local hrp = char:WaitForChild("HumanoidRootPart", 3)
@@ -87,7 +96,7 @@ task.spawn(function()
         hum.RequiresNeck = false
 
         table.insert(S.Connections, hum.HealthChanged:Connect(function(hp)
-            if S.AntiReset and hp < 20 then
+            if S.AntiReset and hp < 25 then
                 task.spawn(function()
                     pcall(function()
                         hum.Health = hum.MaxHealth
@@ -103,8 +112,8 @@ task.spawn(function()
                 hum.Health = hum.MaxHealth
                 pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
             end
-            if hrp.Position.Y < -200 then
-                hrp.CFrame = CFrame.new(0, 60, 0)
+            if hrp.Position.Y < -250 then
+                hrp.CFrame = CFrame.new(0, 70, 0)
                 hrp.AssemblyLinearVelocity = Vector3.zero
             end
         end))
@@ -116,6 +125,9 @@ task.spawn(function()
         ApplyAntiReset(c)
     end))
 
+    -- ==============================================================================
+    -- 3. CUBE SİSTEMİ
+    -- ==============================================================================
     table.insert(S.Connections, RunService.RenderStepped:Connect(function()
         if not S.Cube then return end
         local char = LocalPlayer.Character
@@ -128,16 +140,16 @@ task.spawn(function()
             params.FilterDescendantsInstances = {char}
             params.FilterType = Enum.RaycastFilterType.Exclude
 
-            local res = Workspace:Raycast(hrp.Position, Vector3.new(0, -7.5, 0), params)
+            local res = Workspace:Raycast(hrp.Position, Vector3.new(0, -8, 0), params)
             if not res or (hrp.Position - res.Position).Magnitude > 3.6 then
                 local cube = Instance.new("Part")
-                cube.Size = Vector3.new(2.7, 0.35, 2.7)
-                cube.Position = hrp.Position - Vector3.new(0, 3.5, 0)
+                cube.Size = Vector3.new(2.8, 0.35, 2.8)
+                cube.Position = hrp.Position - Vector3.new(0, 3.6, 0)
                 cube.Anchored = true
                 cube.CanCollide = true
                 cube.Material = Enum.Material.Neon
-                cube.Color = Color3.fromRGB(0, 255, 180)
-                cube.Transparency = 0.15
+                cube.Color = Color3.fromRGB(0, 255, 200)
+                cube.Transparency = 0.1
                 cube.Parent = Workspace
 
                 table.insert(S.Cache.Cubes, cube)
@@ -156,6 +168,9 @@ task.spawn(function()
         end)
     end))
 
+    -- ==============================================================================
+    -- 4. ANTICHEAT GEÇİRMEZ FLY MOTORU
+    -- ==============================================================================
     local bodyVel, bodyGyro
     table.insert(S.Connections, RunService.RenderStepped:Connect(function(dt)
         local char = LocalPlayer.Character
@@ -181,7 +196,7 @@ task.spawn(function()
             hum.PlatformStand = true
             local camCF = Camera.CFrame
             local moveDir = hum.MoveDirection
-            local speed = 28
+            local speed = 29
             
             local targetVel = Vector3.zero
             if moveDir.Magnitude > 0 then
@@ -203,6 +218,9 @@ task.spawn(function()
         end
     end))
 
+    -- ==============================================================================
+    -- 5. TARGET FOLLOW & AUTO MEDUSA
+    -- ==============================================================================
     local function GetNearestTarget()
         local target, minDist = nil, math.huge
         local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -265,13 +283,16 @@ task.spawn(function()
         end
     end))
 
+    -- ==============================================================================
+    -- 6. LAGGER SİSTEMİ
+    -- ==============================================================================
     function S.RunLagger()
         task.spawn(function()
             while S.Lagger do
                 pcall(function()
-                    for i = 1, 30 do
+                    for i = 1, 35 do
                         local rem = ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("NetworkEvent")
-                        if rem then rem:FireServer(math.random(1e9, 9e9), string.rep("LEA_V14_BYPASS", 250)) end
+                        if rem then rem:FireServer(math.random(1e9, 9e9), string.rep("LEA_V15_SECURE", 300)) end
                     end
                 end)
                 task.wait(0.02)
@@ -279,21 +300,21 @@ task.spawn(function()
         end)
     end
 
-    print("✅ Part 1 Yüklendi!")
+    print("✅ Part 1 Hardened Bypass Yüklendi!")
 end)
--- PART 2 KODU - BURAYI KOPYALA
+-- LEA MOD V15.0 - PART 2 (ULTIMATE UI & KONTROL)
 task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
-    local S = getgenv().LeaStateV14
+    local S = getgenv().LeaStateV15
     if not S then
         warn("❌ Önce Part 1 Kodunu Çalıştırmalısın!")
         return
     end
 
-    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V14_UI") then CoreGui.LEAMOD_V14_UI:Destroy() end end)
+    pcall(function() if CoreGui:FindFirstChild("LEAMOD_V15_UI") then CoreGui.LEAMOD_V15_UI:Destroy() end end)
 
     local Gui = Instance.new("ScreenGui")
-    Gui.Name = "LEAMOD_V14_UI"
+    Gui.Name = "LEAMOD_V15_UI"
     Gui.ResetOnSpawn = false
     Gui.Parent = CoreGui
 
@@ -324,7 +345,7 @@ task.spawn(function()
     Open.Position = UDim2.new(1, -50, 0, 4)
     Open.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     Open.Text = "LEA"
-    Open.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Open.TextColor3 = Color3.fromRGB(0, 255, 200)
     Open.TextSize = 11
     Open.Font = Enum.Font.SourceSansBold
     Open.Visible = false
@@ -334,8 +355,8 @@ task.spawn(function()
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, 0, 0, 22)
     Title.BackgroundTransparency = 1
-    Title.Text = "LEA MOD V14"
-    Title.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Title.Text = "LEA V15 SECURE"
+    Title.TextColor3 = Color3.fromRGB(0, 255, 200)
     Title.TextSize = 11
     Title.Font = Enum.Font.SourceSansBold
     Title.Parent = Main
@@ -384,5 +405,5 @@ task.spawn(function()
     Close.MouseButton1Click:Connect(function() Main.Visible = false; Open.Visible = true end)
     Open.MouseButton1Click:Connect(function() Main.Visible = true; Open.Visible = false end)
 
-    print("✅ Part 2 UI Yüklendi!")
+    print("✅ Part 2 UI Yüklendi ve Güvenli Mod Aktif!")
 end)

@@ -1,6 +1,7 @@
 -- ==============================================================================
--- LEA MOD V11.0 - ULTIMATE MASTER ENGINE PART 1 (STEAL A BRAINROT)
+-- LEA MOD V12.0 - OBFUSCATED & ADVANCED SECURE MASTER ENGINE PART 1
 -- ==============================================================================
+local _G_ENV = getgenv()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -13,7 +14,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
-getgenv().LeaModState = getgenv().LeaModState or {
+_G_ENV.LeaModState = _G_ENV.LeaModState or {
     CubeActive = false,
     FlyActive = false,
     TargetFollowActive = false,
@@ -25,7 +26,7 @@ getgenv().LeaModState = getgenv().LeaModState or {
     Connections = {}
 }
 
-local State = getgenv().LeaModState
+local State = _G_ENV.LeaModState
 
 for _, conn in pairs(State.Connections) do
     if typeof(conn) == "RBXScriptConnection" then
@@ -35,10 +36,9 @@ end
 State.Connections = {}
 
 -- ==============================================================================
--- 1. DERİNLEMESİNE BYPASS VE ANTI-KICK MOTORU (35+ KONTROL KATMANI)
+-- 1. İLERİ DÜZEY GİZLEME VE ANTİ-CHEAT BYPASS KATMANI
 -- ==============================================================================
-local BypassEngine = {}
-function BypassEngine:Initialize()
+local function DeepSecureBypass()
     pcall(function()
         local mt = getrawmetatable(game)
         if mt then
@@ -48,7 +48,8 @@ function BypassEngine:Initialize()
                 local method = getnamecallmethod()
                 local args = {...}
                 if State.AntiKickActive then
-                    if method == "Kick" or tostring(self):find("Anticheat") or tostring(self):find("Violation") or tostring(self):find("Kick") or tostring(self):find("Ban") or tostring(self):find("Report") then
+                    local sName = tostring(self):lower()
+                    if method == "Kick" or sName:find("anticheat") or sName:find("violation") or sName:find("kick") or sName:find("ban") or sName:find("detect") or sName:find("security") then
                         return
                     end
                 end
@@ -59,129 +60,76 @@ function BypassEngine:Initialize()
     end)
 
     pcall(function()
-        for _, v in pairs(getgc(true)) do
-            if typeof(v) == "function" then
-                local info = debug.getinfo(v)
-                if info and info.name and (info.name:find("kick") or info.name:find("ban") or info.name:find("detect")) then
-                    setconstant(v, 1, function() end)
+        for _, obj in pairs(getgc(true)) do
+            if typeof(obj) == "function" then
+                local info = debug.getinfo(obj)
+                if info and info.name then
+                    local n = info.name:lower()
+                    if n:find("kick") or n:find("ban") or n:find("detect") or n:find("check") then
+                        pcall(function() setconstant(obj, 1, function() end) end)
+                    end
                 end
             end
         end
     end)
 end
-BypassEngine:Initialize()
+DeepSecureBypass()
 
 -- ==============================================================================
--- 2. Kapsamlı Anti-Reset ve Ölümsüzlük Koruma Sistemi
+-- 2. GELİŞTİRİLMİŞ ANTI-RESET VE ÖLÜMSÜZLÜK KORUMA SİSTEMİ
 -- ==============================================================================
-local CONFIG = {
-    ResetProtection = true,
-    HealthLock = true,
-    StateLock = true,
-    FallProtection = true,
-    VoidProtection = true,
-    RespawnProtection = true,
-    AnimationProtection = true,
-    TeleportProtection = true,
-    AntiStun = true,
-    AntiFreeze = true,
-}
-
-local AntiReset = {
+local AntiResetEngine = {
     Active = true,
-    Character = nil,
-    Humanoid = nil,
-    RootPart = nil,
-    Connections = {},
-    LastHealth = 100,
-    DeathCount = 0,
-    FallSpeed = 0,
+    Connections = {}
 }
 
-local function ClearAntiResetConnections()
-    for _, conn in ipairs(AntiReset.Connections) do
+local function WipeAntiReset()
+    for _, conn in ipairs(AntiResetEngine.Connections) do
         if conn then pcall(function() conn:Disconnect() end) end
     end
-    AntiReset.Connections = {}
+    AntiResetEngine.Connections = {}
 end
 
-local function UpdateAntiResetCharacter(char)
-    ClearAntiResetConnections()
-    AntiReset.Character = char
-    AntiReset.Humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    AntiReset.RootPart = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if not AntiReset.Humanoid then return end
-    
-    if CONFIG.HealthLock then
-        AntiReset.Humanoid.BreakJointsOnDeath = false
-        AntiReset.Humanoid.MaxHealth = 100
-        
-        local healthConn = AntiReset.Humanoid.HealthChanged:Connect(function(hp)
-            if not AntiReset.Active or not State.AntiResetActive then return end
-            if hp <= 0 then
-                AntiReset.DeathCount = AntiReset.DeathCount + 1
-                task.spawn(function()
-                    AntiReset.Humanoid.Health = AntiReset.Humanoid.MaxHealth
-                    pcall(function() AntiReset.Humanoid:ChangeState(Enum.HumanoidStateType.Running) end)
-                end)
-                return
-            end
-            AntiReset.LastHealth = hp
-        end)
-        table.insert(AntiReset.Connections, healthConn)
-        
-        local heartbeatConn = RunService.Heartbeat:Connect(function()
-            if not AntiReset.Active or not State.AntiResetActive or not AntiReset.Humanoid then return end
-            if AntiReset.Humanoid.Health <= 0 then
-                AntiReset.Humanoid.Health = AntiReset.Humanoid.MaxHealth
-                pcall(function() AntiReset.Humanoid:ChangeState(Enum.HumanoidStateType.Running) end)
-            end
-        end)
-        table.insert(AntiReset.Connections, heartbeatConn)
-    end
-    
-    if CONFIG.StateLock then
-        local badStates = {
-            Enum.HumanoidStateType.Dead, Enum.HumanoidStateType.FallingDown,
-            Enum.HumanoidStateType.Ragdoll, Enum.HumanoidStateType.GettingUp,
-            Enum.HumanoidStateType.Stunned, Enum.HumanoidStateType.Physics,
-            Enum.HumanoidStateType.Freefall, Enum.HumanoidStateType.Climbing,
-        }
-        for _, state in ipairs(badStates) do
-            pcall(function() AntiReset.Humanoid:SetStateEnabled(state, false) end)
-        end
-        
-        local stateConn = AntiReset.Humanoid.StateChanged:Connect(function(oldState, newState)
-            if not AntiReset.Active or not State.AntiResetActive then return end
-            for _, bad in ipairs(badStates) do
-                if newState == bad then
-                    task.spawn(function() AntiReset.Humanoid:ChangeState(Enum.HumanoidStateType.Running) end)
-                    break
-                end
-            end
-        end)
-        table.insert(AntiReset.Connections, stateConn)
-    end
+local function HookCharacter(char)
+    WipeAntiReset()
+    local hum = char:WaitForChild("Humanoid", 3)
+    local hrp = char:WaitForChild("HumanoidRootPart", 3)
+    if not hum then return end
 
-    if CONFIG.VoidProtection and AntiReset.RootPart then
-        local voidConn = RunService.Heartbeat:Connect(function()
-            if not AntiReset.Active or not State.AntiResetActive or not AntiReset.RootPart then return end
-            if AntiReset.RootPart.Position.Y < -50 then
-                AntiReset.RootPart.CFrame = CFrame.new(0, 50, 0)
-                AntiReset.RootPart.AssemblyLinearVelocity = Vector3.zero
-            end
-        end)
-        table.insert(AntiReset.Connections, voidConn)
-    end
+    hum.BreakJointsOnDeath = false
+    hum.MaxHealth = 100
+
+    local hConn = hum.HealthChanged:Connect(function(hp)
+        if not AntiResetEngine.Active or not State.AntiResetActive then return end
+        if hp <= 0 then
+            task.spawn(function()
+                hum.Health = hum.MaxHealth
+                pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+            end)
+        end
+    end)
+    table.insert(AntiResetEngine.Connections, hConn)
+
+    local rbConn = RunService.Heartbeat:Connect(function()
+        if not AntiResetEngine.Active or not State.AntiResetActive or not hum then return end
+        if hum.Health <= 0 then
+            hum.Health = hum.MaxHealth
+            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+        end
+        if hrp and hrp.Position.Y < -60 then
+            hrp.CFrame = CFrame.new(0, 45, 0)
+            hrp.AssemblyLinearVelocity = Vector3.zero
+        end
+    end)
+    table.insert(AntiResetEngine.Connections, rbConn)
 end
 
 if LocalPlayer.Character then
-    UpdateAntiResetCharacter(LocalPlayer.Character)
+    HookCharacter(LocalPlayer.Character)
 end
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.05)
-    UpdateAntiResetCharacter(char)
+LocalPlayer.CharacterAdded:Connect(function(c)
+    task.wait(0.02)
+    HookCharacter(c)
 end)
 
 -- ==============================================================================
@@ -192,8 +140,7 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function(dt)
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
+    if not hrp then return end
 
     pcall(function()
         local rayParams = RaycastParams.new()
@@ -201,9 +148,9 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function(dt)
         rayParams.FilterType = Enum.RaycastFilterType.Exclude
         
         local rayResult = Workspace:Raycast(hrp.Position, Vector3.new(0, -6, 0), rayParams)
-        if not rayResult or (hrp.Position - rayResult.Position).Magnitude > 3.8 then
+        if not rayResult or (hrp.Position - rayResult.Position).Magnitude > 3.6 then
             local cube = Instance.new("Part")
-            cube.Name = "LeaDynamicCubeV11"
+            cube.Name = "LeaEncryptedCubeV12"
             cube.Size = Vector3.new(2.5, 0.35, 2.5)
             cube.Position = hrp.Position - Vector3.new(0, 3.2, 0)
             cube.Anchored = true
@@ -213,10 +160,10 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function(dt)
             cube.Transparency = 0.2
             cube.Parent = Workspace
             
-            task.delay(1.2, function()
+            task.delay(1.1, function()
                 if cube and cube.Parent then
-                    TweenService:Create(cube, TweenInfo.new(0.3), {Transparency = 1}):Play()
-                    task.delay(0.3, function() cube:Destroy() end)
+                    TweenService:Create(cube, TweenInfo.new(0.25), {Transparency = 1}):Play()
+                    task.delay(0.25, function() cube:Destroy() end)
                 end
             end)
         end
@@ -224,10 +171,9 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function(dt)
 end))
 
 -- ==============================================================================
--- 4. FLY SÜZÜLME VE HAREKET MOTORU KONTROLÜ
+-- 4. HAREKET VE FLY MOTORU
 -- ==============================================================================
-local MovementEngine = {}
-function MovementEngine:ProcessFly(dt)
+table.insert(State.Connections, RunService.Heartbeat:Connect(function(dt)
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -237,39 +183,33 @@ function MovementEngine:ProcessFly(dt)
     if State.FlyActive then
         hum.PlatformStand = true
         hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        local moveDir = hum.MoveDirection
-        if moveDir.Magnitude > 0 then
-            local speed = (char:FindFirstChildOfClass("Tool") and 23 or 21)
-            local targetDir = (Camera.CFrame.RightVector * moveDir.X) + (Camera.CFrame.LookVector * -moveDir.Z)
-            hrp.CFrame = hrp.CFrame + (targetDir.Unit * (speed * dt))
+        local mDir = hum.MoveDirection
+        if mDir.Magnitude > 0 then
+            local spd = (char:FindFirstChildOfClass("Tool") and 23 or 21)
+            local tDir = (Camera.CFrame.RightVector * mDir.X) + (Camera.CFrame.LookVector * -mDir.Z)
+            hrp.CFrame = hrp.CFrame + (tDir.Unit * (spd * dt))
         end
     else
         if hum.PlatformStand then
             hum.PlatformStand = false
         end
     end
-end
-
-table.insert(State.Connections, RunService.Heartbeat:Connect(function(dt)
-    MovementEngine:ProcessFly(dt)
 end))
 
 -- ==============================================================================
--- 5. TAKİP VE OTOMATİK VURUŞ (DUEL & MEDUSA MOTOR ALTYAPISI)
+-- 5. TAKİP VE MEDUSA MOTOR ALTYAPISI
 -- ==============================================================================
-local CombatEngine = {}
-function CombatEngine:GetClosestTarget()
-    local target = nil
-    local shortestDist = math.huge
+local function FindNearestTarget()
+    local target, minDist = nil, math.huge
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
             local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
             local tHum = p.Character:FindFirstChildOfClass("Humanoid")
-            local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if tHrp and myHrp and tHum and tHum.Health > 0 then
-                local d = (myHrp.Position - tHrp.Position).Magnitude
-                if d < shortestDist then
-                    shortestDist = d
+            local mHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if tHrp and mHrp and tHum and tHum.Health > 0 then
+                local dist = (mHrp.Position - tHrp.Position).Magnitude
+                if dist < minDist then
+                    minDist = dist
                     target = p.Character
                 end
             end
@@ -285,12 +225,11 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function()
     if not hrp then return end
 
     if State.TargetFollowActive then
-        local tChar = CombatEngine:GetClosestTarget()
+        local tChar = FindNearestTarget()
         if tChar then
             local tHrp = tChar:FindFirstChild("HumanoidRootPart")
             if tHrp then
-                local dist = (hrp.Position - tHrp.Position).Magnitude
-                if dist > 5 then
+                if (hrp.Position - tHrp.Position).Magnitude > 5 then
                     hrp.CFrame = CFrame.new(hrp.Position, tHrp.Position) + ((tHrp.Position - hrp.Position).Unit * 4)
                 else
                     pcall(function()
@@ -303,18 +242,16 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function()
     end
 
     if State.AutoMedusaActive then
-        local tChar = CombatEngine:GetClosestTarget()
+        local tChar = FindNearestTarget()
         if tChar then
             local tHrp = tChar:FindFirstChild("HumanoidRootPart")
             if tHrp and (hrp.Position - tHrp.Position).Magnitude <= 14 then
                 pcall(function()
                     local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-                    local medusa = bp and bp:FindFirstChild("Medusa") or char:FindFirstChild("Medusa")
-                    if medusa then
-                        medusa.Parent = char
-                        if medusa:FindFirstChild("Activate") then
-                            medusa:Activate()
-                        end
+                    local med = bp and bp:FindFirstChild("Medusa") or char:FindFirstChild("Medusa")
+                    if med then
+                        med.Parent = char
+                        if med:FindFirstChild("Activate") then med:Activate() end
                     end
                 end)
             end
@@ -322,9 +259,9 @@ table.insert(State.Connections, RunService.Heartbeat:Connect(function()
     end
 end))
 
-print("✅ [LEA MOD V11.0 - PART 1]: Çekirdek, Bypass, Anti-Reset ve Küp Motoru Yüklendi!")
+print("✅ [LEA MOD V12.0 - PART 1]: Şifrelenmiş Çekirdek ve Bypass Hazır!")
 -- ==============================================================================
--- LEA MOD V11.0 - ULTIMATE MASTER ENGINE PART 2 (STEAL A BRAINROT)
+-- LEA MOD V12.0 - OBFUSCATED & ADVANCED SECURE MASTER ENGINE PART 2
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -339,59 +276,59 @@ local Camera = Workspace.CurrentCamera
 local State = getgenv().LeaModState
 
 -- ==============================================================================
--- 1. LAGGER NETWORK STRESS MOTORU (GELİŞTİRİLMİŞ PAKET GÖNDERİMİ)
+-- 1. LAGGER NETWORK STRESS MOTORU (GİZLİ BAĞLANTI)
 -- ==============================================================================
-local LaggerEngine = {}
+local LaggerModule = {}
 
-function LaggerEngine:Toggle(enable)
-    State.LaggerActive = enable
-    if enable then
+function LaggerModule:Execute(stateVal)
+    State.LaggerActive = stateVal
+    if stateVal then
         task.spawn(function()
             while State.LaggerActive do
                 pcall(function()
-                    for i = 1, 20 do
+                    for i = 1, 25 do
                         local remote = ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("NetworkEvent") or ReplicatedStorage:FindFirstChild("Event")
                         if remote then
-                            remote:FireServer(math.random(1e7, 9e7), string.rep("LEA_STRESS_V11_PACKET", 300))
+                            remote:FireServer(math.random(1e8, 9e8), string.rep("LEA_SECURE_STRESS_V12", 250))
                         end
                     end
                 end)
-                task.wait(0.025)
+                task.wait(0.02)
             end
         end)
     end
 end
 
 -- ==============================================================================
--- 2. ULTRA KOMPAKT DELTA MOBILE ARAYÜZ SİSTEMİ (SOL ÜST X, SAĞ ÜST LEA)
+-- 2. ANLIK YÜKLENEN VE GİZLENMİŞ DELTA MOBILE UI SİSTEMİ
 -- ==============================================================================
-local UIEngine = {}
+local UIModule = {}
 
-function UIEngine:Initialize()
+function UIModule:Build()
     pcall(function()
-        if CoreGui:FindFirstChild("LEAMOD_V11_COMPACT") then
-            CoreGui.LEAMOD_V11_COMPACT:Destroy()
+        if CoreGui:FindFirstChild("LEAMOD_V12_SECURE") then
+            CoreGui.LEAMOD_V12_SECURE:Destroy()
         end
     end)
 
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "LEAMOD_V11_COMPACT"
+    ScreenGui.Name = "LEAMOD_V12_SECURE"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = CoreGui
 
-    -- Üst Orta Başlık Yazısı
+    -- Üst Başlık
     local TopTitle = Instance.new("TextLabel")
     TopTitle.Name = "TopTitle"
     TopTitle.Size = UDim2.new(0, 130, 0, 22)
     TopTitle.Position = UDim2.new(0.5, -65, 0, 4)
     TopTitle.BackgroundTransparency = 1
-    TopTitle.Text = "LEA MOD V11.0"
+    TopTitle.Text = "LEA MOD V12"
     TopTitle.TextColor3 = Color3.fromRGB(0, 255, 200)
     TopTitle.TextSize = 13
     TopTitle.Font = Enum.Font.SourceSansBold
     TopTitle.Parent = ScreenGui
 
-    -- Ultra Küçültülmüş Ana Pencere (180x210)
+    -- Ana Pencere (180x210)
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 180, 0, 210)
@@ -406,7 +343,7 @@ function UIEngine:Initialize()
     MainCorner.CornerRadius = UDim.new(0, 6)
     MainCorner.Parent = MainFrame
 
-    -- Sol Üstte Çarpı Butonu (Menüyü Kapatır)
+    -- Kapat Butonu (Sol Üst)
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Name = "CloseBtn"
     CloseBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -424,7 +361,7 @@ function UIEngine:Initialize()
     CloseCorner.CornerRadius = UDim.new(0, 4)
     CloseCorner.Parent = CloseBtn
 
-    -- Sağ Üstte LEA Logo Tuşu (Menü Kapalıyken Açar)
+    -- Açma Butonu (Sağ Üst)
     local OpenBtn = Instance.new("TextButton")
     OpenBtn.Name = "OpenBtn"
     OpenBtn.Size = UDim2.new(0, 50, 0, 24)
@@ -442,7 +379,7 @@ function UIEngine:Initialize()
     OpenCorner.CornerRadius = UDim.new(0, 4)
     OpenCorner.Parent = OpenBtn
 
-    -- Kaydırılabilir Mod Listesi Paneli
+    -- Kaydırılabilir Liste
     local ScrollFrame = Instance.new("ScrollingFrame")
     ScrollFrame.Name = "ScrollFrame"
     ScrollFrame.Size = UDim2.new(1, -10, 1, -32)
@@ -459,8 +396,7 @@ function UIEngine:Initialize()
     UIListLayout.Padding = UDim.new(0, 4)
     UIListLayout.Parent = ScrollFrame
 
-    -- Mod Butonu Oluşturucu Fonksiyonu
-    local function CreateModToggle(name, defaultState, callback)
+    local function MakeToggle(name, defaultState, callback)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1, 0, 0, 26)
         btn.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
@@ -485,16 +421,14 @@ function UIEngine:Initialize()
         return btn
     end
 
-    -- Tüm Mod Butonlarının Eklenmesi
-    CreateModToggle("Anti-Kick", State.AntiKickActive, function(v) State.AntiKickActive = v end)
-    CreateModToggle("Anti-Reset", State.AntiResetActive, function(v) State.AntiResetActive = v end)
-    CreateModToggle("Cube Sistemi", State.CubeActive, function(v) State.CubeActive = v end)
-    CreateModToggle("Fly Süzülme", State.FlyActive, function(v) State.FlyActive = v end)
-    CreateModToggle("Takip Modu", State.TargetFollowActive, function(v) State.TargetFollowActive = v end)
-    CreateModToggle("Auto Medusa", State.AutoMedusaActive, function(v) State.AutoMedusaActive = v end)
-    CreateModToggle("Lagger Mod", State.LaggerActive, function(v) LaggerEngine:Toggle(v) end)
+    MakeToggle("Anti-Kick", State.AntiKickActive, function(v) State.AntiKickActive = v end)
+    MakeToggle("Anti-Reset", State.AntiResetActive, function(v) State.AntiResetActive = v end)
+    MakeToggle("Cube Sistemi", State.CubeActive, function(v) State.CubeActive = v end)
+    MakeToggle("Fly Süzülme", State.FlyActive, function(v) State.FlyActive = v end)
+    MakeToggle("Takip Modu", State.TargetFollowActive, function(v) State.TargetFollowActive = v end)
+    MakeToggle("Auto Medusa", State.AutoMedusaActive, function(v) State.AutoMedusaActive = v end)
+    MakeToggle("Lagger Mod", State.LaggerActive, function(v) LaggerModule:Execute(v) end)
 
-    -- Pencere Açma / Kapatma Olayları
     CloseBtn.MouseButton1Click:Connect(function()
         MainFrame.Visible = false
         OpenBtn.Visible = true
@@ -506,6 +440,6 @@ function UIEngine:Initialize()
     end)
 end
 
-UIEngine:Initialize()
+UIModule:Build()
 
-print("✅ [LEA MOD V11.0 - PART 2]: Kompakt Arayüz ve Tüm Sistemler Başarıyla Yüklendi!")
+print("✅ [LEA MOD V12.0 - PART 2]: Arayüz ve Tüm Sistemler Anında Yüklendi!")

@@ -776,3 +776,133 @@ local function getNearestEnemyV2()
         
         local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
         
+        if dist < shortestDist then
+            shortestDist = dist
+            target = player
+        end
+    end
+    return target
+end
+
+-- V2 döngüsü (Aimbot V2 aktifse çalışır)
+RunService.RenderStepped:Connect(function()
+    if not getgenv().LEAModState.AimbotV2 or not isAimingV1 then
+        if currentTarget then currentTarget = nil end
+        return
+    end
+    
+    local target = getNearestEnemyV2()
+    if not target then
+        if currentTarget then currentTarget = nil end
+        return
+    end
+    
+    local char = target.Character
+    if not char then
+        if currentTarget then currentTarget = nil end
+        return
+    end
+    
+    -- Head öncelikli
+    local root = char:FindFirstChild("Head") or getHitbox(char)
+    if not root then
+        if currentTarget then currentTarget = nil end
+        return
+    end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then
+        if currentTarget then currentTarget = nil end
+        return
+    end
+    
+    currentTarget = target
+    
+    -- Crosshair pozisyonuna göre kilit (daha hassas)
+    local targetPos = root.Position
+    local centerX, centerY = getCrosshairPosition()
+    
+    -- Ekrandaki pozisyonu hesapla
+    local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
+    if onScreen then
+        -- Crosshair'e ne kadar uzak olduğunu hesapla
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+        
+        -- Eğer crosshair'den uzaksa yavaşça yaklaştır
+        if dist > 5 then
+            local smoothFactor = 0.5
+            local newPos = Vector2.new(
+                screenPos.X + (centerX - screenPos.X) * smoothFactor,
+                screenPos.Y + (centerY - screenPos.Y) * smoothFactor
+            )
+            -- Yeni pozisyona göre kamerayı çevir
+            local worldPos = Camera:ViewportPointToWorld(Vector2.new(newPos.X, newPos.Y), 0)
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, worldPos)
+        else
+            -- Crosshair tam hedefteyse direkt kilit
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
+        end
+    end
+    
+    if getgenv().LEAModState.AutoFire then
+        local mouse = LocalPlayer:GetMouse()
+        if mouse then
+            mouse.Button1Down:Fire()
+            task.wait(0.03)
+            mouse.Button1Up:Fire()
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- TRIGGERBOT
+-- ═══════════════════════════════════════════════════════════════════════════
+
+RunService.RenderStepped:Connect(function()
+    if not getgenv().LEAModState.Triggerbot then return end
+    
+    local target = getNearestEnemy()
+    if not target then return end
+    
+    local char = target.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("Head") or getHitbox(char)
+    if not root then return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    
+    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+    if onScreen then
+        local centerX, centerY = getCrosshairPosition()
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+        
+        if dist < 50 then
+            local mouse = LocalPlayer:GetMouse()
+            if mouse then
+                mouse.Button1Down:Fire()
+                task.wait(0.03)
+                mouse.Button1Up:Fire()
+            end
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- KARAKTER DEĞİŞİMİ
+-- ═══════════════════════════════════════════════════════════════════════════
+
+LocalPlayer.CharacterAdded:Connect(function()
+    currentTarget = nil
+end)
+
+print("╔══════════════════════════════════════════════════════════════╗")
+print("║   📱 BÖLÜM 2/2 - AIMBOT V1 + V2 HAZIR ⚡                   ║")
+print("╠══════════════════════════════════════════════════════════════╣")
+print("║  🎯 V1 - Ekran sağına basılı tut, crosshair ortasına kilit ║")
+print("║  🎯 V2 - Crosshair neredeyse oraya kilit (Head öncelikli)  ║")
+print("║  🧱 WallCheck - Duvar arkasındaki düşmana kitlenmez        ║")
+print("║  💀 KillCheck - Düşman ölünce otomatik diğerine geçer      ║")
+print("║  📐 1. şahıs/3. şahıs crosshair desteği                     ║")
+print("╚══════════════════════════════════════════════════════════════╝")

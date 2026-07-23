@@ -539,13 +539,14 @@ end)
 print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    🔥 AIMBOT v41.0 - SIFIR TİTREME + WALLCHECK (BÖLÜM 3/3)
+    🔥 AIMBOT v42.0 - SON VERSİYON (KESİNTİSİZ KİLİT + SIFIR TİTREME)
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ WALLCHECK - DUVAR ARKASINA KİTLENMEZ (RAYCAST)
-    ✅ SIFIR TİTREME - KESİNTİSİZ TAKİP (YUMUŞAKLIK YOK)
-    ✅ SADECE ÖLÜRSE veya DUVAR GİRERSE BIRAKIR
-    ✅ HEDEF NEREYE GİDERSE GİTSİN KESİNTİSİZ BAKAR
+    ✅ KESİNTİSİZ KİLİT - Hedef ölene kadar ASLA BIRAKMAZ
+    ✅ SIFIR TİTREME - Yumuşaklık yok, direkt CFrame
+    ✅ WALLCHECK - Duvar arkasına geçince YENİ HEDEF BULUR
+    ✅ HEDEF ÖLÜNCE - YENİ HEDEF BULUR
+    ✅ HEDEF ASLA DEĞİŞMEZ - Ölene kadar aynı adama bakar
 ]]
 
 local Players = game:GetService("Players")
@@ -582,14 +583,12 @@ local function getHitbox(char)
     return nil
 end
 
--- WALLCHECK - DUVAR KONTROLÜ (Kesin çözüm)
+-- WALLCHECK
 local function canSeeTarget(targetRoot)
     if not getgenv().LEAModState.WallCheck then return true end
     
     local origin = Camera.CFrame.Position
     local targetPos = targetRoot.Position
-    
-    -- Hedefin merkezine doğru raycast
     local direction = (targetPos - origin).Unit
     local distance = (targetPos - origin).Magnitude
     
@@ -602,18 +601,15 @@ local function canSeeTarget(targetRoot)
     
     if result then
         local hit = result.Instance
-        -- Eğer vurulan şey hedefin bir parçasıysa görüyor
         if hit and hit:IsDescendantOf(targetRoot.Parent) then
             return true
         end
-        -- Vurulan şey duvar veya başka bir obje
         return false
     end
-    
     return true
 end
 
--- HEDEF BUL
+-- HEDEF BUL (SADECE BAŞLANGIÇTA KULLANILIR)
 local function findNearestEnemy()
     local target = nil
     local shortestDist = 1000
@@ -632,11 +628,8 @@ local function findNearestEnemy()
             if getgenv().LEAModState.KillCheck then continue end
         end
         
-        -- WALLCHECK - DUVAR ARKASINDAKİNİ ALMA
         if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then
-                continue  -- Duvara çarptı, bu hedefi alma
-            end
+            if not canSeeTarget(root) then continue end
         end
         
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
@@ -649,7 +642,7 @@ local function findNearestEnemy()
     return target
 end
 
--- KİLİTLİ HEDEF GEÇERLİ Mİ?
+-- KİLİTLİ HEDEF GEÇERLİ Mİ? (ÖLDÜ MÜ? DUVAR VAR MI?)
 local function isTargetStillValid(targetPlayer)
     if not targetPlayer then return false end
     
@@ -662,14 +655,12 @@ local function isTargetStillValid(targetPlayer)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
     
-    -- 1. ÖLÜ MÜ?
+    -- ÖLÜ KONTROLÜ
     if hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then
-            return false
-        end
+        return false
     end
     
-    -- 2. DUVAR VAR MI? (WALLCHECK AÇIKSA)
+    -- DUVAR KONTROLÜ (WALLCHECK AÇIKSA)
     if getgenv().LEAModState.WallCheck then
         if not canSeeTarget(root) then
             return false
@@ -723,7 +714,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V1 - SIFIR TİTREME + WALLCHECK
+-- AIMBOT V1 - KESİNTİSİZ KİLİT + SIFIR TİTREME
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -740,8 +731,9 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- KİLİTLİ HEDEF GEÇERLİ Mİ?
+    -- KİLİTLİ HEDEF GEÇERLİ Mİ? (ÖLÜ VEYA DUVAR)
     if not isTargetStillValid(lockedTarget) then
+        -- HEDEF GEÇERSİZ, YENİSİNİ BUL
         lockedTarget = nil
         lockedTarget = findNearestEnemy()
         if not lockedTarget then
@@ -770,7 +762,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- SIFIR TİTREME - Direkt CFrame ataması (Lerp yok, yumuşaklık yok)
+    -- SIFIR TİTREME - Direkt CFrame ataması (Lerp yok)
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
@@ -787,7 +779,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V2 - HEAD ÖNCELİKLİ + SIFIR TİTREME + WALLCHECK
+-- AIMBOT V2 - HEAD ÖNCELİKLİ + SIFIR TİTREME
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -901,10 +893,11 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 SIFIR TİTREME + WALLCHECK HAZIR ⚡                    ║")
+print("║   🔥 AIMBOT v42.0 - KESİNTİSİZ KİLİT + SIFIR TİTREME ⚡   ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
-print("║  🎯 SIFIR TİTREME - KESİNTİSİZ TAKİP (Lerp yok)          ║")
-print("║  👁️  ADAM NEREYE GİDERSE GİTSİN KESİNTİSİZ BAKAR          ║")
-print("║  💀 SADECE ÖLÜRSE veya DUVAR GİRERSE BIRAKIR              ║")
+print("║  🎯 HEDEF BUL → KİLİTLE → ASLA BIRAKMA                    ║")
+print("║  👁️  ADAM ÖLENE KADAR KESİNTİSİZ BAKAR                    ║")
+print("║  🧱 DUVAR GİRİNCE YENİ HEDEF BULUR                        ║")
+print("║  💀 HEDEF ÖLÜNCE YENİ HEDEF BULUR                         ║")
+print("║  🚫 SIFIR TİTREME - DİREKT CFARME ATAMASI                 ║")
 print("╚══════════════════════════════════════════════════════════════╝")

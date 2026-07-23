@@ -539,13 +539,13 @@ end)
 print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    🔥 LEA MOD v39.0 - BÖLÜM 3/3 (AIMBOT - 1000 METRE + KESİNTİSİZ KİLİT)
+    🔥 AIMBOT v40.0 - GERÇEK KESİNTİSİZ KİLİT (BÖLÜM 3/3)
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ MESAFE 1000 METRE - Her yerdeki düşmanı bulur
-    ✅ KESİNTİSİZ KİLİT - Hedef ölene kadar veya duvar girene kadar BIRAKMAZ
-    ✅ BEKLEME YOK - Anında kilit, anında takip
-    ✅ HEDEF DEĞİŞMEZ - Kilitli hedef asla değişmez (ölmezse veya duvar girmezse)
+    ✅ HEDEF BUL → KİLİTLE → ASLA BIRAKMA
+    ✅ KESİNTİSİZ TAKİP - Adam nereye giderse gitsin
+    ✅ SADECE ÖLÜRSE veya DUVAR GİRERSE BIRAKIR
+    ✅ BIRAKIRSA YENİ HEDEF BULUR
 ]]
 
 local Players = game:GetService("Players")
@@ -556,7 +556,7 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local isAiming = false
-local lockedTarget = nil          -- KİLİTLİ HEDEF (DEĞİŞMEZ)
+local lockedTarget = nil          -- KİLİTLİ HEDEF - ASLA DEĞİŞMEZ
 local viewportSize = Camera.ViewportSize
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -601,12 +601,12 @@ local function canSeeTarget(targetRoot)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- HEDEF BUL (MESAFE 1000 METRE)
+-- HEDEF BUL
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function findNearestEnemy()
     local target = nil
-    local shortestDist = 1000  -- <-- 1000 METRE
+    local shortestDist = 1000
     
     for _, player in ipairs(Players:GetPlayers()) do
         if not isEnemy(player) then continue end
@@ -619,24 +619,9 @@ local function findNearestEnemy()
         
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then 
-            if getgenv().LEAModState.KillCheck then 
-                -- Ölüyse geç
-            else
-                -- KillCheck kapalıysa ölüyü de al
-            end
-            if hum and hum.Health <= 0 then
-                -- Ölüyse atla
-            end
+            if getgenv().LEAModState.KillCheck then continue end
         end
         
-        -- ÖLÜ KONTROLÜ
-        if hum and hum.Health <= 0 then
-            if getgenv().LEAModState.KillCheck then
-                continue  -- KillCheck açık ve ölü → GEÇ
-            end
-        end
-        
-        -- DUVAR KONTROLÜ (ilk hedef bulmada duvar kontrolü yapma, direkt bul)
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
         
         if dist < shortestDist then
@@ -648,7 +633,7 @@ local function findNearestEnemy()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- KİLİTLİ HEDEF GEÇERLİ Mİ? (ÖLDÜ MÜ? DUVAR MI VAR?)
+-- KİLİTLİ HEDEF GEÇERLİ Mİ? (SADECE ÖLÜM VE DUVAR KONTROLÜ)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function isTargetStillValid(targetPlayer)
@@ -663,17 +648,17 @@ local function isTargetStillValid(targetPlayer)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
     
-    -- ÖLÜ MÜ?
+    -- 1. ÖLÜ MÜ?
     if hum.Health <= 0 then
         if getgenv().LEAModState.KillCheck then
-            return false  -- Ölü → GEÇERSİZ
+            return false
         end
     end
     
-    -- DUVAR VAR MI? (SADECE WALLCHECK AÇIKSA)
+    -- 2. DUVAR VAR MI? (WALLCHECK AÇIKSA)
     if getgenv().LEAModState.WallCheck then
         if not canSeeTarget(root) then
-            return false  -- Duvar var → GEÇERSİZ
+            return false
         end
     end
     
@@ -690,6 +675,7 @@ UserInputService.InputBegan:Connect(function(input)
         if pos.X > viewportSize.X / 2 then
             if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 then
                 isAiming = true
+                -- SADECE HEDEF YOKSA BUL
                 if not lockedTarget then
                     lockedTarget = findNearestEnemy()
                 end
@@ -701,7 +687,7 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         isAiming = false
-        lockedTarget = nil
+        lockedTarget = nil  -- SADECE AIM KAPANINCA SIFIRLA
     end
 end)
 
@@ -724,7 +710,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V1 - KESİNTİSİZ KİLİT (1000 METRE)
+-- AIMBOT V1 - KESİNTİSİZ KİLİT (ASLA BIRAKMAZ)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -733,7 +719,7 @@ RunService.RenderStepped:Connect(function()
         return
     end
     
-    -- HEDEF YOK → BUL
+    -- HEDEF YOKSA BUL
     if not lockedTarget then
         lockedTarget = findNearestEnemy()
         if not lockedTarget then
@@ -741,16 +727,16 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- KİLİTLİ HEDEF GEÇERLİ Mİ? (ÖLÜ VEYA DUVAR)
+    -- KİLİTLİ HEDEF GEÇERLİ Mİ? (SADECE ÖLÜM veya DUVAR)
     if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil  -- Hedefi sıfırla
-        lockedTarget = findNearestEnemy()  -- Yeni hedef bul
+        lockedTarget = nil  -- GEÇERSİZ, SIFIRLA
+        lockedTarget = findNearestEnemy()  -- YENİ BUL
         if not lockedTarget then
             return
         end
     end
     
-    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP ET
+    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP (ASLA BIRAKMAZ)
     local char = lockedTarget.Character
     if not char then
         lockedTarget = nil
@@ -788,7 +774,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V2 - HEAD ÖNCELİKLİ (1000 METRE)
+-- AIMBOT V2 - HEAD ÖNCELİKLİ (KESİNTİSİZ KİLİT)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -797,7 +783,7 @@ RunService.RenderStepped:Connect(function()
         return
     end
     
-    -- HEDEF YOK → BUL (HEAD ÖNCELİKLİ)
+    -- HEDEF YOKSA BUL (HEAD ÖNCELİKLİ)
     if not lockedTarget then
         local target = nil
         local shortestDist = 1000
@@ -850,7 +836,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- HEDEF GEÇERLİ → TAKİP ET
+    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP
     local char = lockedTarget.Character
     if not char then
         lockedTarget = nil
@@ -896,11 +882,10 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 AIMBOT - 1000 METRE + KESİNTİSİZ KİLİT HAZIR ⚡       ║")
+print("║   🔥 GERÇEK KESİNTİSİZ KİLİT HAZIR ⚡                       ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 MESAFE: 1000 METRE - Her yerdeki düşmanı bulur        ║")
-print("║  🔒 KESİNTİSİZ KİLİT - Ölene kadar veya duvar girene kadar ║")
-print("║  🚫 BEKLEME YOK - Anında kilit, anında takip               ║")
-print("║  🧱 DUVAR GİRİNCE - Yeni hedef bulur                       ║")
-print("║  💀 HEDEF ÖLÜNCE - Yeni hedef bulur                        ║")
+print("║  🎯 HEDEF BUL → KİLİTLE → ASLA BIRAKMA                    ║")
+print("║  👁️  ADAM NEREYE GİDERSE GİTSİN KESİNTİSİZ BAKAR          ║")
+print("║  💀 SADECE ÖLÜRSE veya DUVAR GİRERSE BIRAKIR              ║")
+print("║  🔄 BIRAKIRSA YENİ HEDEF BULUR                            ║")
 print("╚══════════════════════════════════════════════════════════════╝")

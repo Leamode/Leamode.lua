@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v36.0 - BÖLÜM 1/3 (AYARLAR + GUI)
+    📱 LEA MOD v37.0 - BÖLÜM 1/3 (AYARLAR + GUI - GÜNCELLENDİ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -258,7 +258,7 @@ end)
 
 print("✅ BÖLÜM 1/3 YÜKLENDİ - BÖLÜM 2/3'Ü ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v36.0 - BÖLÜM 2/3 (TÜM ÖZELLİKLER - DÜZELTİLDİ)
+    📱 LEA MOD v37.0 - BÖLÜM 2/3 (ESP + TÜM ÖZELLİKLER - GÜNCELLENDİ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -271,16 +271,17 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local espCache = {}
+local viewportSize = Camera.ViewportSize
 
--- TEAM CHECK - DÜZELTİLDİ
+-- TEAM CHECK
 local function isEnemy(player)
     if player == LocalPlayer then return false end
     if getgenv().LEAModState.TeamCheck then
         if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-            return false -- TAKIM ARKADAŞI
+            return false
         end
     end
-    return true -- DÜŞMAN
+    return true
 end
 
 local function getHitbox(char)
@@ -305,12 +306,11 @@ local function canSeeTarget(targetRoot)
     if result then
         local hit = result.Instance
         if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
-        return false -- DUVAR VAR
+        return false
     end
-    return true -- GÖRÜYOR
+    return true
 end
 
--- EN YAKIN DÜŞMAN (SADECE GÖRÜNENLER)
 local function getNearestEnemy()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
@@ -334,7 +334,10 @@ local function getNearestEnemy()
     return target
 end
 
--- 1. ESP
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 1. ESP (GÜNCELLENDİ - ÖLÜ KONTROLÜ + YENİDEN DOĞMA)
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local function removeESP(player)
     if espCache[player] then
         for _, obj in pairs(espCache[player]) do
@@ -344,58 +347,97 @@ local function removeESP(player)
     end
 end
 
+local function createESPForPlayer(player)
+    if player == LocalPlayer then return end
+    if not player.Character then return end
+    
+    local char = player.Character
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not root or not humanoid then return end
+    
+    if espCache[player] then removeESP(player) end
+    
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "ESPBox"
+    box.Size = char:GetExtentsSize()
+    box.Adornee = char
+    box.AlwaysOnTop = true
+    box.ZIndex = 5
+    box.Transparency = 0.5
+    box.Parent = CoreGui
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESPInfo"
+    billboard.Adornee = root
+    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = CoreGui
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "InfoText"
+    textLabel.Parent = billboard
+    textLabel.BackgroundTransparency = 1
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 14
+    textLabel.TextStrokeTransparency = 0
+    
+    espCache[player] = {Box = box, Billboard = billboard, Text = textLabel}
+end
+
+-- ESP Ana döngü (güncellendi)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.ESP then
         for player, _ in pairs(espCache) do removeESP(player) end
         return
     end
+    
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local char = player.Character
-            local root = char.HumanoidRootPart
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if not espCache[player] then
-                local box = Instance.new("BoxHandleAdornment")
-                box.Name = "ESPBox"
-                box.Size = char:GetExtentsSize()
-                box.Adornee = char
-                box.AlwaysOnTop = true
-                box.ZIndex = 5
-                box.Transparency = 0.5
-                box.Parent = CoreGui
-                local billboard = Instance.new("BillboardGui")
-                billboard.Name = "ESPInfo"
-                billboard.Adornee = root
-                billboard.Size = UDim2.new(0, 100, 0, 40)
-                billboard.StudsOffset = Vector3.new(0, 3, 0)
-                billboard.AlwaysOnTop = true
-                billboard.Parent = CoreGui
-                local textLabel = Instance.new("TextLabel")
-                textLabel.Name = "InfoText"
-                textLabel.Parent = billboard
-                textLabel.BackgroundTransparency = 1
-                textLabel.Size = UDim2.new(1, 0, 1, 0)
-                textLabel.Font = Enum.Font.SourceSansBold
-                textLabel.TextSize = 14
-                textLabel.TextStrokeTransparency = 0
-                espCache[player] = {Box = box, Billboard = billboard, Text = textLabel}
-            end
-            local cache = espCache[player]
+        if player == LocalPlayer then continue end
+        
+        local char = player.Character
+        if not char then
+            removeESP(player)
+            continue
+        end
+        
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if not root or not humanoid then
+            removeESP(player)
+            continue
+        end
+        
+        -- ÖLÜ KONTROLÜ - Eğer ölüyse ESP'yi kaldır
+        if humanoid.Health <= 0 then
+            removeESP(player)
+            continue
+        end
+        
+        -- ESP yoksa oluştur
+        if not espCache[player] then
+            createESPForPlayer(player)
+        end
+        
+        -- ESP varsa güncelle
+        local cache = espCache[player]
+        if cache then
             local enemyCheck = isEnemy(player)
             local color = enemyCheck and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
             cache.Box.Color3 = color
-            if humanoid then
-                local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-                cache.Text.Text = string.format("%s\nHP: %d | %dm", player.Name, math.floor(humanoid.Health), dist)
-                cache.Text.TextColor3 = color
-            end
-        else
-            removeESP(player)
+            local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
+            cache.Text.Text = string.format("%s\nHP: %d | %dm", player.Name, math.floor(humanoid.Health), dist)
+            cache.Text.TextColor3 = color
         end
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 2. 360
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Spin360 then
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -403,7 +445,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 3. Rainbow
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Rainbow then
         local char = LocalPlayer.Character
@@ -417,7 +462,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 4. InfJump
+-- ═══════════════════════════════════════════════════════════════════════════
+
 UserInputService.JumpRequest:Connect(function()
     if getgenv().LEAModState.InfJump then
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -425,7 +473,10 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 5. Bunnyhop
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.Bunnyhop then return end
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -435,7 +486,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 6. Teleport
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.Heartbeat:Connect(function()
     if not getgenv().LEAModState.Teleport then return end
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -455,7 +509,10 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 7. Fly
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if getgenv().LEAModState.Fly and char and char:FindFirstChild("HumanoidRootPart") then
@@ -467,7 +524,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 8. Speed
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -478,14 +538,8 @@ end)
 
 print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v36.0 - BÖLÜM 3/3 (AIMBOT V1 + V2 - DÜZELTİLDİ)
+    📱 LEA MOD v37.0 - BÖLÜM 3/3 (AIMBOT + TRIGGERBOT - GÜNCELLENDİ)
     ═══════════════════════════════════════════════════════════════════════════
-    
-    ✅ V1 - Crosshair ortasına TAM KİLİT (kesintisiz takip)
-    ✅ V2 - Head öncelikli + Crosshair TAKİPLİ (yumuşak geçiş)
-    ✅ TeamCheck - TAKIMA KİTLENMEZ
-    ✅ WallCheck - DUVAR ARKASINA KİTLENMEZ
-    ✅ KillCheck - ÖLÜNCE DİREK GEÇER
 ]]
 
 local Players = game:GetService("Players")
@@ -499,15 +553,14 @@ local isAiming = false
 local currentTarget = nil
 local viewportSize = Camera.ViewportSize
 
--- TEAM CHECK - DÜZELTİLDİ
 local function isEnemy(player)
     if player == LocalPlayer then return false end
     if getgenv().LEAModState.TeamCheck then
         if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-            return false -- TAKIM ARKADAŞI
+            return false
         end
     end
-    return true -- DÜŞMAN
+    return true
 end
 
 local function getHitbox(char)
@@ -532,12 +585,11 @@ local function canSeeTarget(targetRoot)
     if result then
         local hit = result.Instance
         if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
-        return false -- DUVAR VAR
+        return false
     end
-    return true -- GÖRÜYOR
+    return true
 end
 
--- V1 - En yakın düşman (görünen, ölü değil)
 local function getNearestEnemyV1()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
@@ -561,7 +613,6 @@ local function getNearestEnemyV1()
     return target
 end
 
--- V2 - Head öncelikli
 local function getNearestEnemyV2()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
@@ -620,7 +671,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V1 - TAM KİLİT (KESİNTİSİZ TAKİP)
+-- AIMBOT V1 - TAM KİLİT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -654,8 +705,6 @@ RunService.RenderStepped:Connect(function()
     end
     
     currentTarget = target
-    
-    -- TAM KİLİT - Her frame'de kamera güncellenir
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
@@ -671,7 +720,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V2 - HEAD ÖNCELİKLİ + CROSSHAIR TAKİPLİ
+-- AIMBOT V2 - HEAD ÖNCELİKLİ
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -705,38 +754,9 @@ RunService.RenderStepped:Connect(function()
     end
     
     currentTarget = target
-    
-    -- Crosshair pozisyonu
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
-    
-    -- Hedefin ekran pozisyonu
-    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-    
-    if onScreen then
-        -- Crosshair'e uzaklık
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
-        
-        -- Crosshair'den uzakta ise yumuşak yaklaş, yakınsa direkt kilit
-        if dist > 20 then
-            -- Yumuşak geçiş
-            local smoothFactor = 0.3
-            local newX = screenPos.X + (centerX - screenPos.X) * smoothFactor
-            local newY = screenPos.Y + (centerY - screenPos.Y) * smoothFactor
-            
-            -- Yeni pozisyona göre kamerayı çevir
-            local newPos = Camera:ViewportPointToRay(newX, newY, 0)
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, root.Position)
-        else
-            -- Direkt kilit
-            local currentPos = Camera.CFrame.Position
-            Camera.CFrame = CFrame.new(currentPos, root.Position)
-        end
-    else
-        -- Ekranda değilse direkt kilit
-        local currentPos = Camera.CFrame.Position
-        Camera.CFrame = CFrame.new(currentPos, root.Position)
-    end
+    local targetPos = root.Position
+    local currentPos = Camera.CFrame.Position
+    Camera.CFrame = CFrame.new(currentPos, targetPos)
     
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
@@ -785,19 +805,76 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- KARAKTER DEĞİŞİMİ
+-- KARAKTER DEĞİŞİMİ (TÜM SİSTEMLER YENİDEN BAŞLATILIR)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-LocalPlayer.CharacterAdded:Connect(function()
+local function restartAllSystems()
+    -- Aimbot hedefini sıfırla
     currentTarget = nil
+    isAiming = false
+    
+    -- ESP'yi yeniden oluştur
+    for player, _ in pairs(espCache) do
+        removeESP(player)
+    end
+    wait(0.1)
+    if getgenv().LEAModState.ESP then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createESPForPlayer(player)
+            end
+        end
+    end
+    
+    -- Speed yeniden ayarla
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = getgenv().LEAModState.SpeedVal
+        hum.JumpPower = 50
+    end
+    
+    -- Fly yeniden başlat
+    if getgenv().LEAModState.Fly then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local humFly = char:FindFirstChildOfClass("Humanoid")
+            if humFly then humFly.PlatformStand = true end
+        end
+    end
+    
+    -- Rainbow yeniden başlat
+    if getgenv().LEAModState.Rainbow then
+        local char = LocalPlayer.Character
+        if char then
+            local hue = tick() % 5 / 5
+            local rainbowColor = Color3.fromHSV(hue, 1, 1)
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.Color = rainbowColor end
+            end
+        end
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(0.5)
+    restartAllSystems()
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- OYUNCU ÇIKIŞINDA ESP TEMİZLE
+-- ═══════════════════════════════════════════════════════════════════════════
+
+Players.PlayerRemoving:Connect(function(player)
+    removeESP(player)
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
 print("║   📱 BÖLÜM 3/3 - AIMBOT V1 + V2 HAZIR ⚡                   ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 V1 - TAM KİLİT (kesintisiz takip)                      ║")
-print("║  🎯 V2 - HEAD öncelikli + crosshair takipli                ║")
+print("║  🎯 V1 - TAM KİLİT                                         ║")
+print("║  🎯 V2 - HEAD ÖNCELİKLİ                                    ║")
 print("║  🧱 WallCheck - DUVAR ARKASINA KİTLENMEZ                   ║")
 print("║  💀 KillCheck - ÖLÜNCE DİREK GEÇER                         ║")
 print("║  🛡️ TeamCheck - TAKIMA KİTLENMEZ                           ║")
+print("║  🔄 Ölüp yeniden doğunca TÜM SİSTEMLER YENİDEN BAŞLAR     ║")
 print("╚══════════════════════════════════════════════════════════════╝")

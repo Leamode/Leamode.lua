@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v35.0 - BÖLÜM 1/3 (AYARLAR + GUI)
+    📱 LEA MOD v36.0 - BÖLÜM 1/3 (AYARLAR + GUI)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -132,6 +132,7 @@ createButton("Fly", "Fly")
 createButton("Bunnyhop", "Bunnyhop")
 createButton("Triggerbot", "Triggerbot")
 
+-- Speed
 local SpeedFrame = Instance.new("Frame")
 SpeedFrame.Parent = MainFrame
 SpeedFrame.BackgroundTransparency = 1
@@ -176,6 +177,7 @@ SpeedInc.MouseButton1Click:Connect(function()
     SpeedLabel.Text = tostring(getgenv().LEAModState.SpeedVal)
 end)
 
+-- Fly
 local FlyFrame = Instance.new("Frame")
 FlyFrame.Parent = MainFrame
 FlyFrame.BackgroundTransparency = 1
@@ -256,7 +258,7 @@ end)
 
 print("✅ BÖLÜM 1/3 YÜKLENDİ - BÖLÜM 2/3'Ü ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v35.0 - BÖLÜM 2/3 (TÜM ÖZELLİKLER - DÜZELTİLDİ)
+    📱 LEA MOD v36.0 - BÖLÜM 2/3 (TÜM ÖZELLİKLER - DÜZELTİLDİ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -270,12 +272,15 @@ local LocalPlayer = Players.LocalPlayer
 
 local espCache = {}
 
+-- TEAM CHECK - DÜZELTİLDİ
 local function isEnemy(player)
     if player == LocalPlayer then return false end
     if getgenv().LEAModState.TeamCheck then
-        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return false end
+        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+            return false -- TAKIM ARKADAŞI
+        end
     end
-    return true
+    return true -- DÜŞMAN
 end
 
 local function getHitbox(char)
@@ -300,11 +305,12 @@ local function canSeeTarget(targetRoot)
     if result then
         local hit = result.Instance
         if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
-        return false
+        return false -- DUVAR VAR
     end
-    return true
+    return true -- GÖRÜYOR
 end
 
+-- EN YAKIN DÜŞMAN (SADECE GÖRÜNENLER)
 local function getNearestEnemy()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
@@ -315,8 +321,9 @@ local function getNearestEnemy()
         local root = getHitbox(char)
         if not root then continue end
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.KillCheck and hum.Health <= 0 then continue end
+        if not hum or hum.Health <= 0 then 
+            if getgenv().LEAModState.KillCheck then continue end
+        end
         if not canSeeTarget(root) then continue end
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
         if dist < shortestDist then
@@ -428,7 +435,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 6. Teleport (DÜZELTİLDİ - BAĞIMSIZ)
+-- 6. Teleport
 RunService.Heartbeat:Connect(function()
     if not getgenv().LEAModState.Teleport then return end
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -439,7 +446,6 @@ RunService.Heartbeat:Connect(function()
     if not tChar then return end
     local tRoot = tChar:FindFirstChild("HumanoidRootPart")
     if not tRoot then return end
-    if not canSeeTarget(tRoot) then return end
     myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 4, 5)
     getgenv().LEAModState.Teleport = false
     local btn = MainFrame:FindFirstChild("TeleportBtn")
@@ -470,11 +476,16 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")
---[[
+print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v35.0 - BÖLÜM 3/3 (AIMBOT V1 + V2 - KESİNTİSİZ TAKİP)
+    📱 LEA MOD v36.0 - BÖLÜM 3/3 (AIMBOT V1 + V2 - DÜZELTİLDİ)
     ═══════════════════════════════════════════════════════════════════════════
+    
+    ✅ V1 - Crosshair ortasına TAM KİLİT (kesintisiz takip)
+    ✅ V2 - Head öncelikli + Crosshair TAKİPLİ (yumuşak geçiş)
+    ✅ TeamCheck - TAKIMA KİTLENMEZ
+    ✅ WallCheck - DUVAR ARKASINA KİTLENMEZ
+    ✅ KillCheck - ÖLÜNCE DİREK GEÇER
 ]]
 
 local Players = game:GetService("Players")
@@ -488,12 +499,15 @@ local isAiming = false
 local currentTarget = nil
 local viewportSize = Camera.ViewportSize
 
+-- TEAM CHECK - DÜZELTİLDİ
 local function isEnemy(player)
     if player == LocalPlayer then return false end
     if getgenv().LEAModState.TeamCheck then
-        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return false end
+        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+            return false -- TAKIM ARKADAŞI
+        end
     end
-    return true
+    return true -- DÜŞMAN
 end
 
 local function getHitbox(char)
@@ -518,12 +532,13 @@ local function canSeeTarget(targetRoot)
     if result then
         local hit = result.Instance
         if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
-        return false
+        return false -- DUVAR VAR
     end
-    return true
+    return true -- GÖRÜYOR
 end
 
-local function getNearestEnemy()
+-- V1 - En yakın düşman (görünen, ölü değil)
+local function getNearestEnemyV1()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
     for _, player in ipairs(Players:GetPlayers()) do
@@ -533,8 +548,9 @@ local function getNearestEnemy()
         local root = getHitbox(char)
         if not root then continue end
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.KillCheck and hum.Health <= 0 then continue end
+        if not hum or hum.Health <= 0 then 
+            if getgenv().LEAModState.KillCheck then continue end
+        end
         if not canSeeTarget(root) then continue end
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
         if dist < shortestDist then
@@ -545,7 +561,7 @@ local function getNearestEnemy()
     return target
 end
 
--- V2 için Head öncelikli
+-- V2 - Head öncelikli
 local function getNearestEnemyV2()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
@@ -556,8 +572,9 @@ local function getNearestEnemyV2()
         local root = char:FindFirstChild("Head") or getHitbox(char)
         if not root then continue end
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.KillCheck and hum.Health <= 0 then continue end
+        if not hum or hum.Health <= 0 then 
+            if getgenv().LEAModState.KillCheck then continue end
+        end
         if not canSeeTarget(root) then continue end
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
         if dist < shortestDist then
@@ -568,7 +585,7 @@ local function getNearestEnemyV2()
     return target
 end
 
--- INPUT - TEK ORTAK INPUT
+-- INPUT
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         local pos = input.Position
@@ -603,7 +620,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V1 - KESİNTİSİZ TAKİP (Her frame'de güncelle)
+-- AIMBOT V1 - TAM KİLİT (KESİNTİSİZ TAKİP)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -612,7 +629,7 @@ RunService.RenderStepped:Connect(function()
         return
     end
     
-    local target = getNearestEnemy()
+    local target = getNearestEnemyV1()
     if not target then
         if currentTarget then currentTarget = nil end
         return
@@ -638,7 +655,7 @@ RunService.RenderStepped:Connect(function()
     
     currentTarget = target
     
-    -- KESİNTİSİZ TAKİP - Her frame'de kamera güncellenir
+    -- TAM KİLİT - Her frame'de kamera güncellenir
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
@@ -654,7 +671,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V2 - HEAD ÖNCELİKLİ + KESİNTİSİZ TAKİP
+-- AIMBOT V2 - HEAD ÖNCELİKLİ + CROSSHAIR TAKİPLİ
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -689,10 +706,37 @@ RunService.RenderStepped:Connect(function()
     
     currentTarget = target
     
-    -- KESİNTİSİZ TAKİP - Her frame'de kamera güncellenir
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
+    -- Crosshair pozisyonu
+    local centerX = viewportSize.X / 2
+    local centerY = viewportSize.Y / 2
+    
+    -- Hedefin ekran pozisyonu
+    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+    
+    if onScreen then
+        -- Crosshair'e uzaklık
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+        
+        -- Crosshair'den uzakta ise yumuşak yaklaş, yakınsa direkt kilit
+        if dist > 20 then
+            -- Yumuşak geçiş
+            local smoothFactor = 0.3
+            local newX = screenPos.X + (centerX - screenPos.X) * smoothFactor
+            local newY = screenPos.Y + (centerY - screenPos.Y) * smoothFactor
+            
+            -- Yeni pozisyona göre kamerayı çevir
+            local newPos = Camera:ViewportPointToRay(newX, newY, 0)
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, root.Position)
+        else
+            -- Direkt kilit
+            local currentPos = Camera.CFrame.Position
+            Camera.CFrame = CFrame.new(currentPos, root.Position)
+        end
+    else
+        -- Ekranda değilse direkt kilit
+        local currentPos = Camera.CFrame.Position
+        Camera.CFrame = CFrame.new(currentPos, root.Position)
+    end
     
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
@@ -711,7 +755,7 @@ end)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.Triggerbot then return end
     
-    local target = getNearestEnemy()
+    local target = getNearestEnemyV1()
     if not target then return end
     
     local char = target.Character
@@ -751,9 +795,9 @@ end)
 print("╔══════════════════════════════════════════════════════════════╗")
 print("║   📱 BÖLÜM 3/3 - AIMBOT V1 + V2 HAZIR ⚡                   ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 V1 - Crosshair ortasına KESİNTİSİZ kilit              ║")
-print("║  🎯 V2 - Head öncelikli KESİNTİSİZ kilit                  ║")
-print("║  🧱 WallCheck - Duvar arkasındaki düşmana kitlenmez        ║")
-print("║  💀 KillCheck - Düşman ölünce otomatik diğerine geçer      ║")
-print("║  🚀 Teleport - Bağımsız çalışır (bozulmadı)                ║")
+print("║  🎯 V1 - TAM KİLİT (kesintisiz takip)                      ║")
+print("║  🎯 V2 - HEAD öncelikli + crosshair takipli                ║")
+print("║  🧱 WallCheck - DUVAR ARKASINA KİTLENMEZ                   ║")
+print("║  💀 KillCheck - ÖLÜNCE DİREK GEÇER                         ║")
+print("║  🛡️ TeamCheck - TAKIMA KİTLENMEZ                           ║")
 print("╚══════════════════════════════════════════════════════════════╝")

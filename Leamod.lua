@@ -539,13 +539,13 @@ end)
 print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    🔥 AIMBOT v40.0 - GERÇEK KESİNTİSİZ KİLİT (BÖLÜM 3/3)
+    🔥 AIMBOT v41.0 - SIFIR TİTREME + WALLCHECK (BÖLÜM 3/3)
     ═══════════════════════════════════════════════════════════════════════════
     
-    ✅ HEDEF BUL → KİLİTLE → ASLA BIRAKMA
-    ✅ KESİNTİSİZ TAKİP - Adam nereye giderse gitsin
+    ✅ WALLCHECK - DUVAR ARKASINA KİTLENMEZ (RAYCAST)
+    ✅ SIFIR TİTREME - KESİNTİSİZ TAKİP (YUMUŞAKLIK YOK)
     ✅ SADECE ÖLÜRSE veya DUVAR GİRERSE BIRAKIR
-    ✅ BIRAKIRSA YENİ HEDEF BULUR
+    ✅ HEDEF NEREYE GİDERSE GİTSİN KESİNTİSİZ BAKAR
 ]]
 
 local Players = game:GetService("Players")
@@ -556,7 +556,7 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local isAiming = false
-local lockedTarget = nil          -- KİLİTLİ HEDEF - ASLA DEĞİŞMEZ
+local lockedTarget = nil
 local viewportSize = Camera.ViewportSize
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -582,28 +582,38 @@ local function getHitbox(char)
     return nil
 end
 
+-- WALLCHECK - DUVAR KONTROLÜ (Kesin çözüm)
 local function canSeeTarget(targetRoot)
     if not getgenv().LEAModState.WallCheck then return true end
+    
     local origin = Camera.CFrame.Position
     local targetPos = targetRoot.Position
+    
+    -- Hedefin merkezine doğru raycast
     local direction = (targetPos - origin).Unit
     local distance = (targetPos - origin).Magnitude
+    
     local params = RaycastParams.new()
     params.FilterDescendantsInstances = {LocalPlayer.Character, targetRoot.Parent}
     params.FilterType = Enum.RaycastFilterType.Exclude
+    params.IgnoreWater = true
+    
     local result = Workspace:Raycast(origin, direction * distance, params)
+    
     if result then
         local hit = result.Instance
-        if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
+        -- Eğer vurulan şey hedefin bir parçasıysa görüyor
+        if hit and hit:IsDescendantOf(targetRoot.Parent) then
+            return true
+        end
+        -- Vurulan şey duvar veya başka bir obje
         return false
     end
+    
     return true
 end
 
--- ═══════════════════════════════════════════════════════════════════════════
 -- HEDEF BUL
--- ═══════════════════════════════════════════════════════════════════════════
-
 local function findNearestEnemy()
     local target = nil
     local shortestDist = 1000
@@ -622,6 +632,13 @@ local function findNearestEnemy()
             if getgenv().LEAModState.KillCheck then continue end
         end
         
+        -- WALLCHECK - DUVAR ARKASINDAKİNİ ALMA
+        if getgenv().LEAModState.WallCheck then
+            if not canSeeTarget(root) then
+                continue  -- Duvara çarptı, bu hedefi alma
+            end
+        end
+        
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
         
         if dist < shortestDist then
@@ -632,10 +649,7 @@ local function findNearestEnemy()
     return target
 end
 
--- ═══════════════════════════════════════════════════════════════════════════
--- KİLİTLİ HEDEF GEÇERLİ Mİ? (SADECE ÖLÜM VE DUVAR KONTROLÜ)
--- ═══════════════════════════════════════════════════════════════════════════
-
+-- KİLİTLİ HEDEF GEÇERLİ Mİ?
 local function isTargetStillValid(targetPlayer)
     if not targetPlayer then return false end
     
@@ -662,7 +676,7 @@ local function isTargetStillValid(targetPlayer)
         end
     end
     
-    return true  -- GEÇERLİ
+    return true
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -675,7 +689,6 @@ UserInputService.InputBegan:Connect(function(input)
         if pos.X > viewportSize.X / 2 then
             if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 then
                 isAiming = true
-                -- SADECE HEDEF YOKSA BUL
                 if not lockedTarget then
                     lockedTarget = findNearestEnemy()
                 end
@@ -687,7 +700,7 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         isAiming = false
-        lockedTarget = nil  -- SADECE AIM KAPANINCA SIFIRLA
+        lockedTarget = nil
     end
 end)
 
@@ -710,7 +723,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V1 - KESİNTİSİZ KİLİT (ASLA BIRAKMAZ)
+-- AIMBOT V1 - SIFIR TİTREME + WALLCHECK
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -727,16 +740,16 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- KİLİTLİ HEDEF GEÇERLİ Mİ? (SADECE ÖLÜM veya DUVAR)
+    -- KİLİTLİ HEDEF GEÇERLİ Mİ?
     if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil  -- GEÇERSİZ, SIFIRLA
-        lockedTarget = findNearestEnemy()  -- YENİ BUL
+        lockedTarget = nil
+        lockedTarget = findNearestEnemy()
         if not lockedTarget then
             return
         end
     end
     
-    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP (ASLA BIRAKMAZ)
+    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP
     local char = lockedTarget.Character
     if not char then
         lockedTarget = nil
@@ -757,7 +770,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- TAM KİLİT - Her frame'de hedefe bak
+    -- SIFIR TİTREME - Direkt CFrame ataması (Lerp yok, yumuşaklık yok)
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
@@ -774,7 +787,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V2 - HEAD ÖNCELİKLİ (KESİNTİSİZ KİLİT)
+-- AIMBOT V2 - HEAD ÖNCELİKLİ + SIFIR TİTREME + WALLCHECK
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -796,6 +809,9 @@ RunService.RenderStepped:Connect(function()
             local hum = char:FindFirstChildOfClass("Humanoid")
             if not hum or hum.Health <= 0 then
                 if getgenv().LEAModState.KillCheck then continue end
+            end
+            if getgenv().LEAModState.WallCheck then
+                if not canSeeTarget(root) then continue end
             end
             local dist = (root.Position - Camera.CFrame.Position).Magnitude
             if dist < shortestDist then
@@ -823,6 +839,9 @@ RunService.RenderStepped:Connect(function()
             local hum = char:FindFirstChildOfClass("Humanoid")
             if not hum or hum.Health <= 0 then
                 if getgenv().LEAModState.KillCheck then continue end
+            end
+            if getgenv().LEAModState.WallCheck then
+                if not canSeeTarget(root) then continue end
             end
             local dist = (root.Position - Camera.CFrame.Position).Magnitude
             if dist < shortestDist then
@@ -857,7 +876,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- TAM KİLİT
+    -- SIFIR TİTREME - Direkt CFrame ataması
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
@@ -882,10 +901,10 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 GERÇEK KESİNTİSİZ KİLİT HAZIR ⚡                       ║")
+print("║   🔥 SIFIR TİTREME + WALLCHECK HAZIR ⚡                    ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 HEDEF BUL → KİLİTLE → ASLA BIRAKMA                    ║")
+print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
+print("║  🎯 SIFIR TİTREME - KESİNTİSİZ TAKİP (Lerp yok)          ║")
 print("║  👁️  ADAM NEREYE GİDERSE GİTSİN KESİNTİSİZ BAKAR          ║")
 print("║  💀 SADECE ÖLÜRSE veya DUVAR GİRERSE BIRAKIR              ║")
-print("║  🔄 BIRAKIRSA YENİ HEDEF BULUR                            ║")
 print("╚══════════════════════════════════════════════════════════════╝")

@@ -1,7 +1,12 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v32.0 - BÖLÜM 1/2 (TÜM ÖZELLİKLER)
+    📱 LEA MOD v33.0 - BÖLÜM 1/2 (AIMBOT V1 + V2 + TÜM ÖZELLİKLER)
     ═══════════════════════════════════════════════════════════════════════════
+    
+    ✅ AIMBOT V1 - Ekran sağına basılı tut, crosshair ortasına kilit
+    ✅ AIMBOT V2 - Crosshair neredeyse oraya kilit (1. şahıs/3. şahıs desteği)
+    ✅ WallCheck - Duvar arkasındaki düşmana kitlenmez
+    ✅ KillCheck - Düşman ölünce otomatik diğerine geçer
 ]]
 
 local Players = game:GetService("Players")
@@ -15,6 +20,7 @@ local LocalPlayer = Players.LocalPlayer
 -- STATES
 getgenv().LEAModState = {
     Aimbot = false,
+    AimbotV2 = false,
     ESP = false,
     Spin360 = false,
     Rainbow = false,
@@ -27,13 +33,18 @@ getgenv().LEAModState = {
     FOV = 360,
     TeamCheck = true,
     AutoFire = true,
+    WallCheck = true,
+    KillCheck = true,
     MenuVisible = true
 }
 
 local espCache = {}
 local viewportSize = Camera.ViewportSize
 
--- GUI
+-- ═══════════════════════════════════════════════════════════════════════════
+-- G U I
+-- ═══════════════════════════════════════════════════════════════════════════
+
 if CoreGui:FindFirstChild("LEAModUniversalGui") then CoreGui.LEAModUniversalGui:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -61,7 +72,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 MainFrame.BorderColor3 = Color3.fromRGB(170, 0, 255)
 MainFrame.BorderSizePixel = 1
 MainFrame.Position = UDim2.new(0.75, 0, 0.08, 0)
-MainFrame.Size = UDim2.new(0, 170, 0, 370)
+MainFrame.Size = UDim2.new(0, 180, 0, 420)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -110,7 +121,8 @@ local function createButton(name, key)
     return btn
 end
 
-createButton("Aimbot", "Aimbot")
+createButton("Aimbot V1", "Aimbot")
+createButton("Aimbot V2", "AimbotV2")
 createButton("ESP", "ESP")
 createButton("360", "Spin360")
 createButton("Rainbow", "Rainbow")
@@ -244,7 +256,10 @@ FlyRight.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- YARDIMCI FONKSİYONLAR
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local function isEnemy(player)
     if player == LocalPlayer then return false end
     if getgenv().LEAModState.TeamCheck then
@@ -262,22 +277,78 @@ local function getHitbox(char)
     return nil
 end
 
+-- WALL CHECK - Duvar kontrolü
+local function canSeeTarget(targetRoot)
+    if not getgenv().LEAModState.WallCheck then return true end
+    
+    local origin = Camera.CFrame.Position
+    local targetPos = targetRoot.Position
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+    
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character, targetRoot.Parent}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local result = Workspace:Raycast(origin, direction * distance, params)
+    
+    if result then
+        local hit = result.Instance
+        if hit and hit:IsDescendantOf(targetRoot.Parent) then
+            return true
+        end
+        return false
+    end
+    return true
+end
+
+-- Crosshair pozisyonu (1. şahıs/3. şahıs desteği)
+local function getCrosshairPosition()
+    -- Ekranın ortası
+    local centerX = viewportSize.X / 2
+    local centerY = viewportSize.Y / 2
+    
+    -- 3. şahıs kontrolü (karakter ekranın altında kalıyorsa)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local root = char.HumanoidRootPart
+        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if onScreen and screenPos.Y > viewportSize.Y / 2 then
+            -- Karakter ekranın alt yarısındaysa 3. şahıs
+            centerY = viewportSize.Y * 0.4 -- Crosshair'i biraz yukarı al
+        end
+    end
+    
+    return centerX, centerY
+end
+
 local function getNearestEnemy()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
+    local centerX, centerY = getCrosshairPosition()
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if not isEnemy(player) then continue end
         local char = player.Character
         if not char then continue end
+        
         local root = getHitbox(char)
         if not root then continue end
+        
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
+        
+        -- KILL CHECK - Ölüyse geç
+        if getgenv().LEAModState.KillCheck and hum.Health <= 0 then continue end
+        
+        -- WALL CHECK - Duvar arkasıysa geç
+        if not canSeeTarget(root) then continue end
+        
         local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
         if not onScreen then continue end
+        
         local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+        
         if dist < shortestDist then
             shortestDist = dist
             target = player
@@ -286,7 +357,10 @@ local function getNearestEnemy()
     return target
 end
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- ESP
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local function removeESP(player)
     if espCache[player] then
         for _, obj in pairs(espCache[player]) do
@@ -347,7 +421,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 360
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 360 SPIN
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Spin360 then
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -355,7 +432,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Rainbow
+-- ═══════════════════════════════════════════════════════════════════════════
+-- RAINBOW
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     if getgenv().LEAModState.Rainbow then
         local char = LocalPlayer.Character
@@ -369,7 +449,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- InfJump
+-- ═══════════════════════════════════════════════════════════════════════════
+-- INFINITE JUMP
+-- ═══════════════════════════════════════════════════════════════════════════
+
 UserInputService.JumpRequest:Connect(function()
     if getgenv().LEAModState.InfJump then
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -377,7 +460,10 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Bunnyhop
+-- ═══════════════════════════════════════════════════════════════════════════
+-- BUNNYHOP
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.Bunnyhop then return end
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -387,7 +473,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Teleport
+-- ═══════════════════════════════════════════════════════════════════════════
+-- TELEPORT
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.Heartbeat:Connect(function()
     if not getgenv().LEAModState.Teleport then return end
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -397,6 +486,7 @@ RunService.Heartbeat:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
         if isEnemy(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local root = player.Character.HumanoidRootPart
+            if not canSeeTarget(root) then continue end
             local dist = (myRoot.Position - root.Position).Magnitude
             if dist < shortestDistance then
                 shortestDistance = dist
@@ -415,7 +505,10 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Fly
+-- ═══════════════════════════════════════════════════════════════════════════
+-- FLY
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if getgenv().LEAModState.Fly and char and char:FindFirstChild("HumanoidRootPart") then
@@ -427,7 +520,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Speed
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SPEED
+-- ═══════════════════════════════════════════════════════════════════════════
+
 RunService.RenderStepped:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -438,8 +534,13 @@ end)
 
 print("✅ BÖLÜM 1/2 YÜKLENDİ - BÖLÜM 2/2'Yİ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v32.0 - BÖLÜM 2/2 (AIMBOT + TRIGGERBOT)
+    📱 LEA MOD v33.0 - BÖLÜM 2/2 (AIMBOT V1 + V2)
     ═══════════════════════════════════════════════════════════════════════════
+    
+    ✅ AIMBOT V1 - Ekran sağına basılı tut, crosshair ortasına kilit
+    ✅ AIMBOT V2 - Crosshair neredeyse oraya kilit (1. şahıs/3. şahıs desteği)
+    ✅ WallCheck - Duvar arkasındaki düşmana kitlenmez
+    ✅ KillCheck - Düşman ölünce otomatik diğerine geçer
 ]]
 
 local Players = game:GetService("Players")
@@ -449,9 +550,14 @@ local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local isAiming = false
+local isAimingV1 = false
+local isAimingV2 = false
 local currentTarget = nil
 local viewportSize = Camera.ViewportSize
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- YARDIMCI FONKSİYONLAR
+-- ═══════════════════════════════════════════════════════════════════════════
 
 local function isEnemy(player)
     if player == LocalPlayer then return false end
@@ -470,22 +576,72 @@ local function getHitbox(char)
     return nil
 end
 
+-- WALL CHECK
+local function canSeeTarget(targetRoot)
+    if not getgenv().LEAModState.WallCheck then return true end
+    
+    local origin = Camera.CFrame.Position
+    local targetPos = targetRoot.Position
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+    
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character, targetRoot.Parent}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local result = Workspace:Raycast(origin, direction * distance, params)
+    
+    if result then
+        local hit = result.Instance
+        if hit and hit:IsDescendantOf(targetRoot.Parent) then
+            return true
+        end
+        return false
+    end
+    return true
+end
+
+-- Crosshair pozisyonu (1. şahıs/3. şahıs desteği)
+local function getCrosshairPosition()
+    local centerX = viewportSize.X / 2
+    local centerY = viewportSize.Y / 2
+    
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local root = char.HumanoidRootPart
+        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if onScreen and screenPos.Y > viewportSize.Y / 2 then
+            centerY = viewportSize.Y * 0.38
+        end
+    end
+    
+    return centerX, centerY
+end
+
 local function getNearestEnemy()
     local target = nil
     local shortestDist = getgenv().LEAModState.FOV or 360
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
+    local centerX, centerY = getCrosshairPosition()
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if not isEnemy(player) then continue end
         local char = player.Character
         if not char then continue end
+        
         local root = getHitbox(char)
         if not root then continue end
+        
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
+        
+        if getgenv().LEAModState.KillCheck and hum.Health <= 0 then continue end
+        if not canSeeTarget(root) then continue end
+        
         local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
         if not onScreen then continue end
+        
         local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+        
         if dist < shortestDist then
             shortestDist = dist
             target = player
@@ -494,13 +650,16 @@ local function getNearestEnemy()
     return target
 end
 
--- AIMBOT - Telefon için ekranın sağ tarafı
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AIMBOT V1 - Ekran sağına basılı tut
+-- ═══════════════════════════════════════════════════════════════════════════
+
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         local pos = input.Position
         if pos.X > viewportSize.X / 2 then
             if getgenv().LEAModState.Aimbot then
-                isAiming = true
+                isAimingV1 = true
             end
         end
     end
@@ -508,30 +667,32 @@ end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
-        isAiming = false
+        isAimingV1 = false
+        isAimingV2 = false
         currentTarget = nil
     end
 end)
 
--- PC için Mouse sağ tık
+-- PC için
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         if getgenv().LEAModState.Aimbot then
-            isAiming = true
+            isAimingV1 = true
         end
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        isAiming = false
+        isAimingV1 = false
+        isAimingV2 = false
         currentTarget = nil
     end
 end)
 
--- Aimbot ana döngü
+-- AIMBOT V1 döngüsü
 RunService.RenderStepped:Connect(function()
-    if not getgenv().LEAModState.Aimbot or not isAiming then
+    if not getgenv().LEAModState.Aimbot or not isAimingV1 then
         if currentTarget then currentTarget = nil end
         return
     end
@@ -562,12 +723,10 @@ RunService.RenderStepped:Connect(function()
     
     currentTarget = target
     
-    -- TAM KİLİT - Camera.CFrame direkt değiştiriliyor
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
     
-    -- Otomatik ateş - mouse1 basımı
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
@@ -578,49 +737,42 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- TRIGGERBOT
-RunService.RenderStepped:Connect(function()
-    if not getgenv().LEAModState.Triggerbot then return end
+-- ═══════════════════════════════════════════════════════════════════════════
+-- AIMBOT V2 - Crosshair neredeyse oraya kilit (1. şahıs/3. şahıs desteği)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- V2 için ayrı tetikleme (Aimbot V2 butonu ile)
+-- V2 aktifken V1 çalışmaz, V2 çalışır
+
+-- V2 için Input (Aimbot V2 butonu ile aktif)
+-- V2 butonuna basınca aktif olur, sağ tık/touch ile kilit
+
+-- V2 döngüsü (Aimbot V2 aktifse ve isAimingV1 true ise çalışır)
+-- V2, V1 ile aynı tetikleme mekanizmasını kullanır ama farklı hesaplama yapar
+
+-- V2 için crosshair takibi (daha hassas)
+local function getNearestEnemyV2()
+    local target = nil
+    local shortestDist = getgenv().LEAModState.FOV or 360
+    local centerX, centerY = getCrosshairPosition()
     
-    local target = getNearestEnemy()
-    if not target then return end
-    
-    local char = target.Character
-    if not char then return end
-    
-    local root = getHitbox(char)
-    if not root then return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return end
-    
-    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-    if onScreen then
-        local centerX = viewportSize.X / 2
-        local centerY = viewportSize.Y / 2
+    for _, player in ipairs(Players:GetPlayers()) do
+        if not isEnemy(player) then continue end
+        local char = player.Character
+        if not char then continue end
+        
+        -- V2'de Head öncelikli
+        local root = char:FindFirstChild("Head") or getHitbox(char)
+        if not root then continue end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        
+        if getgenv().LEAModState.KillCheck and hum.Health <= 0 then continue end
+        if not canSeeTarget(root) then continue end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if not onScreen then continue end
+        
         local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
         
-        if dist < 50 then
-            local mouse = LocalPlayer:GetMouse()
-            if mouse then
-                mouse.Button1Down:Fire()
-                task.wait(0.03)
-                mouse.Button1Up:Fire()
-            end
-        end
-    end
-end)
-
--- Karakter değişimi
-LocalPlayer.CharacterAdded:Connect(function()
-    currentTarget = nil
-end)
-
-print("╔══════════════════════════════════════════════════════════════╗")
-print("║   📱 BÖLÜM 2/2 - AIMBOT + TRIGGERBOT HAZIR ⚡              ║")
-print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 AIMBOT - EKRANIN SAĞ TARAFINA BASILI TUT, KİLİT      ║")
-print("║  🔫 TRIGGERBOT - Crosshair hedefteyken otomatik ateş      ║")
-print("║  📐 FOV: 360 - HER YERDEKİ DÜŞMANI BULUR                  ║")
-print("║  💀 Düşman ölünce otomatik diğerine geçer                  ║")
-print("╚══════════════════════════════════════════════════════════════╝")

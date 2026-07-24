@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v37.0 - BÖLÜM 1/3 (AYARLAR + GUI - GÜNCELLENDİ)
+    📱 LEA MOD v43.0 - BÖLÜM 1/3 (AYARLAR + GUI - GÜNCELLENDİ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -24,7 +24,7 @@ getgenv().LEAModState = {
     Bunnyhop = false,
     Triggerbot = false,
     SpeedVal = 50,
-    FOV = 360,
+    FOV = 1000,
     TeamCheck = true,
     AutoFire = true,
     WallCheck = true,
@@ -32,7 +32,6 @@ getgenv().LEAModState = {
     MenuVisible = true
 }
 
-local espCache = {}
 local viewportSize = Camera.ViewportSize
 
 if CoreGui:FindFirstChild("LEAModUniversalGui") then CoreGui.LEAModUniversalGui:Destroy() end
@@ -116,6 +115,14 @@ local function createButton(name, key)
             getgenv().LEAModState.AimbotV1 = false
             local v1btn = MainFrame:FindFirstChild("AimbotV1Btn")
             if v1btn then v1btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) v1btn.Text = "Aimbot V1 ❌" end
+        end
+        -- ESP yenileme
+        if key == "ESP" then
+            if getgenv().LEAModState.ESP then
+                refreshESP()
+            else
+                clearESP()
+            end
         end
     end)
     return btn
@@ -256,9 +263,21 @@ FlyRight.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ESP YENİLEME FONKSİYONLARI (BÖLÜM 2'DE TANIMLANACAK)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function refreshESP()
+    -- Bu fonksiyon Bölüm 2'de tanımlanacak
+end
+
+local function clearESP()
+    -- Bu fonksiyon Bölüm 2'de tanımlanacak
+end
+
 print("✅ BÖLÜM 1/3 YÜKLENDİ - BÖLÜM 2/3'Ü ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v37.0 - BÖLÜM 2/3 (ESP + TÜM ÖZELLİKLER - GÜNCELLENDİ)
+    📱 LEA MOD v43.0 - BÖLÜM 2/3 (ESP + TÜM ÖZELLİKLER - GÜNCELLENDİ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -273,7 +292,10 @@ local LocalPlayer = Players.LocalPlayer
 local espCache = {}
 local viewportSize = Camera.ViewportSize
 
+-- ═══════════════════════════════════════════════════════════════════════════
 -- TEAM CHECK
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local function isEnemy(player)
     if player == LocalPlayer then return false end
     if getgenv().LEAModState.TeamCheck then
@@ -313,7 +335,7 @@ end
 
 local function getNearestEnemy()
     local target = nil
-    local shortestDist = getgenv().LEAModState.FOV or 360
+    local shortestDist = getgenv().LEAModState.FOV or 1000
     for _, player in ipairs(Players:GetPlayers()) do
         if not isEnemy(player) then continue end
         local char = player.Character
@@ -335,15 +357,17 @@ local function getNearestEnemy()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. ESP (GÜNCELLENDİ - ÖLÜ KONTROLÜ + YENİDEN DOĞMA)
+-- ESP (YENİLEME DESTEKLİ)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local function removeESP(player)
-    if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if obj then obj:Destroy() end
+local function clearESP()
+    for player, _ in pairs(espCache) do
+        if espCache[player] then
+            for _, obj in pairs(espCache[player]) do
+                if obj then pcall(function() obj:Destroy() end) end
+            end
+            espCache[player] = nil
         end
-        espCache[player] = nil
     end
 end
 
@@ -356,7 +380,12 @@ local function createESPForPlayer(player)
     local humanoid = char:FindFirstChildOfClass("Humanoid")
     if not root or not humanoid then return end
     
-    if espCache[player] then removeESP(player) end
+    if espCache[player] then
+        for _, obj in pairs(espCache[player]) do
+            if obj then pcall(function() obj:Destroy() end) end
+        end
+        espCache[player] = nil
+    end
     
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "ESPBox"
@@ -370,7 +399,7 @@ local function createESPForPlayer(player)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESPInfo"
     billboard.Adornee = root
-    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.Size = UDim2.new(0, 120, 0, 40)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
     billboard.Parent = CoreGui
@@ -383,45 +412,71 @@ local function createESPForPlayer(player)
     textLabel.Font = Enum.Font.SourceSansBold
     textLabel.TextSize = 14
     textLabel.TextStrokeTransparency = 0
+    textLabel.Text = string.format("%s\nHP: %d", player.Name, math.floor(humanoid.Health))
     
     espCache[player] = {Box = box, Billboard = billboard, Text = textLabel}
 end
 
--- ESP Ana döngü (güncellendi)
+-- ESP Yenileme (BÖLÜM 1'DEKİ FONKSİYONLARI DOLDUR)
+local function refreshESP()
+    clearESP()
+    if not getgenv().LEAModState.ESP then return end
+    for _, player in ipairs(Players:GetPlayers()) do
+        createESPForPlayer(player)
+    end
+end
+
+-- ESP Ana Döngü
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.ESP then
-        for player, _ in pairs(espCache) do removeESP(player) end
+        clearESP()
         return
     end
     
+    -- Önce tüm oyuncuları kontrol et
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
         
         local char = player.Character
         if not char then
-            removeESP(player)
+            if espCache[player] then
+                for _, obj in pairs(espCache[player]) do
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                espCache[player] = nil
+            end
             continue
         end
         
         local root = char:FindFirstChild("HumanoidRootPart")
         local humanoid = char:FindFirstChildOfClass("Humanoid")
         if not root or not humanoid then
-            removeESP(player)
+            if espCache[player] then
+                for _, obj in pairs(espCache[player]) do
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                espCache[player] = nil
+            end
             continue
         end
         
-        -- ÖLÜ KONTROLÜ - Eğer ölüyse ESP'yi kaldır
+        -- ÖLÜ KONTROLÜ
         if humanoid.Health <= 0 then
-            removeESP(player)
+            if espCache[player] then
+                for _, obj in pairs(espCache[player]) do
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                espCache[player] = nil
+            end
             continue
         end
         
-        -- ESP yoksa oluştur
+        -- ESP YOKSA OLUŞTUR
         if not espCache[player] then
             createESPForPlayer(player)
         end
         
-        -- ESP varsa güncelle
+        -- ESP VARSA GÜNCELLE
         local cache = espCache[player]
         if cache then
             local enemyCheck = isEnemy(player)
@@ -435,7 +490,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 2. 360
+-- 360 SPIN
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -446,7 +501,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 3. Rainbow
+-- RAINBOW
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -463,7 +518,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. InfJump
+-- INFINITE JUMP
 -- ═══════════════════════════════════════════════════════════════════════════
 
 UserInputService.JumpRequest:Connect(function()
@@ -474,7 +529,7 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 5. Bunnyhop
+-- BUNNYHOP
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -487,7 +542,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 6. Teleport
+-- TELEPORT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.Heartbeat:Connect(function()
@@ -510,7 +565,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 7. Fly
+-- FLY
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -525,7 +580,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 8. Speed
+-- SPEED
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -536,17 +591,78 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
---[[
-    ═══════════════════════════════════════════════════════════════════════════
-    🔥 AIMBOT v42.0 - SON VERSİYON (KESİNTİSİZ KİLİT + SIFIR TİTREME)
-    ═══════════════════════════════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════
+-- OYUNCU EKLEME/ÇIKARMA
+-- ═══════════════════════════════════════════════════════════════════════════
+
+Players.PlayerAdded:Connect(function(player)
+    wait(1)
+    if getgenv().LEAModState.ESP then
+        createESPForPlayer(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if espCache[player] then
+        for _, obj in pairs(espCache[player]) do
+            if obj then pcall(function() obj:Destroy() end) end
+        end
+        espCache[player] = nil
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- KARAKTER DEĞİŞİMİ (TÜM SİSTEMLER YENİDEN BAŞLATILIR)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local function restartAllSystems()
+    -- Aimbot hedefini sıfırla
+    lockedTarget = nil
+    isAiming = false
     
-    ✅ KESİNTİSİZ KİLİT - Hedef ölene kadar ASLA BIRAKMAZ
-    ✅ SIFIR TİTREME - Yumuşaklık yok, direkt CFrame
-    ✅ WALLCHECK - Duvar arkasına geçince YENİ HEDEF BULUR
-    ✅ HEDEF ÖLÜNCE - YENİ HEDEF BULUR
-    ✅ HEDEF ASLA DEĞİŞMEZ - Ölene kadar aynı adama bakar
+    -- ESP'yi yeniden oluştur
+    if getgenv().LEAModState.ESP then
+        refreshESP()
+    end
+    
+    -- Speed yeniden ayarla
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = getgenv().LEAModState.SpeedVal
+        hum.JumpPower = 50
+    end
+    
+    -- Fly yeniden başlat
+    if getgenv().LEAModState.Fly then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local humFly = char:FindFirstChildOfClass("Humanoid")
+            if humFly then humFly.PlatformStand = true end
+        end
+    end
+    
+    -- Rainbow yeniden başlat
+    if getgenv().LEAModState.Rainbow then
+        local char = LocalPlayer.Character
+        if char then
+            local hue = tick() % 5 / 5
+            local rainbowColor = Color3.fromHSV(hue, 1, 1)
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.Color = rainbowColor end
+            end
+        end
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(0.5)
+    restartAllSystems()
+end)
+
+print("✅ BÖLÜM 2/3 YÜKLENDİ - BÖLÜM 3/3'Ü ÇALIŞTIR")--[[
+    ═══════════════════════════════════════════════════════════════════════════
+    📱 LEA MOD v43.0 - BÖLÜM 3/3 (AIMBOT - KESİNTİSİZ KİLİT)
+    ═══════════════════════════════════════════════════════════════════════════
 ]]
 
 local Players = game:GetService("Players")
@@ -583,57 +699,41 @@ local function getHitbox(char)
     return nil
 end
 
--- WALLCHECK
 local function canSeeTarget(targetRoot)
     if not getgenv().LEAModState.WallCheck then return true end
-    
     local origin = Camera.CFrame.Position
     local targetPos = targetRoot.Position
     local direction = (targetPos - origin).Unit
     local distance = (targetPos - origin).Magnitude
-    
     local params = RaycastParams.new()
     params.FilterDescendantsInstances = {LocalPlayer.Character, targetRoot.Parent}
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.IgnoreWater = true
-    
     local result = Workspace:Raycast(origin, direction * distance, params)
-    
     if result then
         local hit = result.Instance
-        if hit and hit:IsDescendantOf(targetRoot.Parent) then
-            return true
-        end
+        if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
         return false
     end
     return true
 end
 
--- HEDEF BUL (SADECE BAŞLANGIÇTA KULLANILIR)
 local function findNearestEnemy()
     local target = nil
     local shortestDist = 1000
-    
     for _, player in ipairs(Players:GetPlayers()) do
         if not isEnemy(player) then continue end
-        
         local char = player.Character
         if not char then continue end
-        
         local root = getHitbox(char)
         if not root then continue end
-        
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then 
             if getgenv().LEAModState.KillCheck then continue end
         end
-        
         if getgenv().LEAModState.WallCheck then
             if not canSeeTarget(root) then continue end
         end
-        
         local dist = (root.Position - Camera.CFrame.Position).Magnitude
-        
         if dist < shortestDist then
             shortestDist = dist
             target = player
@@ -642,31 +742,18 @@ local function findNearestEnemy()
     return target
 end
 
--- KİLİTLİ HEDEF GEÇERLİ Mİ? (ÖLDÜ MÜ? DUVAR VAR MI?)
 local function isTargetStillValid(targetPlayer)
     if not targetPlayer then return false end
-    
     local char = targetPlayer.Character
     if not char then return false end
-    
     local root = getHitbox(char)
     if not root then return false end
-    
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
-    
-    -- ÖLÜ KONTROLÜ
-    if hum.Health <= 0 then
-        return false
-    end
-    
-    -- DUVAR KONTROLÜ (WALLCHECK AÇIKSA)
+    if hum.Health <= 0 then return false end
     if getgenv().LEAModState.WallCheck then
-        if not canSeeTarget(root) then
-            return false
-        end
+        if not canSeeTarget(root) then return false end
     end
-    
     return true
 end
 
@@ -714,7 +801,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V1 - KESİNTİSİZ KİLİT + SIFIR TİTREME
+-- AIMBOT V1
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -723,51 +810,32 @@ RunService.RenderStepped:Connect(function()
         return
     end
     
-    -- HEDEF YOKSA BUL
     if not lockedTarget then
         lockedTarget = findNearestEnemy()
-        if not lockedTarget then
-            return
-        end
+        if not lockedTarget then return end
     end
     
-    -- KİLİTLİ HEDEF GEÇERLİ Mİ? (ÖLÜ VEYA DUVAR)
     if not isTargetStillValid(lockedTarget) then
-        -- HEDEF GEÇERSİZ, YENİSİNİ BUL
         lockedTarget = nil
         lockedTarget = findNearestEnemy()
-        if not lockedTarget then
-            return
-        end
+        if not lockedTarget then return end
     end
     
-    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP
     local char = lockedTarget.Character
-    if not char then
-        lockedTarget = nil
-        return
-    end
+    if not char then lockedTarget = nil return end
     
     local root = getHitbox(char)
-    if not root then
-        lockedTarget = nil
-        return
-    end
+    if not root then lockedTarget = nil return end
     
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then
-            lockedTarget = nil
-            return
-        end
+        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
     end
     
-    -- SIFIR TİTREME - Direkt CFrame ataması (Lerp yok)
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
     
-    -- OTOMATİK ATEŞ
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
@@ -779,7 +847,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT V2 - HEAD ÖNCELİKLİ + SIFIR TİTREME
+-- AIMBOT V2
 -- ═══════════════════════════════════════════════════════════════════════════
 
 RunService.RenderStepped:Connect(function()
@@ -788,7 +856,6 @@ RunService.RenderStepped:Connect(function()
         return
     end
     
-    -- HEDEF YOKSA BUL (HEAD ÖNCELİKLİ)
     if not lockedTarget then
         local target = nil
         local shortestDist = 1000
@@ -812,12 +879,9 @@ RunService.RenderStepped:Connect(function()
             end
         end
         lockedTarget = target
-        if not lockedTarget then
-            return
-        end
+        if not lockedTarget then return end
     end
     
-    -- KİLİTLİ HEDEF GEÇERLİ Mİ?
     if not isTargetStillValid(lockedTarget) then
         lockedTarget = nil
         local target = nil
@@ -842,38 +906,69 @@ RunService.RenderStepped:Connect(function()
             end
         end
         lockedTarget = target
-        if not lockedTarget then
-            return
-        end
+        if not lockedTarget then return end
     end
     
-    -- HEDEF GEÇERLİ → KESİNTİSİZ TAKİP
     local char = lockedTarget.Character
-    if not char then
-        lockedTarget = nil
-        return
-    end
+    if not char then lockedTarget = nil return end
     
     local root = char:FindFirstChild("Head") or getHitbox(char)
-    if not root then
-        lockedTarget = nil
-        return
-    end
+    if not root then lockedTarget = nil return end
     
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then
-            lockedTarget = nil
-            return
-        end
+        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
     end
     
-    -- SIFIR TİTREME - Direkt CFrame ataması
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
     
     if getgenv().LEAModState.AutoFire then
+        local mouse = LocalPlayer:GetMouse()
+        if mouse then
+            mouse.Button1Down:Fire()
+            task.wait(0.03)
+            mouse.Button1Up:Fire()
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- TRIGGERBOT
+-- ═══════════════════════════════════════════════════════════════════════════
+
+RunService.RenderStepped:Connect(function()
+    if not getgenv().LEAModState.Triggerbot then return end
+    
+    local target = nil
+    local shortestDist = 50
+    local centerX = viewportSize.X / 2
+    local centerY = viewportSize.Y / 2
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if not isEnemy(player) then continue end
+        local char = player.Character
+        if not char then continue end
+        local root = char:FindFirstChild("Head") or getHitbox(char)
+        if not root then continue end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        if getgenv().LEAModState.WallCheck then
+            if not canSeeTarget(root) then continue end
+        end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+        if onScreen then
+            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
+            if dist < shortestDist then
+                shortestDist = dist
+                target = player
+            end
+        end
+    end
+    
+    if target then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
             mouse.Button1Down:Fire()
@@ -893,11 +988,12 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 AIMBOT v42.0 - KESİNTİSİZ KİLİT + SIFIR TİTREME ⚡   ║")
+print("║   🔥 LEA MOD v43.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 HEDEF BUL → KİLİTLE → ASLA BIRAKMA                    ║")
-print("║  👁️  ADAM ÖLENE KADAR KESİNTİSİZ BAKAR                    ║")
-print("║  🧱 DUVAR GİRİNCE YENİ HEDEF BULUR                        ║")
-print("║  💀 HEDEF ÖLÜNCE YENİ HEDEF BULUR                         ║")
-print("║  🚫 SIFIR TİTREME - DİREKT CFARME ATAMASI                 ║")
+print("║  🎯 AIMBOT - KESİNTİSİZ KİLİT                             ║")
+print("║  👁️  ESP - YENİDEN DOĞUNCA YENİLENİR                      ║")
+print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
+print("║  💀 KILLCHECK - ÖLÜNCE DİREK GEÇER                         ║")
+print("║  🛡️ TEAMCHECK - TAKIMA KİTLENMEZ                           ║")
+print("║  🔄 TÜM SİSTEMLER - KARAKTER DEĞİŞİNCE YENİDEN BAŞLAR     ║")
 print("╚══════════════════════════════════════════════════════════════╝")

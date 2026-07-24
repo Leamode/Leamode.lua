@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v47.0 - BÖLÜM 1/5 (AYARLAR + MENÜ)
+    📱 LEA MOD v48.0 - BÖLÜM 1/5 (AYARLAR + MENÜ - OPTİMİZE)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -12,13 +12,14 @@ local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+-- DÜŞÜK PERFORMANS MODU
 getgenv().LEAModState = {
     AimbotV1 = false, AimbotV2 = false, AimAssist = false, AimLock = false,
     CrosshairAim = false, MagicBullet = false, ESP = false, Spin360 = false,
     Rainbow = false, InfJump = false, Teleport = false, Fly = false,
     Bunnyhop = false, Triggerbot = false, SpeedVal = 50, FOV = 1000,
     TeamCheck = true, AutoFire = true, WallCheck = true, KillCheck = true,
-    MenuVisible = true
+    MenuVisible = true, LowPerformance = true
 }
 
 local viewportSize = Camera.ViewportSize
@@ -30,7 +31,6 @@ ScreenGui.Name = "LEAModUniversalGui"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- HEADER (Küçük + Cool)
 local HeaderLabel = Instance.new("TextLabel")
 HeaderLabel.Name = "LEAModHeader"
 HeaderLabel.Parent = ScreenGui
@@ -44,7 +44,6 @@ HeaderLabel.TextColor3 = Color3.fromRGB(200, 0, 255)
 HeaderLabel.TextSize = 22
 HeaderLabel.TextStrokeTransparency = 0.3
 
--- MENÜ (KÜÇÜK + COOL + YUKARIDA)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -270,11 +269,12 @@ end)
 
 print("✅ BÖLÜM 1/5 YÜKLENDİ - BÖLÜM 2/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v47.0 - BÖLÜM 2/5 (ESP)
+    📱 LEA MOD v48.0 - BÖLÜM 2/5 (ESP - OPTİMİZE)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
 local espCache = {}
+local espUpdateTimer = 0
 
 local function isEnemy(player)
     if player == LocalPlayer then return false end
@@ -401,7 +401,28 @@ local function refreshESP()
     end
 end
 
-RunService.RenderStepped:Connect(function()
+-- ESP OPTİMİZE - Sadece oyuncu eklendiğinde veya çıktığında güncellenir
+Players.PlayerAdded:Connect(function(player)
+    wait(1)
+    if getgenv().LEAModState.ESP then
+        createESPForPlayer(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if espCache[player] then
+        for _, obj in pairs(espCache[player]) do
+            if obj then pcall(function() obj:Destroy() end) end
+        end
+        espCache[player] = nil
+    end
+end)
+
+-- ESP GÜNCELLEME - Her 0.5 saniyede bir (DONMAZ)
+RunService.Heartbeat:Connect(function()
+    espUpdateTimer = espUpdateTimer + 1
+    if espUpdateTimer % 3 ~= 0 then return end -- ~0.5 saniye
+    
     if not getgenv().LEAModState.ESP then
         clearESP()
         return
@@ -459,36 +480,22 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-Players.PlayerAdded:Connect(function(player)
-    wait(1)
-    if getgenv().LEAModState.ESP then
-        createESPForPlayer(player)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if obj then pcall(function() obj:Destroy() end) end
-        end
-        espCache[player] = nil
-    end
-end)
-
 print("✅ BÖLÜM 2/5 YÜKLENDİ - BÖLÜM 3/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v47.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
+    📱 LEA MOD v48.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER - OPTİMİZE)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
-RunService.RenderStepped:Connect(function()
+-- 360 (Her frame'de döner, sorun yok)
+RunService.Heartbeat:Connect(function()
     if getgenv().LEAModState.Spin360 then
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(30), 0) end
     end
 end)
 
-RunService.RenderStepped:Connect(function()
+-- RAINBOW (Her frame'de renk değiştirir)
+RunService.Heartbeat:Connect(function()
     if getgenv().LEAModState.Rainbow then
         local char = LocalPlayer.Character
         if char then
@@ -501,6 +508,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- INFINITE JUMP
 UserInputService.JumpRequest:Connect(function()
     if getgenv().LEAModState.InfJump then
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -508,7 +516,8 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
-RunService.RenderStepped:Connect(function()
+-- BUNNYHOP
+RunService.Heartbeat:Connect(function()
     if not getgenv().LEAModState.Bunnyhop then return end
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if not hum then return end
@@ -517,11 +526,13 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- TELEPORT (En yakın düşmana)
 RunService.Heartbeat:Connect(function()
     if not getgenv().LEAModState.Teleport then return end
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
     
+    -- getNearestEnemy fonksiyonu Bölüm 2'den gelir
     local target = getNearestEnemy()
     if not target then return end
     
@@ -541,7 +552,8 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-RunService.RenderStepped:Connect(function()
+-- FLY
+RunService.Heartbeat:Connect(function()
     local char = LocalPlayer.Character
     if getgenv().LEAModState.Fly and char and char:FindFirstChild("HumanoidRootPart") then
         local root = char.HumanoidRootPart
@@ -552,7 +564,8 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-RunService.RenderStepped:Connect(function()
+-- SPEED
+RunService.Heartbeat:Connect(function()
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if hum then
         hum.WalkSpeed = getgenv().LEAModState.SpeedVal
@@ -595,13 +608,14 @@ end)
 
 print("✅ BÖLÜM 3/5 YÜKLENDİ - BÖLÜM 4/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v47.0 - BÖLÜM 4/5 (AİMBOT + CROSSHAIR AIM)
+    📱 LEA MOD v48.0 - BÖLÜM 4/5 (AİMBOT + CROSSHAIR AIM - OPTİMİZE)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
 local isAiming = false
 local lockedTarget = nil
 local viewportSize = Camera.ViewportSize
+local aimUpdateTimer = 0
 
 local function findNearestEnemy()
     local target = nil
@@ -682,8 +696,11 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- AIMBOT V1 (Karakter + Crosshair döner)
-RunService.RenderStepped:Connect(function()
+-- AIMBOT V1 (Her 2 frame'de bir güncelle - DONMAZ)
+RunService.Heartbeat:Connect(function()
+    aimUpdateTimer = aimUpdateTimer + 1
+    if aimUpdateTimer % 2 ~= 0 then return end
+    
     if not getgenv().LEAModState.AimbotV1 or not isAiming then
         if lockedTarget then lockedTarget = nil end
         return
@@ -715,7 +732,6 @@ RunService.RenderStepped:Connect(function()
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
     
-    -- Karakter de döner
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
     end
@@ -730,8 +746,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AIMBOT V2 (Head öncelikli, Karakter + Crosshair döner)
-RunService.RenderStepped:Connect(function()
+-- AIMBOT V2 (Her 2 frame'de bir)
+RunService.Heartbeat:Connect(function()
+    if aimUpdateTimer % 2 ~= 0 then return end
+    
     if not getgenv().LEAModState.AimbotV2 or not isAiming then
         if lockedTarget then lockedTarget = nil end
         return
@@ -819,8 +837,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AIMASSIST (Karakter + Crosshair döner)
-RunService.RenderStepped:Connect(function()
+-- AIMASSIST (Her 2 frame'de bir)
+RunService.Heartbeat:Connect(function()
+    if aimUpdateTimer % 2 ~= 0 then return end
+    
     if not getgenv().LEAModState.AimAssist or not isAiming then
         if lockedTarget then lockedTarget = nil end
         return
@@ -865,8 +885,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AIMLOCK (Karakter + Crosshair döner)
-RunService.RenderStepped:Connect(function()
+-- AIMLOCK (Her 2 frame'de bir)
+RunService.Heartbeat:Connect(function()
+    if aimUpdateTimer % 2 ~= 0 then return end
+    
     if not getgenv().LEAModState.AimLock or not isAiming then
         if lockedTarget then lockedTarget = nil end
         return
@@ -953,8 +975,10 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- CROSSHAIR AIM (SADECE CROSSHAIR DÖNER, KARAKTER SABİT)
-RunService.RenderStepped:Connect(function()
+-- CROSSHAIR AIM (Her 2 frame'de bir - KARAKTER SABİT)
+RunService.Heartbeat:Connect(function()
+    if aimUpdateTimer % 2 ~= 0 then return end
+    
     if not getgenv().LEAModState.CrosshairAim or not isAiming then
         if lockedTarget then lockedTarget = nil end
         return
@@ -986,7 +1010,6 @@ RunService.RenderStepped:Connect(function()
     local targetPos = root.Position
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
-    -- NOT: rootPart.CFrame ASLA DEĞİŞMEZ
     
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
@@ -1000,12 +1023,13 @@ end)
 
 print("✅ BÖLÜM 4/5 YÜKLENDİ - BÖLÜM 5/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v47.0 - BÖLÜM 5/5 (MAGIC BULLET + TRIGGERBOT)
+    📱 LEA MOD v48.0 - BÖLÜM 5/5 (MAGIC BULLET + TRIGGERBOT - OPTİMİZE)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
 local magicBulletConnection = nil
 local magicBulletTools = {}
+local magicBulletTimer = 0
 
 local function GetNearestTarget(originPosition)
     local nearestTargetPart = nil
@@ -1059,7 +1083,6 @@ local function FireHomingBullet(originInput)
 
     if not startCFrame then return end
 
-    -- HEDEFİ ÖNCEDEN BUL
     local targetPart = GetNearestTarget(startCFrame.Position)
     if not targetPart then return end
 
@@ -1093,7 +1116,7 @@ local function FireHomingBullet(originInput)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 
-    connection = RunService.RenderStepped:Connect(function(deltaTime)
+    connection = RunService.Heartbeat:Connect(function(deltaTime)
         if isCleanedUp or not bullet or not bullet.Parent then
             Cleanup()
             return
@@ -1107,7 +1130,6 @@ local function FireHomingBullet(originInput)
         local ignoreList = {bullet, LocalPlayer.Character}
         raycastParams.FilterDescendantsInstances = ignoreList
 
-        -- SÜREKLİ HEDEF GÜNCELLE
         local newTarget = GetNearestTarget(bullet.Position)
         if newTarget and newTarget.Parent then
             targetPart = newTarget
@@ -1129,7 +1151,6 @@ local function FireHomingBullet(originInput)
         local currentPos = bullet.Position
         local nextPos = currentPos + stepMovement
 
-        -- ÇARPIŞMA KONTROLÜ
         local rayResult = Workspace:Raycast(currentPos, stepMovement, raycastParams)
         if rayResult then
             local hitInstance = rayResult.Instance
@@ -1201,8 +1222,11 @@ local function stopMagicBullet()
     print("❌ Magic Bullet PASİF")
 end
 
--- TRIGGERBOT (Crosshair hedefteyken ateş eder, karakter sabit)
-RunService.RenderStepped:Connect(function()
+-- TRIGGERBOT (Her 2 frame'de bir)
+RunService.Heartbeat:Connect(function()
+    magicBulletTimer = magicBulletTimer + 1
+    if magicBulletTimer % 2 ~= 0 then return end
+    
     if not getgenv().LEAModState.Triggerbot then return end
     
     local target = nil
@@ -1248,14 +1272,10 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 LEA MOD v47.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
+print("║   🔥 LEA MOD v48.0 - OPTİMİZE EDİLDİ (DONMA YOK) ⚡        ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 AIMBOT V1 - Karakter + Crosshair döner                 ║")
-print("║  🎯 AIMBOT V2 - Head öncelikli                            ║")
-print("║  ⚡ AIMASSIST - Direk hedefe götürür                       ║")
-print("║  🔒 AIMLOCK - Sabit kilit (hızlı takip)                   ║")
-print("║  🎯 CROSS AIM - SADECE Crosshair bakar, KARAKTER SABİT    ║")
-print("║  🔫 MAGIC BULLET - Mermi OTOMATİK hedefe yönlenir         ║")
-print("║  🚀 TELEPORT - En yakın düşmana ışınlanır                  ║")
-print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
+print("║  🎯 AIMBOT - Her 2 frame'de bir güncellenir               ║")
+print("║  👁️  ESP - Her 0.5 saniyede bir güncellenir               ║")
+print("║  🔫 MAGIC BULLET - Optimize edildi                         ║")
+print("║  🚀 TÜM SİSTEMLER - DONMA YOK                             ║")
 print("╚══════════════════════════════════════════════════════════════╝")

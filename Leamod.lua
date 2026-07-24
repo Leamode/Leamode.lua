@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 1/4 (SATIR 1 - 450)
+    📱 LEA MOD v46.0 - BÖLÜM 1/5 (AYARLAR + MENÜ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -30,41 +30,44 @@ ScreenGui.Name = "LEAModUniversalGui"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
+-- HEADER (Küçük + Cool)
 local HeaderLabel = Instance.new("TextLabel")
 HeaderLabel.Name = "LEAModHeader"
 HeaderLabel.Parent = ScreenGui
 HeaderLabel.AnchorPoint = Vector2.new(0.5, 1)
-HeaderLabel.Position = UDim2.new(0.5, 0, 0.45, -15)
-HeaderLabel.Size = UDim2.new(0, 180, 0, 35)
+HeaderLabel.Position = UDim2.new(0.5, 0, 0.48, -5)
+HeaderLabel.Size = UDim2.new(0, 120, 0, 25)
 HeaderLabel.BackgroundTransparency = 1
 HeaderLabel.Font = Enum.Font.SourceSansBold
-HeaderLabel.Text = "LEA MOD"
-HeaderLabel.TextColor3 = Color3.fromRGB(170, 0, 255)
-HeaderLabel.TextSize = 26
-HeaderLabel.TextStrokeTransparency = 0.5
+HeaderLabel.Text = "⚡LEA"
+HeaderLabel.TextColor3 = Color3.fromRGB(200, 0, 255)
+HeaderLabel.TextSize = 22
+HeaderLabel.TextStrokeTransparency = 0.3
 
+-- MENÜ (KÜÇÜK + COOL + YUKARIDA)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-MainFrame.BorderColor3 = Color3.fromRGB(170, 0, 255)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 255)
 MainFrame.BorderSizePixel = 1
-MainFrame.Position = UDim2.new(0.75, 0, 0.08, 0)
-MainFrame.Size = UDim2.new(0, 180, 0, 480)
+MainFrame.Position = UDim2.new(0.78, 0, 0.02, 0)
+MainFrame.Size = UDim2.new(0, 155, 0, 400)
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
 
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleMenu"
 ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ToggleButton.BorderColor3 = Color3.fromRGB(170, 0, 255)
-ToggleButton.Position = UDim2.new(0.75, 0, 0.02, 0)
-ToggleButton.Size = UDim2.new(0, 55, 0, 22)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+ToggleButton.BorderColor3 = Color3.fromRGB(200, 0, 255)
+ToggleButton.Position = UDim2.new(0.78, 0, 0.005, 0)
+ToggleButton.Size = UDim2.new(0, 45, 0, 18)
 ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.Text = "MENU"
+ToggleButton.Text = "☰"
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 12
+ToggleButton.TextSize = 14
 ToggleButton.MouseButton1Click:Connect(function()
     getgenv().LEAModState.MenuVisible = not getgenv().LEAModState.MenuVisible
     MainFrame.Visible = getgenv().LEAModState.MenuVisible
@@ -73,19 +76,20 @@ end)
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = MainFrame
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 2)
+UIListLayout.Padding = UDim.new(0, 1)
 
 local function createButton(name, key)
     local btn = Instance.new("TextButton")
     btn.Name = name .. "Btn"
     btn.Parent = MainFrame
     btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-    btn.Size = UDim2.new(1, -10, 0, 20)
-    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.Size = UDim2.new(1, -6, 0, 18)
+    btn.Position = UDim2.new(0, 3, 0, 0)
     btn.Font = Enum.Font.SourceSansBold
     btn.Text = name .. " ❌"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 11
+    btn.TextSize = 10
+    btn.BorderSizePixel = 0
     btn.MouseButton1Click:Connect(function()
         getgenv().LEAModState[key] = not getgenv().LEAModState[key]
         if getgenv().LEAModState[key] then
@@ -125,25 +129,26 @@ local function createButton(name, key)
     return btn
 end
 
-createButton("Aimbot V1", "AimbotV1")
-createButton("Aimbot V2", "AimbotV2")
-createButton("AimAssist", "AimAssist")
-createButton("AimLock", "AimLock")
-createButton("Magic Bullet", "MagicBullet")
+createButton("Aim V1", "AimbotV1")
+createButton("Aim V2", "AimbotV2")
+createButton("Assist", "AimAssist")
+createButton("Lock", "AimLock")
+createButton("M.Bullet", "MagicBullet")
 createButton("ESP", "ESP")
 createButton("360", "Spin360")
-createButton("Rainbow", "Rainbow")
+createButton("RB", "Rainbow")
 createButton("InfJump", "InfJump")
 createButton("Teleport", "Teleport")
 createButton("Fly", "Fly")
 createButton("Bunnyhop", "Bunnyhop")
-createButton("Triggerbot", "Triggerbot")
+createButton("Trigger", "Triggerbot")
 
+-- SPEED
 local SpeedFrame = Instance.new("Frame")
 SpeedFrame.Parent = MainFrame
 SpeedFrame.BackgroundTransparency = 1
-SpeedFrame.Size = UDim2.new(1, -10, 0, 20)
-SpeedFrame.Position = UDim2.new(0, 5, 0, 0)
+SpeedFrame.Size = UDim2.new(1, -6, 0, 16)
+SpeedFrame.Position = UDim2.new(0, 3, 0, 0)
 
 local SpeedDec = Instance.new("TextButton")
 SpeedDec.Parent = SpeedFrame
@@ -152,7 +157,7 @@ SpeedDec.Size = UDim2.new(0.3, 0, 1, 0)
 SpeedDec.Font = Enum.Font.SourceSansBold
 SpeedDec.Text = "-"
 SpeedDec.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedDec.TextSize = 14
+SpeedDec.TextSize = 12
 
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Parent = SpeedFrame
@@ -162,7 +167,7 @@ SpeedLabel.Position = UDim2.new(0.3, 0, 0, 0)
 SpeedLabel.Font = Enum.Font.SourceSansBold
 SpeedLabel.Text = "50"
 SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-SpeedLabel.TextSize = 12
+SpeedLabel.TextSize = 10
 
 local SpeedInc = Instance.new("TextButton")
 SpeedInc.Parent = SpeedFrame
@@ -172,7 +177,7 @@ SpeedInc.Position = UDim2.new(0.7, 0, 0, 0)
 SpeedInc.Font = Enum.Font.SourceSansBold
 SpeedInc.Text = "+"
 SpeedInc.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInc.TextSize = 14
+SpeedInc.TextSize = 12
 
 SpeedDec.MouseButton1Click:Connect(function()
     getgenv().LEAModState.SpeedVal = math.clamp(getgenv().LEAModState.SpeedVal - 5, 5, 9999)
@@ -183,21 +188,22 @@ SpeedInc.MouseButton1Click:Connect(function()
     SpeedLabel.Text = tostring(getgenv().LEAModState.SpeedVal)
 end)
 
+-- FLY BUTONLARI
 local FlyFrame = Instance.new("Frame")
 FlyFrame.Parent = MainFrame
 FlyFrame.BackgroundTransparency = 1
-FlyFrame.Size = UDim2.new(1, -10, 0, 60)
-FlyFrame.Position = UDim2.new(0, 5, 0, 0)
+FlyFrame.Size = UDim2.new(1, -6, 0, 40)
+FlyFrame.Position = UDim2.new(0, 3, 0, 0)
 
 local FlyUp = Instance.new("TextButton")
 FlyUp.Parent = FlyFrame
 FlyUp.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-FlyUp.Size = UDim2.new(0.33, -5, 0.5, -2)
+FlyUp.Size = UDim2.new(0.33, -2, 0.5, -1)
 FlyUp.Position = UDim2.new(0.33, 0, 0, 0)
 FlyUp.Font = Enum.Font.SourceSansBold
 FlyUp.Text = "▲"
 FlyUp.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyUp.TextSize = 18
+FlyUp.TextSize = 14
 FlyUp.MouseButton1Click:Connect(function()
     if getgenv().LEAModState.Fly then
         local char = LocalPlayer.Character
@@ -210,12 +216,12 @@ end)
 local FlyDown = Instance.new("TextButton")
 FlyDown.Parent = FlyFrame
 FlyDown.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
-FlyDown.Size = UDim2.new(0.33, -5, 0.5, -2)
+FlyDown.Size = UDim2.new(0.33, -2, 0.5, -1)
 FlyDown.Position = UDim2.new(0.33, 0, 0.5, 0)
 FlyDown.Font = Enum.Font.SourceSansBold
 FlyDown.Text = "▼"
 FlyDown.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyDown.TextSize = 18
+FlyDown.TextSize = 14
 FlyDown.MouseButton1Click:Connect(function()
     if getgenv().LEAModState.Fly then
         local char = LocalPlayer.Character
@@ -228,12 +234,12 @@ end)
 local FlyLeft = Instance.new("TextButton")
 FlyLeft.Parent = FlyFrame
 FlyLeft.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FlyLeft.Size = UDim2.new(0.33, -5, 0.5, -2)
+FlyLeft.Size = UDim2.new(0.33, -2, 0.5, -1)
 FlyLeft.Position = UDim2.new(0, 0, 0.25, 0)
 FlyLeft.Font = Enum.Font.SourceSansBold
 FlyLeft.Text = "◀"
 FlyLeft.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyLeft.TextSize = 18
+FlyLeft.TextSize = 14
 FlyLeft.MouseButton1Click:Connect(function()
     if getgenv().LEAModState.Fly then
         local char = LocalPlayer.Character
@@ -246,12 +252,12 @@ end)
 local FlyRight = Instance.new("TextButton")
 FlyRight.Parent = FlyFrame
 FlyRight.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FlyRight.Size = UDim2.new(0.33, -5, 0.5, -2)
+FlyRight.Size = UDim2.new(0.33, -2, 0.5, -1)
 FlyRight.Position = UDim2.new(0.66, 0, 0.25, 0)
 FlyRight.Font = Enum.Font.SourceSansBold
 FlyRight.Text = "▶"
 FlyRight.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyRight.TextSize = 18
+FlyRight.TextSize = 14
 FlyRight.MouseButton1Click:Connect(function()
     if getgenv().LEAModState.Fly then
         local char = LocalPlayer.Character
@@ -261,9 +267,9 @@ FlyRight.MouseButton1Click:Connect(function()
     end
 end)
 
-print("✅ BÖLÜM 1/4 YÜKLENDİ - BÖLÜM 2/4'Ü ÇALIŞTIR")--[[
+print("✅ BÖLÜM 1/5 YÜKLENDİ - BÖLÜM 2/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 2/4 (ESP + TEMEL FONKSİYONLAR)
+    📱 LEA MOD v46.0 - BÖLÜM 2/5 (ESP)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -468,9 +474,9 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
-print("✅ BÖLÜM 2/4 YÜKLENDİ - BÖLÜM 3/4'Ü ÇALIŞTIR")--[[
+print("✅ BÖLÜM 2/5 YÜKLENDİ - BÖLÜM 3/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 3/4 (TÜM ÖZELLİKLER)
+    📱 LEA MOD v46.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -586,9 +592,9 @@ LocalPlayer.CharacterAdded:Connect(function()
     restartAllSystems()
 end)
 
-print("✅ BÖLÜM 3/4 YÜKLENDİ - BÖLÜM 4/4'Ü ÇALIŞTIR")--[[
+print("✅ BÖLÜM 3/5 YÜKLENDİ - BÖLÜM 4/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 4A/4 (AIMBOT V1 + V2)
+    📱 LEA MOD v46.0 - BÖLÜM 4/5 (AIMBOT V1 + V2 + AIMASSIST + AIMLOCK)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -803,12 +809,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("✅ BÖLÜM 4A/4 YÜKLENDİ - BÖLÜM 4B/4'Ü ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 4B/4 (AIMASSIST + AIMLOCK + MAGIC BULLET + TRIGGERBOT)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
 -- AIMASSIST
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.AimAssist or not isAiming then
@@ -935,13 +935,18 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- MAGIC BULLET
+print("✅ BÖLÜM 4/5 YÜKLENDİ - BÖLÜM 5/5'İ ÇALIŞTIR")--[[
+    ═══════════════════════════════════════════════════════════════════════════
+    📱 LEA MOD v46.0 - BÖLÜM 5/5 (MAGIC BULLET + TRIGGERBOT)
+    ═══════════════════════════════════════════════════════════════════════════
+]]
+
 local magicBulletConnection = nil
 local magicBulletTools = {}
 
 local function GetNearestTarget(originPosition)
     local nearestTargetPart = nil
-    local shortestDistance = 200
+    local shortestDistance = 300
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
@@ -952,10 +957,11 @@ local function GetNearestTarget(originPosition)
                 or char:FindFirstChild("UpperTorso")
             
             if humanoid and humanoid.Health > 0 and rootPart then
-                if getgenv().LEAModState.WallCheck then
-                    if not canSeeTarget(rootPart) then continue end
+                if getgenv().LEAModState.TeamCheck then
+                    if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
+                        continue
+                    end
                 end
-                if getgenv().LEAModState.KillCheck and humanoid.Health <= 0 then continue end
                 local distance = (rootPart.Position - originPosition).Magnitude
                 if distance < shortestDistance then
                     shortestDistance = distance
@@ -980,7 +986,7 @@ local function FireHomingBullet(originInput)
     elseif typeof(originInput) == "Instance" and originInput:IsA("BasePart") then
         startCFrame = originInput.CFrame
     elseif char then
-        local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+        local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or char:FindFirstChild("Handle")
         if rightHand then
             startCFrame = rightHand.CFrame
         elseif Workspace.CurrentCamera then
@@ -990,22 +996,27 @@ local function FireHomingBullet(originInput)
 
     if not startCFrame then return end
 
+    -- HEDEFİ ÖNCEDEN BUL
+    local targetPart = GetNearestTarget(startCFrame.Position)
+    if not targetPart then return end
+
     local bullet = Instance.new("Part")
     bullet.Name = "HomingBullet"
-    bullet.Size = Vector3.new(0.4, 0.4, 1.2)
+    bullet.Size = Vector3.new(0.3, 0.3, 0.8)
     bullet.CanCollide = false
     bullet.Anchored = true
-    bullet.Transparency = 0.1
+    bullet.Transparency = 0.2
     bullet.Material = Enum.Material.Neon
-    bullet.Color = Color3.fromRGB(255, 50, 50)
+    bullet.Color = Color3.fromRGB(255, 0, 255)
 
-    local spawnPos = startCFrame.Position + (startCFrame.LookVector * 2)
+    local spawnPos = startCFrame.Position + (startCFrame.LookVector * 3)
     bullet.CFrame = CFrame.lookAt(spawnPos, spawnPos + startCFrame.LookVector)
     bullet.Parent = Workspace
 
-    local currentVelocity = startCFrame.LookVector.Unit * 300
+    local currentVelocity = (targetPart.Position - spawnPos).Unit * 350
     local connection = nil
     local isCleanedUp = false
+    local lifetime = 0
 
     local function Cleanup()
         if isCleanedUp then return end
@@ -1014,7 +1025,7 @@ local function FireHomingBullet(originInput)
         if bullet and bullet.Parent then bullet:Destroy() end
     end
 
-    task.delay(4, Cleanup)
+    task.delay(5, Cleanup)
 
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -1025,23 +1036,28 @@ local function FireHomingBullet(originInput)
             return
         end
 
+        lifetime = lifetime + deltaTime
+        if lifetime > 5 then Cleanup() return end
+
         local dt = math.clamp(deltaTime, 0.001, 0.1)
 
-        local ignoreList = {bullet}
-        if LocalPlayer.Character then
-            table.insert(ignoreList, LocalPlayer.Character)
-        end
+        local ignoreList = {bullet, LocalPlayer.Character}
         raycastParams.FilterDescendantsInstances = ignoreList
 
-        local targetPart = GetNearestTarget(bullet.Position)
+        -- SÜREKLİ HEDEF GÜNCELLE
+        local newTarget = GetNearestTarget(bullet.Position)
+        if newTarget and newTarget.Parent then
+            targetPart = newTarget
+        end
+
         if targetPart and targetPart.Parent then
             local targetVector = (targetPart.Position - bullet.Position)
             if targetVector.Magnitude > 0 then
                 local desiredDir = targetVector.Unit
                 local currentDir = currentVelocity.Unit
-                local blendedDir = currentDir:Lerp(desiredDir, 0.85)
+                local blendedDir = currentDir:Lerp(desiredDir, 0.9)
                 if blendedDir.Magnitude > 0 then
-                    currentVelocity = blendedDir.Unit * 300
+                    currentVelocity = blendedDir.Unit * 350
                 end
             end
         end
@@ -1050,6 +1066,7 @@ local function FireHomingBullet(originInput)
         local currentPos = bullet.Position
         local nextPos = currentPos + stepMovement
 
+        -- ÇARPIŞMA KONTROLÜ
         local rayResult = Workspace:Raycast(currentPos, stepMovement, raycastParams)
         if rayResult then
             local hitInstance = rayResult.Instance
@@ -1174,7 +1191,7 @@ print("║  🎯 AIMBOT V1 - KESİNTİSİZ KİLİT                          ║"
 print("║  🎯 AIMBOT V2 - HEAD ÖNCELİKLİ KİLİT                      ║")
 print("║  ⚡ AIMASSIST - Direk hedefe götürür                       ║")
 print("║  🔒 AIMLOCK - Sabit kilit (hızlı takip)                   ║")
-print("║  🔫 MAGIC BULLET - Mermi otomatik hedefe yönlenir         ║")
+print("║  🔫 MAGIC BULLET - Mermi OTOMATİK hedefe yönlenir         ║")
 print("║  🚀 TELEPORT - En yakın düşmana ışınlanır                  ║")
 print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
 print("║  💀 KILLCHECK - ÖLÜNCE DİREK GEÇER                         ║")

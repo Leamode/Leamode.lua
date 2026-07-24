@@ -1,6 +1,6 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 1/5 (AYARLAR + MENÜ)
+    📱 LEA MOD v47.0 - BÖLÜM 1/5 (AYARLAR + MENÜ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -14,9 +14,9 @@ local LocalPlayer = Players.LocalPlayer
 
 getgenv().LEAModState = {
     AimbotV1 = false, AimbotV2 = false, AimAssist = false, AimLock = false,
-    MagicBullet = false, ESP = false, Spin360 = false, Rainbow = false,
-    InfJump = false, Teleport = false, Fly = false, Bunnyhop = false,
-    Triggerbot = false, SpeedVal = 50, FOV = 1000,
+    CrosshairAim = false, MagicBullet = false, ESP = false, Spin360 = false,
+    Rainbow = false, InfJump = false, Teleport = false, Fly = false,
+    Bunnyhop = false, Triggerbot = false, SpeedVal = 50, FOV = 1000,
     TeamCheck = true, AutoFire = true, WallCheck = true, KillCheck = true,
     MenuVisible = true
 }
@@ -52,7 +52,7 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
 MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 255)
 MainFrame.BorderSizePixel = 1
 MainFrame.Position = UDim2.new(0.78, 0, 0.02, 0)
-MainFrame.Size = UDim2.new(0, 155, 0, 400)
+MainFrame.Size = UDim2.new(0, 155, 0, 430)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
@@ -133,6 +133,7 @@ createButton("Aim V1", "AimbotV1")
 createButton("Aim V2", "AimbotV2")
 createButton("Assist", "AimAssist")
 createButton("Lock", "AimLock")
+createButton("Cross Aim", "CrosshairAim")
 createButton("M.Bullet", "MagicBullet")
 createButton("ESP", "ESP")
 createButton("360", "Spin360")
@@ -269,7 +270,7 @@ end)
 
 print("✅ BÖLÜM 1/5 YÜKLENDİ - BÖLÜM 2/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 2/5 (ESP)
+    📱 LEA MOD v47.0 - BÖLÜM 2/5 (ESP)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -476,7 +477,7 @@ end)
 
 print("✅ BÖLÜM 2/5 YÜKLENDİ - BÖLÜM 3/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
+    📱 LEA MOD v47.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -594,7 +595,7 @@ end)
 
 print("✅ BÖLÜM 3/5 YÜKLENDİ - BÖLÜM 4/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 4/5 (AIMBOT V1 + V2 + AIMASSIST + AIMLOCK)
+    📱 LEA MOD v47.0 - BÖLÜM 4/5 (AİMBOT + CROSSHAIR AIM)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -646,7 +647,7 @@ UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         local pos = input.Position
         if pos.X > viewportSize.X / 2 then
-            if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock then
+            if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock or getgenv().LEAModState.CrosshairAim then
                 isAiming = true
                 if not lockedTarget then
                     lockedTarget = findNearestEnemy()
@@ -665,7 +666,7 @@ end)
 
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock then
+        if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock or getgenv().LEAModState.CrosshairAim then
             isAiming = true
             if not lockedTarget then
                 lockedTarget = findNearestEnemy()
@@ -681,7 +682,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- AIMBOT V1
+-- AIMBOT V1 (Karakter + Crosshair döner)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.AimbotV1 or not isAiming then
         if lockedTarget then lockedTarget = nil end
@@ -714,6 +715,11 @@ RunService.RenderStepped:Connect(function()
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
     
+    -- Karakter de döner
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
+    end
+    
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
@@ -724,7 +730,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AIMBOT V2
+-- AIMBOT V2 (Head öncelikli, Karakter + Crosshair döner)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.AimbotV2 or not isAiming then
         if lockedTarget then lockedTarget = nil end
@@ -799,6 +805,10 @@ RunService.RenderStepped:Connect(function()
     local currentPos = Camera.CFrame.Position
     Camera.CFrame = CFrame.new(currentPos, targetPos)
     
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
+    end
+    
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
@@ -809,7 +819,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AIMASSIST
+-- AIMASSIST (Karakter + Crosshair döner)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.AimAssist or not isAiming then
         if lockedTarget then lockedTarget = nil end
@@ -841,6 +851,10 @@ RunService.RenderStepped:Connect(function()
     local targetPos = root.Position
     Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
     
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
+    end
+    
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
@@ -851,7 +865,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- AIMLOCK
+-- AIMLOCK (Karakter + Crosshair döner)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.AimLock or not isAiming then
         if lockedTarget then lockedTarget = nil end
@@ -925,6 +939,55 @@ RunService.RenderStepped:Connect(function()
     local targetPos = root.Position
     Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
     
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
+    end
+    
+    if getgenv().LEAModState.AutoFire then
+        local mouse = LocalPlayer:GetMouse()
+        if mouse then
+            mouse.Button1Down:Fire()
+            task.wait(0.03)
+            mouse.Button1Up:Fire()
+        end
+    end
+end)
+
+-- CROSSHAIR AIM (SADECE CROSSHAIR DÖNER, KARAKTER SABİT)
+RunService.RenderStepped:Connect(function()
+    if not getgenv().LEAModState.CrosshairAim or not isAiming then
+        if lockedTarget then lockedTarget = nil end
+        return
+    end
+    
+    if not lockedTarget then
+        lockedTarget = findNearestEnemy()
+        if not lockedTarget then return end
+    end
+    
+    if not isTargetStillValid(lockedTarget) then
+        lockedTarget = nil
+        lockedTarget = findNearestEnemy()
+        if not lockedTarget then return end
+    end
+    
+    local char = lockedTarget.Character
+    if not char then lockedTarget = nil return end
+    
+    local root = getHitbox(char)
+    if not root then lockedTarget = nil return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then
+        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
+    end
+    
+    -- SADECE KAMERA HEDEFE BAKAR (KARAKTER SABİT)
+    local targetPos = root.Position
+    local currentPos = Camera.CFrame.Position
+    Camera.CFrame = CFrame.new(currentPos, targetPos)
+    -- NOT: rootPart.CFrame ASLA DEĞİŞMEZ
+    
     if getgenv().LEAModState.AutoFire then
         local mouse = LocalPlayer:GetMouse()
         if mouse then
@@ -937,7 +1000,7 @@ end)
 
 print("✅ BÖLÜM 4/5 YÜKLENDİ - BÖLÜM 5/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v46.0 - BÖLÜM 5/5 (MAGIC BULLET + TRIGGERBOT)
+    📱 LEA MOD v47.0 - BÖLÜM 5/5 (MAGIC BULLET + TRIGGERBOT)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -1138,7 +1201,7 @@ local function stopMagicBullet()
     print("❌ Magic Bullet PASİF")
 end
 
--- TRIGGERBOT
+-- TRIGGERBOT (Crosshair hedefteyken ateş eder, karakter sabit)
 RunService.RenderStepped:Connect(function()
     if not getgenv().LEAModState.Triggerbot then return end
     
@@ -1185,14 +1248,14 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 LEA MOD v46.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
+print("║   🔥 LEA MOD v47.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
 print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 AIMBOT V1 - KESİNTİSİZ KİLİT                          ║")
-print("║  🎯 AIMBOT V2 - HEAD ÖNCELİKLİ KİLİT                      ║")
+print("║  🎯 AIMBOT V1 - Karakter + Crosshair döner                 ║")
+print("║  🎯 AIMBOT V2 - Head öncelikli                            ║")
 print("║  ⚡ AIMASSIST - Direk hedefe götürür                       ║")
 print("║  🔒 AIMLOCK - Sabit kilit (hızlı takip)                   ║")
+print("║  🎯 CROSS AIM - SADECE Crosshair bakar, KARAKTER SABİT    ║")
 print("║  🔫 MAGIC BULLET - Mermi OTOMATİK hedefe yönlenir         ║")
 print("║  🚀 TELEPORT - En yakın düşmana ışınlanır                  ║")
 print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
-print("║  💀 KILLCHECK - ÖLÜNCE DİREK GEÇER                         ║")
 print("╚══════════════════════════════════════════════════════════════╝")

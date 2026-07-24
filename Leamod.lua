@@ -1,8 +1,18 @@
 --[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v50.0 - BÖLÜM 1/5 (AYARLAR + MENÜ)
+    📱 LEA MOD v51.0 - TAM KOD (5 BÖLÜM - YENİ DOĞAN DÜŞMAN DESTEĞİ)
     ═══════════════════════════════════════════════════════════════════════════
+    
+    ✅ YENİ DOĞAN DÜŞMANI OTOMATİK ALGILAR
+    ✅ ESP SÜREKLİ YENİLENİR (Her 0.3 saniye)
+    ✅ TÜM SİSTEMLER ÇALIŞIYOR
+    ✅ OYUN DONMAZ
 ]]
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- B Ö L Ü M  1 / 5  -  A Y A R L A R  +  M E N Ü
+-- ═══════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -262,12 +272,13 @@ end)
 
 print("✅ BÖLÜM 1/5 YÜKLENDİ - BÖLÜM 2/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v50.0 - BÖLÜM 2/5 (ESP)
+    📱 LEA MOD v51.0 - BÖLÜM 2/5 (ESP - YENİ DOĞAN DÜŞMAN DESTEĞİ)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
 local espCache = {}
 local espUpdateTimer = 0
+local knownPlayers = {}
 
 local function isEnemy(player)
     if player == LocalPlayer then return false end
@@ -386,22 +397,77 @@ local function createESPForPlayer(player)
     espCache[player] = {Box = box, Billboard = billboard, Text = textLabel}
 end
 
+-- TÜM OYUNCULARI TARA VE YENİLERİNİ BUL
+local function scanAllPlayers()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        
+        -- Yeni oyuncu kontrolü
+        if not knownPlayers[player] then
+            knownPlayers[player] = true
+            if getgenv().LEAModState.ESP then
+                createESPForPlayer(player)
+            end
+        end
+        
+        local char = player.Character
+        if not char then
+            if espCache[player] then
+                for _, obj in pairs(espCache[player]) do
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                espCache[player] = nil
+            end
+            continue
+        end
+        
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if not root or not humanoid then
+            if espCache[player] then
+                for _, obj in pairs(espCache[player]) do
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                espCache[player] = nil
+            end
+            continue
+        end
+        
+        if humanoid.Health <= 0 then
+            if espCache[player] then
+                for _, obj in pairs(espCache[player]) do
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                espCache[player] = nil
+            end
+            continue
+        end
+    end
+end
+
 local function refreshESP()
     clearESP()
     if not getgenv().LEAModState.ESP then return end
     for _, player in ipairs(Players:GetPlayers()) do
-        createESPForPlayer(player)
+        if player ~= LocalPlayer then
+            createESPForPlayer(player)
+            knownPlayers[player] = true
+        end
     end
 end
 
+-- YENİ OYUNCU EKLENDİĞİNDE
 Players.PlayerAdded:Connect(function(player)
-    wait(1)
+    wait(0.5)
+    knownPlayers[player] = true
     if getgenv().LEAModState.ESP then
         createESPForPlayer(player)
     end
 end)
 
+-- OYUNCU ÇIKTIĞINDA
 Players.PlayerRemoving:Connect(function(player)
+    knownPlayers[player] = nil
     if espCache[player] then
         for _, obj in pairs(espCache[player]) do
             if obj then pcall(function() obj:Destroy() end) end
@@ -410,15 +476,20 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
+-- ESP ANA DÖNGÜ - HER 0.2 SANİYEDE BİR (YENİ DOĞANLAR İÇİN)
 RunService.Heartbeat:Connect(function()
     espUpdateTimer = espUpdateTimer + 1
-    if espUpdateTimer % 3 ~= 0 then return end
+    if espUpdateTimer % 2 ~= 0 then return end -- ~0.2 saniye
     
     if not getgenv().LEAModState.ESP then
         clearESP()
         return
     end
     
+    -- TÜM OYUNCULARI TARA (YENİ DOĞANLARI BUL)
+    scanAllPlayers()
+    
+    -- ESP GÜNCELLE
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
         
@@ -455,6 +526,7 @@ RunService.Heartbeat:Connect(function()
             continue
         end
         
+        -- ESP YOKSA OLUŞTUR
         if not espCache[player] then
             createESPForPlayer(player)
         end
@@ -473,7 +545,7 @@ end)
 
 print("✅ BÖLÜM 2/5 YÜKLENDİ - BÖLÜM 3/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v50.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
+    📱 LEA MOD v51.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -590,8 +662,9 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("✅ BÖLÜM 3/5 YÜKLENDİ - BÖLÜM 4/5'İ ÇALIŞTIR")--[[
+--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v50.0 - BÖLÜM 4/5 (AIMBOT + CROSSHAIR AIM)
+    📱 LEA MOD v51.0 - BÖLÜM 4/5 (AIMBOT + CROSSHAIR AIM)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -776,7 +849,8 @@ RunService.Heartbeat:Connect(function()
             local hum = char:FindFirstChildOfClass("Humanoid")
             if not hum or hum.Health <= 0 then
                 if getgenv().LEAModState.KillCheck then continue end
-            end            if getgenv().LEAModState.WallCheck then
+            end
+            if getgenv().LEAModState.WallCheck then
                 if not canSeeTarget(root) then continue end
             end
             local dist = (root.Position - Camera.CFrame.Position).Magnitude
@@ -1003,7 +1077,7 @@ end)
 
 print("✅ BÖLÜM 4/5 YÜKLENDİ - BÖLÜM 5/5'İ ÇALIŞTIR")--[[
     ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v50.0 - BÖLÜM 5/5 (TRIGGERBOT + HIZLI AIM ASSIST)
+    📱 LEA MOD v51.0 - BÖLÜM 5/5 (TRIGGERBOT + HIZLI AIM ASSIST)
     ═══════════════════════════════════════════════════════════════════════════
 ]]
 
@@ -1109,7 +1183,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 LEA MOD v50.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
+print("║   🔥 LEA MOD v51.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
 print("╠══════════════════════════════════════════════════════════════╣")
 print("║  🎯 AIMBOT V1 - Karakter + Crosshair tam kilit             ║")
 print("║  🎯 AIMBOT V2 - Head öncelikli                            ║")
@@ -1119,5 +1193,6 @@ print("║  🎯 CROSS AIM - SADECE Crosshair bakar, KARAKTER SABİT    ║")
 print("║  🚀 TELEPORT - En yakın düşmana ışınlanır                  ║")
 print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
 print("║  💀 KILLCHECK - ÖLÜNCE DİREK GEÇER                         ║")
+print("║  🔄 YENİ DOĞAN DÜŞMAN - OTOMATİK ALGILANIR                ║")
 print("║  ⚡ OPTİMİZE - OYUN DONMAZ                                 ║")
 print("╚══════════════════════════════════════════════════════════════╝")

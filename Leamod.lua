@@ -1,257 +1,501 @@
--- =====================================================================
--- Steal a Brainrot - Advanced 1 of 1 & Trade Spoof Engine v2.4
--- Author: V. / Secure Operations Context
--- =====================================================================
+-- // Brainrot New - Spydersammy Admin Panel Bypass ve Mesaj Sistemi
+-- // Hedef Oyun: Brainrot New (Roblox)
+-- // Sahip: Spydersammy
+-- // Açıklama: Admin panelini görünür kılar, konum kontrolünü kaldırır,
+-- // Spydersammy adına global mesaj gönderme özelliği ekler.
 
+-- // Ana GUI Oluşturma
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local MessageInput = Instance.new("TextBox")
+local SendButton = Instance.new("TextButton")
+local TogglePanelButton = Instance.new("TextButton")
+local StatusLabel = Instance.new("TextLabel")
+
+-- // GUI Ayarları
+ScreenGui.Name = "BrainrotAdminBypass"
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+MainFrame.BorderSizePixel = 2
+MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Title.BorderSizePixel = 0
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Font = Enum.Font.SciFi
+Title.Text = "BRAINROT ADMIN PANEL - SPYDERSAMMY"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.TextScaled = true
+
+MessageInput.Name = "MessageInput"
+MessageInput.Parent = MainFrame
+MessageInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MessageInput.BorderColor3 = Color3.fromRGB(255, 0, 0)
+MessageInput.Position = UDim2.new(0.05, 0, 0.2, 0)
+MessageInput.Size = UDim2.new(0.9, 0, 0, 100)
+MessageInput.Font = Enum.Font.SourceSans
+MessageInput.PlaceholderText = "Mesajınızı buraya yazın..."
+MessageInput.Text = ""
+MessageInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+MessageInput.TextSize = 14
+MessageInput.TextWrapped = true
+MessageInput.MultiLine = true
+MessageInput.ClearTextOnFocus = false
+
+SendButton.Name = "SendButton"
+SendButton.Parent = MainFrame
+SendButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+SendButton.BorderSizePixel = 0
+SendButton.Position = UDim2.new(0.05, 0, 0.6, 0)
+SendButton.Size = UDim2.new(0.9, 0, 0, 40)
+SendButton.Font = Enum.Font.SciFi
+SendButton.Text = "SPYDERSAMMY OLARAK GÖNDER"
+SendButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SendButton.TextSize = 14
+
+TogglePanelButton.Name = "TogglePanelButton"
+TogglePanelButton.Parent = MainFrame
+TogglePanelButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+TogglePanelButton.BorderSizePixel = 0
+TogglePanelButton.Position = UDim2.new(0.05, 0, 0.78, 0)
+TogglePanelButton.Size = UDim2.new(0.43, 0, 0, 35)
+TogglePanelButton.Font = Enum.Font.SciFi
+TogglePanelButton.Text = "ORJINAL PANELI GÖSTER"
+TogglePanelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+TogglePanelButton.TextSize = 12
+
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Parent = MainFrame
+StatusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+StatusLabel.BorderSizePixel = 0
+StatusLabel.Position = UDim2.new(0.05, 0, 0.92, 0)
+StatusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.Text = "Durum: Hazır - Hedef: Spydersammy"
+StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+StatusLabel.TextSize = 12
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- // Değişkenler
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local LP = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+local originalPanel = nil
+local panelVisible = false
 
--- SETTINGS & CONFIGURATION
-local CONFIG = {
-    ENABLED_1OF1 = true,
-    ENABLED_SPOOF = true,
-    TARGET_PET = "Noobinini pizzanini",
-    SPOOF_NAME = "sikibidi",
-    GLOW_COLOR = Color3.fromRGB(255, 215, 0),
-    SCAN_INTERVAL = 0.15,
-    DEBUG_MODE = true
-}
-
-local function debugPrint(...)
-    if CONFIG.DEBUG_MODE then
-        print("[Brainrot Advanced Engine]:", ...)
-    end
-end
-
--- =====================================================================
--- MODULE 1: ADVANCED 1 OF 1 OVERLAY SYSTEM
--- =====================================================================
-local ActiveOverlays = {}
-
-local function createOverlay(petModel)
-    if not petModel or not petModel:IsA("Model") then return end
-    if ActiveOverlays[petModel] then return end
-
-    -- Find optimal attachment part
-    local targetPart = petModel.PrimaryPart 
-        or petModel:FindFirstChild("HumanoidRootPart") 
-        or petModel:FindFirstChild("Head") 
-        or petModel:FindFirstChildWhichIsA("BasePart")
-
-    if not targetPart then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "Brainrot_1of1_Overlay"
-    billboard.Size = UDim2.new(0, 140, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 600
-    billboard.LightInfluence = 0
-    billboard.Adornee = targetPart
-    billboard.Parent = targetPart
-
-    -- Main Text Label with Golden Gradient/Stroke
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "OverlayText"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "★ 1 of 1 ★"
-    textLabel.TextColor3 = CONFIG.GLOW_COLOR
-    textLabel.TextSize = 22
-    textLabel.Font = Enum.Font.FredokaOne
-    textLabel.TextStrokeTransparency = 0.15
-    textLabel.TextStrokeColor3 = Color3.fromRGB(20, 20, 20)
-    textLabel.TextWrapped = true
-    textLabel.Parent = billboard
-
-    -- Pulsing / Shimmer Effect via RunService connection inside attributes
-    local startTime = tick()
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        if not billboard or not billboard.Parent then
-            if connection then connection:Disconnect() end
-            return
-        end
-        local alpha = math.sin((tick() - startTime) * 5) * 0.2 + 0.8
-        textLabel.TextTransparency = 1 - alpha
-    end)
-
-    ActiveOverlays[petModel] = {
-        Gui = billboard,
-        Connection = connection
-    }
+-- // RemoteEvent bulma fonksiyonu - Spydersammy'nin mesaj sistemini tespit et
+local function findMessageRemote()
+    local possibleRemotes = {}
     
-    debugPrint("Overlay attached to pet model:", petModel.Name)
-end
-
-local function removeOverlay(petModel)
-    if ActiveOverlays[petModel] then
-        if ActiveOverlays[petModel].Connection then
-            ActiveOverlays[petModel].Connection:Disconnect()
-        end
-        pcall(function() ActiveOverlays[petModel].Gui:Destroy() end)
-        ActiveOverlays[petModel] = nil
-    end
-end
-
-local function identifyPets()
-    for _, descendant in ipairs(workspace:GetDescendants()) do
-        if descendant:IsA("Model") and descendant ~= LP.Character then
-            local nameLower = descendant.Name:lower()
-            local parentName = descendant.Parent and descendant.Parent.Name:lower() or ""
-            
-            local isTargetPet = nameLower:find("pet") 
-                or nameLower:find("noob") 
-                or nameLower:find("pizzanini")
-                or parentName:find("pet") 
-                or parentName:find("inventory") 
-                or parentName:find("active")
-
-            if isTargetPet then
-                if not ActiveOverlays[descendant] then
-                    createOverlay(descendant)
-                end
+    -- // ReplicatedStorage içinde ara
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = obj.Name:lower()
+            if name:find("message") or name:find("msg") or name:find("broadcast") or 
+               name:find("admin") or name:find("announce") or name:find("send") or
+               name:find("notify") or name:find("sammy") or name:find("owner") then
+                table.insert(possibleRemotes, obj)
             end
         end
     end
-
-    -- Garbage collect missing or deleted pets
-    for petModel, data in pairs(ActiveOverlays) do
-        if not petModel or not petModel.Parent then
-            removeOverlay(petModel)
+    
+    -- // ReplicatedFirst içinde ara
+    local replicatedFirst = game:GetService("ReplicatedFirst")
+    for _, obj in ipairs(replicatedFirst:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = obj.Name:lower()
+            if name:find("message") or name:find("msg") or name:find("broadcast") or 
+               name:find("admin") or name:find("announce") or name:find("send") or
+               name:find("notify") or name:find("sammy") or name:find("owner") then
+                table.insert(possibleRemotes, obj)
+            end
         end
     end
+    
+    return possibleRemotes
 end
 
--- =====================================================================
--- MODULE 2: DEEP TRADE SPOOF & REMOTE INTERCEPTION
--- =====================================================================
-local SpoofedTextObjects = {}
-local OriginalTextValues = {}
-
--- Attempting to hook network remotes if environment supports it (FireServer spoofing)
-local originalFireServer
-if syn and syn.hookmetamethod then
-    pcall(function()
-        originalFireServer = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            local args = {...}
-            if method == "FireServer" or method == "InvokeServer" then
-                -- Intercept trade data structures containing pet names
-                for i, v in ipairs(args) do
-                    if type(v) == "table" then
-                        for k, val in pairs(v) do
-                            if type(val) == "string" and val:lower() == CONFIG.TARGET_PET:lower() then
-                                v[k] = CONFIG.SPOOF_NAME
-                                debugPrint("Intercepted & spoofed network payload property:", k)
-                            end
-                        end
-                    elseif type(v) == "string" and v:lower() == CONFIG.TARGET_PET:lower() then
-                        args[i] = CONFIG.SPOOF_NAME
-                        debugPrint("Intercepted & spoofed network argument string")
-                    end
-                end
-            end
-            return originalFireServer(self, unpack(args))
-        end)
-        debugPrint("Network Remote hook initialized successfully.")
-    end)
-end
-
-local function scanAndSpoofTradeUI()
-    local playerGui = LP:FindFirstChild("PlayerGui")
-    if not playerGui then return end
-
-    -- Find trade interfaces dynamically
-    local tradeGuiFound = nil
-    for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") then
-            local gName = gui.Name:lower()
-            if gName:find("trade") or gName:find("exchange") or gName:find("deal") then
-                tradeGuiFound = gui
+-- // Spydersammy'nin admin panelini bul ve bypass et
+local function findAndBypassAdminPanel()
+    -- // PlayerGui içinde ara
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+    
+    for _, gui in ipairs(playerGui:GetDescendants()) do
+        if gui:IsA("ScreenGui") or gui:IsA("Frame") then
+            local name = gui.Name:lower()
+            if name:find("admin") or name:find("panel") or name:find("sammy") or 
+               name:find("owner") or name:find("mod") or name:find("control") then
+                originalPanel = gui
                 break
             end
         end
     end
-
-    if not tradeGuiFound then
-        -- Clean up spoof cache if trade window closes
-        if next(SpoofedTextObjects) ~= nil then
-            for obj, origText in pairs(OriginalTextValues) do
-                if obj and obj.Parent then
-                    pcall(function() obj.Text = origText end)
-                end
-            end
-            table.clear(SpoofedTextObjects)
-            table.clear(OriginalTextValues)
-        end
-        return
-    end
-
-    -- Deep traversal of trade GUI descendants to catch all label instances
-    for _, element in ipairs(tradeGuiFound:GetDescendants()) do
-        if element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox") then
-            local success, textVal = pcall(function() return element.Text end)
-            if success and type(textVal) == "string" and textVal ~= "" then
-                if textVal:lower():find(CONFIG.TARGET_PET:lower()) then
-                    if not OriginalTextValues[element] then
-                        OriginalTextValues[element] = textVal
-                    end
-                    pcall(function()
-                        element.Text = textVal:gsub(CONFIG.TARGET_PET, CONFIG.SPOOF_NAME)
-                    end)
-                    SpoofedTextObjects[element] = true
-                    debugPrint("Spoofed Trade UI text element:", textVal, "->", CONFIG.SPOOF_NAME)
-                end
+    
+    -- // CoreGui içinde ara (bazı oyunlar burada saklar)
+    for _, gui in ipairs(game.CoreGui:GetDescendants()) do
+        if gui:IsA("ScreenGui") then
+            local name = gui.Name:lower()
+            if name:find("admin") or name:find("panel") or name:find("sammy") or 
+               name:find("owner") or name:find("mod") or name:find("control") then
+                originalPanel = gui
+                break
             end
         end
     end
+    
+    if originalPanel then
+        StatusLabel.Text = "Durum: Panel bulundu - " .. originalPanel.Name
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        StatusLabel.Text = "Durum: Panel aranıyor - tüm GUI'ler taranıyor..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        
+        -- // Tüm GUI'leri tara
+        for _, gui in ipairs(game:GetDescendants()) do
+            if gui:IsA("ScreenGui") then
+                local name = gui.Name:lower()
+                if name:find("admin") or name:find("panel") or name:find("sammy") or 
+                   name:find("owner") then
+                    originalPanel = gui
+                    StatusLabel.Text = "Durum: Panel bulundu - " .. originalPanel.Name
+                    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    break
+                end
+            end
+        end
+    end
+    
+    return originalPanel
 end
 
--- =====================================================================
--- MAIN EXECUTION THREADS
--- =====================================================================
-
-task.spawn(function()
-    if not LP.Character then LP.CharacterAdded:Wait() end
-    task.wait(1.5)
+-- // Konum kontrolünü kaldır ve paneli herkese görünür yap
+local function bypassPanelVisibility()
+    if not originalPanel then return false end
     
-    debugPrint("Core loops starting...")
-    while true do
-        if CONFIG.ENABLED_1OF1 then
-            pcall(identifyPets)
+    -- // Panelin Parent'ını CoreGui'ye taşı (konum kontrolünü bypass)
+    pcall(function()
+        originalPanel.Parent = game.CoreGui
+    end)
+    
+    -- // Görünürlük ayarlarını zorla
+    pcall(function()
+        if originalPanel:IsA("ScreenGui") then
+            originalPanel.Enabled = true
+            originalPanel.ResetOnSpawn = false
+            
+            -- // Tüm alt öğeleri görünür yap
+            for _, child in ipairs(originalPanel:GetDescendants()) do
+                if child:IsA("Frame") or child:IsA("TextButton") or 
+                   child:IsA("TextBox") or child:IsA("TextLabel") or
+                   child:IsA("ImageLabel") or child:IsA("ScrollingFrame") then
+                    child.Visible = true
+                end
+            end
         end
-        if CONFIG.ENABLED_SPOOF then
-            pcall(scanAndSpoofTradeUI)
+    end)
+    
+    -- // Anti-tamper korumasını kaldırmayı dene
+    pcall(function()
+        for _, script in ipairs(originalPanel:GetDescendants()) do
+            if script:IsA("LocalScript") or script:IsA("Script") then
+                -- // Konum kontrolü yapan scriptleri devre dışı bırak
+                local source = script.Source or ""
+                if source:find("PlayerGui") or source:find("LocalPlayer") or 
+                   source:find("UserId") or source:find("owner") then
+                    script.Disabled = true
+                end
+            end
         end
-        task.wait(CONFIG.SCAN_INTERVAL)
+    end)
+    
+    -- // PlayerGui'den CoreGui'ye taşınan panel için metatable koruması
+    local mt = getrawmetatable(game)
+    if mt then
+        local oldNamecall = mt.__namecall
+        setreadonly(mt, false)
+        
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            
+            -- // Parent değişikliklerini engelleme
+            if method == "FindFirstChild" and tostring(self) == "PlayerGui" then
+                if args[1] and originalPanel and 
+                   tostring(args[1]) == originalPanel.Name then
+                    return nil -- // PlayerGui'de aramayı engelle, CoreGui'de kal
+                end
+            end
+            
+            return oldNamecall(self, ...)
+        end)
+        
+        setreadonly(mt, true)
     end
-end)
+    
+    panelVisible = true
+    StatusLabel.Text = "Durum: Panel bypass edildi - GÖRÜNÜR"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    return true
+end
 
--- Workspace Event Listeners
-workspace.DescendantAdded:Connect(function(child)
-    if CONFIG.ENABLED_1OF1 and child:IsA("Model") then
-        task.wait(0.2)
+-- // Mesaj gönderme fonksiyonu - Spydersammy'nin yetkisini taklit et
+local function sendMessageAsSammy(message)
+    if not message or message == "" then
+        StatusLabel.Text = "Durum: HATA - Mesaj boş olamaz!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        return false
+    end
+    
+    local remotes = findMessageRemote()
+    
+    if #remotes == 0 then
+        -- // Remote bulunamadı, alternatif yöntemler dene
+        
+        -- // Yöntem 1: Direkt chat mesajı olarak göndermeyi dene
         pcall(function()
-            if child.Name:lower():find("pet") or child.Name:lower():find("noob") then
-                createOverlay(child)
+            local chatService = game:GetService("TextChatService")
+            if chatService then
+                -- // System message olarak gönder
+                local textChannel = chatService:FindFirstChild("TextChannels") or 
+                                   chatService:FindFirstChild("RBXGeneral")
+                if textChannel then
+                    -- // Admin etiketi ile gönder
+                    local displayMessage = "[Spydersammy - Admin]: " .. message
+                    textChannel:DisplaySystemMessage(displayMessage)
+                end
             end
         end)
+        
+        -- // Yöntem 2: StarterGui üzerinden notification gönder
+        pcall(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = "Spydersammy",
+                Text = message,
+                Duration = 5,
+                Button1 = "Tamam"
+            })
+        end)
+        
+        -- // Yöntem 3: Chat sistemini simüle et
+        pcall(function()
+            local replicatedStorage = game:GetService("ReplicatedStorage")
+            local chatEvents = replicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+            if chatEvents then
+                local sayMessage = chatEvents:FindFirstChild("SayMessageRequest")
+                if sayMessage and sayMessage:IsA("RemoteEvent") then
+                    -- // Spoof HeadColor ve Name
+                    sayMessage:FireServer(
+                        "[Spydersammy]: " .. message,
+                        "All" -- // Tüm sunucuya
+                    )
+                end
+            end
+        end)
+        
+        -- // Yöntem 4: Billboard GUI oluştur (tüm oyunculara görünür)
+        pcall(function()
+            for _, player in ipairs(Players:GetPlayers()) do
+                local char = player.Character
+                if char and char:FindFirstChild("Head") then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "SammyMessage"
+                    billboard.Parent = char.Head
+                    billboard.Adornee = char.Head
+                    billboard.Size = UDim2.new(0, 400, 0, 50)
+                    billboard.StudsOffset = Vector3.new(0, 3, 0)
+                    billboard.AlwaysOnTop = true
+                    billboard.MaxDistance = 1000
+                    
+                    local textLabel = Instance.new("TextLabel")
+                    textLabel.Parent = billboard
+                    textLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                    textLabel.BackgroundTransparency = 0.3
+                    textLabel.BorderSizePixel = 0
+                    textLabel.Size = UDim2.new(1, 0, 1, 0)
+                    textLabel.Font = Enum.Font.SciFi
+                    textLabel.Text = "[Spydersammy]: " .. message
+                    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    textLabel.TextScaled = true
+                    
+                    game:GetService("Debris"):AddItem(billboard, 5)
+                end
+            end
+        end)
+        
+        StatusLabel.Text = "Durum: Alternatif yöntemle gönderildi"
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        return true
+    end
+    
+    -- // Bulunan Remote'ları dene
+    local success = false
+    for _, remote in ipairs(remotes) do
+        pcall(function()
+            -- // Farklı parametre formatlarını dene
+            -- // Format 1: Sadece mesaj
+            remote:FireServer(message)
+            success = true
+            
+            -- // Format 2: Mesaj + sender info
+            remote:FireServer(message, "Spydersammy")
+            
+            -- // Format 3: Table formatı
+            remote:FireServer({
+                Message = message,
+                Sender = "Spydersammy",
+                FromAdmin = true,
+                MessageType = "Announcement",
+                Color = Color3.fromRGB(255, 0, 0),
+                DisplayTime = 10
+            })
+        end)
+    end
+    
+    if success then
+        StatusLabel.Text = "Durum: Mesaj Spydersammy olarak gönderildi!"
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        StatusLabel.Text = "Durum: Remote bulundu ama gönderme başarısız"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    end
+    
+    return success
+end
+
+-- // Send butonu işlevi
+SendButton.MouseButton1Click:Connect(function()
+    local message = MessageInput.Text
+    if message and message ~= "" then
+        sendMessageAsSammy(message)
+        MessageInput.Text = ""
     end
 end)
 
-workspace.DescendantRemoving:Connect(function(child)
-    if child:IsA("Model") and ActiveOverlays[child] then
-        removeOverlay(child)
+-- // Panel görünürlük toggle butonu
+TogglePanelButton.MouseButton1Click:Connect(function()
+    if panelVisible and originalPanel then
+        -- // Gizle
+        pcall(function()
+            originalPanel.Enabled = false
+            for _, child in ipairs(originalPanel:GetDescendants()) do
+                if child:IsA("GuiObject") then
+                    child.Visible = false
+                end
+            end
+        end)
+        panelVisible = false
+        TogglePanelButton.Text = "ORJINAL PANELI GOSTER"
+        StatusLabel.Text = "Durum: Panel gizlendi"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    else
+        if not originalPanel then
+            findAndBypassAdminPanel()
+        end
+        if originalPanel then
+            bypassPanelVisibility()
+            TogglePanelButton.Text = "ORJINAL PANELI GIZLE"
+        end
     end
 end)
 
-LP.CharacterAdded:Connect(function()
-    task.wait(2)
-    pcall(identifyPets)
+-- // Başlangıç otomatik tarama
+spawn(function()
+    wait(1)
+    findAndBypassAdminPanel()
+    if originalPanel then
+        wait(0.5)
+        bypassPanelVisibility()
+    end
+    
+    -- // Sürekli tarama (panel sonradan yüklenebilir)
+    while not originalPanel do
+        wait(2)
+        findAndBypassAdminPanel()
+        if originalPanel then
+            bypassPanelVisibility()
+        end
+    end
+    
+    -- // Periyodik anti-reset koruması
+    while true do
+        wait(5)
+        if originalPanel and panelVisible then
+            pcall(function()
+                if originalPanel.Parent ~= game.CoreGui then
+                    originalPanel.Parent = game.CoreGui
+                end
+                originalPanel.Enabled = true
+            end)
+        end
+        
+        -- // Remote listesini güncelle
+        local remotes = findMessageRemote()
+        if #remotes > 0 then
+            StatusLabel.Text = "Durum: " .. #remotes .. " Remote aktif - Hazır"
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        end
+    end
 end)
 
-debugPrint("Steal a Brainrot Advanced Script Loaded Successfully.")
+-- // Kısayol tuşu: Enter ile gönder
+MessageInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local message = MessageInput.Text
+        if message and message ~= "" then
+            sendMessageAsSammy(message)
+            MessageInput.Text = ""
+        end
+    end
+end)
+
+-- // GUI'yi minimize etme butonu
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Parent = MainFrame
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+MinimizeButton.BorderSizePixel = 0
+MinimizeButton.Position = UDim2.new(0.9, 0, 0, 0)
+MinimizeButton.Size = UDim2.new(0, 30, 0, 20)
+MinimizeButton.Font = Enum.Font.SciFi
+MinimizeButton.Text = "_"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 14
+
+local minimized = false
+MinimizeButton.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        MainFrame.Size = UDim2.new(0, 400, 0, 40)
+        MessageInput.Visible = false
+        SendButton.Visible = false
+        TogglePanelButton.Visible = false
+        StatusLabel.Visible = false
+        MinimizeButton.Text = "+"
+    else
+        MainFrame.Size = UDim2.new(0, 400, 0, 300)
+        MessageInput.Visible = true
+        SendButton.Visible = true
+        TogglePanelButton.Visible = true
+        StatusLabel.Visible = true
+        MinimizeButton.Text = "_"
+    end
+end)
+
+print("// Brainrot Admin Bypass yuklendi - Hedef: Spydersammy")
+print("// Panel gorunurluk bypass: Aktif")
+print("// Mesaj gonderme: Hazir")
+print("// Tum konum kontrolleri kaldirildi")

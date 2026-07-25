@@ -1,493 +1,787 @@
--- // BRAINROT NEW - KORUMA SİSTEMİ ÇIKARICI v4.0
--- // PARÇA 1/3: Veri Toplama Motoru
--- // Amaç: Tüm script kaynaklarını, remote'ları, koruma verilerini topla
+-- // ============================================================
+-- // Axiom - Game Infrastructure Analyzer v5.0
+-- // PARÇA 1/2: Veri Toplama & Anti-Cheat Analiz Motoru
+-- // Amaç: Tüm client-side verileri toplar, analiz eder
+-- // Çıktı: getgenv().AxiomData (Parça 2 bunu kullanır)
 -- // ============================================================
 
-local S = {
-    Players = game:GetService("Players"),
-    RepStorage = game:GetService("ReplicatedStorage"),
-    RepFirst = game:GetService("ReplicatedFirst"),
-    ServerScript = game:GetService("ServerScriptService"),
-    ServerStorage = game:GetService("ServerStorage"),
-    StarterGui = game:GetService("StarterGui"),
-    StarterPlayer = game:GetService("StarterPlayer"),
-    Http = game:GetService("HttpService"),
-    LP = game:GetService("Players").LocalPlayer
+-- // === SERVICE BINDINGS ===
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage = game:GetService("ServerStorage")
+local StarterGui = game:GetService("StarterGui")
+local StarterPlayer = game:GetService("StarterPlayer")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- // === GLOBAL DATA STORE (Parça 2 burayı okur) ===
+getgenv().AxiomData = {
+    Meta = {
+        GameId = game.GameId,
+        PlaceId = game.PlaceId,
+        JobId = game.JobId,
+        GameName = "",
+        ExtractTime = os.date("%Y-%m-%d %H:%M:%S"),
+        ClientVersion = 0,
+        TotalPlayers = 0
+    },
+    Scripts = {
+        LocalScripts = {},
+        ModuleScripts = {},
+        ServerScripts = {},
+        TotalCount = 0,
+        WithSource = 0,
+        BytecodeCount = 0
+    },
+    Remotes = {
+        RemoteEvents = {},
+        RemoteFunctions = {},
+        BindableEvents = {},
+        BindableFunctions = {},
+        TotalCount = 0,
+        SuspiciousRemotes = {}
+    },
+    GUI = {
+        ScreenGuis = {},
+        TotalElements = 0,
+        AdminPanels = {}
+    },
+    AntiCheat = {
+        Detections = {},
+        Patterns = {},
+        Scripts_With_Protection = {},
+        RiskAssessment = "NONE",
+        TotalFindings = 0
+    },
+    Network = {
+        Hooks = {Active = false},
+        TrafficLog = {}
+    },
+    LogBuffer = {}
 }
 
--- Global veri havuzu (Parça 2 ve 3 buradan okur)
-getgenv().BE = {
-    Evt = {}, Fnc = {}, All = {}, Mod = {}, Loc = {}, Srv = {},
-    Gui = {}, Prot = {}, Raw = {}, Log = {}, Cfg = {MaxDepth=20, ScanCore=true}
-}
-local D = getgenv().BE
+local D = getgenv().AxiomData
 
--- Log
-local function L(l,m) local e=string.format("[%s][%s]%s",os.date("%H:%M:%S"),l,m);table.insert(D.Log,e);print(e) end
+-- // === INTERNAL LOGGING ===
+local function Log(level, category, message)
+    local entry = {
+        Time = os.date("%H:%M:%S"),
+        Level = level,
+        Category = category,
+        Message = tostring(message)
+    }
+    table.insert(D.LogBuffer, entry)
+    if #D.LogBuffer > 1000 then table.remove(D.LogBuffer, 1) end
+    print(string.format("[%s][%s][%s] %s", entry.Time, level, category, message))
+end
 
--- Güvenli kaynak kodu alma
-local function GS(o)
-    local r,s = pcall(function() if o:IsA("BaseScript") then return o.Source end return nil end)
-    if r and s and s~="" then return s end
+-- // === UTILITY: Safe pcall ===
+local function SafeCall(func, context)
+    local s, r = pcall(func)
+    if not s then Log("ERROR", context or "UNKNOWN", tostring(r)); return nil end
+    return r
+end
+
+-- // === UTILITY: Script source extraction ===
+local function GetSource(obj)
+    local s, src = pcall(function()
+        if obj:IsA("BaseScript") then return obj.Source end
+        return nil
+    end)
+    if s and src and src ~= "" then return src end
     return nil
 end
 
--- REMOTE TOPLAMA
-L("INFO","Remote Event/Function toplanıyor...")
-local cnt = {S.RepStorage,S.RepFirst,workspace,S.LP:FindFirstChild("PlayerGui"),S.LP:FindFirstChild("PlayerScripts")}
-for _,c in ipairs(cnt) do pcall(function()
-    if not c then return end
-    for _,o in ipairs(c:GetDescendants()) do
-        if o:IsA("RemoteEvent") then
-            table.insert(D.Evt,{N=o.Name,P=o:GetFullName(),S=o.Name:lower():find("sammy") or o:GetFullName():lower():find("sammy")})
-        elseif o:IsA("RemoteFunction") then
-            table.insert(D.Fnc,{N=o.Name,P=o:GetFullName(),S=o.Name:lower():find("sammy") or o:GetFullName():lower():find("sammy")})
+-- // === UTILITY: Bytecode detection ===
+local function IsBytecode(source)
+    if not source or #source < 10 then return false end
+    local readable, total = 0, math.min(#source, 200)
+    for i = 1, total do
+        local b = source:byte(i)
+        if (b >= 32 and b <= 126) or b == 10 or b == 13 or b == 9 then
+            readable = readable + 1
         end
     end
-end) end
-L("OK",string.format("Remote: %d Event + %d Function",#D.Evt,#D.Fnc))
-
--- SCRIPT TOPLAMA
-L("INFO","Scriptler taranıyor...")
-local kw = {"admin","owner","sammy","spyder","panel","control","permission","rank","role","command","ban","kick","message","broadcast","announce","protection","bypass","check","verify","mod","staff"}
-local containers = {
-    {N="RepStorage",O=S.RepStorage},{N="RepFirst",O=S.RepFirst},{N="ServerScript",O=S.ServerScript},
-    {N="ServerStorage",O=S.ServerStorage},{N="StarterGui",O=S.StarterGui},{N="StarterPlayer",O=S.StarterPlayer},
-    {N="PlayerScripts",O=S.LP:FindFirstChild("PlayerScripts")},{N="PlayerGui",O=S.LP:FindFirstChild("PlayerGui")},
-    {N="Workspace",O=workspace}
-}
-
-for _,c in ipairs(containers) do pcall(function()
-    if not c.O then return end
-    for _,o in ipairs(c.O:GetDescendants()) do
-        local t = nil
-        if o:IsA("Script") then t="Server" elseif o:IsA("LocalScript") then t="Local" elseif o:IsA("ModuleScript") then t="Module" end
-        if not t then continue end
-        local nl,pl = o.Name:lower(),o:GetFullName():lower()
-        local ia, mk = false, {}
-        for _,k in ipairs(kw) do if nl:find(k) or pl:find(k) then ia=true;table.insert(mk,k) end end
-        local src = GS(o)
-        local si = {N=o.Name,P=o:GetFullName(),T=t,C=c.N,A=ia,K=mk,Kc=#mk,Src=src,Len=src and #src or 0,Ok=src~=nil}
-        table.insert(D.All,si)
-        if t=="Server" then table.insert(D.Srv,si) elseif t=="Local" then table.insert(D.Loc,si) elseif t=="Module" then table.insert(D.Mod,si) end
-        if src then table.insert(D.Raw,si) end
-    end
-end) end
-L("OK",string.format("Script: %d toplam | %d kaynak alindi | %d admin ilgili",#D.All,#D.Raw,(function()local c=0;for _,s in ipairs(D.All)do if s.A then c=c+1 end end;return c end)()))
-
--- KORUMA ANALİZİ
-L("INFO","Koruma sistemleri analiz ediliyor...")
-local ptrn = {
-    {N="UserId Kontrol",P={"UserId","userid"},"CRITICAL"},
-    {N="Grup Rank Kontrol",P={"GetRankInGroup","GetRoleInGroup"},"HIGH"},
-    {N="PlayerGui Konum",P={"PlayerGui","playergui"},"HIGH"},
-    {N="Isim Kontrol",P={"Spyder","spyder","Sammy","sammy"},"CRITICAL"},
-    {N="Remote Yetki",P={"FireServer","InvokeServer"},"HIGH"},
-    {N="Anti-Tamper",P={"Destroy","Remove"},"MEDIUM"},
-    {N="Require Yetki",P={"require","Require"},"MEDIUM"},
-    {N="Admin Panel GUI",P={"admin","panel","Admin"},"HIGH"},
-    {N="Mesaj Sistemi",P={"message","broadcast","announce"},"HIGH"},
-    {N="CoreGui Erisim",P={"CoreGui","coregui"},"MEDIUM"}
-}
-for _,sc in ipairs(D.Raw) do
-    if not sc.Src then goto nxt end
-    local dt = {}
-    for _,pt in ipairs(ptrn) do
-        local fd,ln = false,{}
-        for _,p in ipairs(pt.P) do if sc.Src:find(p) then fd=true;for l in sc.Src:gmatch("[^\r\n]+") do if l:find(p) then local t2=l:gsub("^%s+",""):gsub("%s+$","");if #t2>0 and #t2<200 then table.insert(ln,t2) end end end;break end end
-        if fd then table.insert(dt,{Pt=pt,Ln=ln,Lc=#ln}) end
-    end
-    if #dt>0 then local rl="MEDIUM";for _,d in ipairs(dt) do if d.Pt[3]=="CRITICAL" then rl="CRITICAL";break elseif d.Pt[3]=="HIGH" then rl="HIGH" end end;table.insert(D.Prot,{Sc=sc,Dc=#dt,Dt=dt,Rl=rl}) end
-    ::nxt::
+    return (readable / total) < 0.25
 end
-L("OK",string.format("Koruma: %d sistem tespit edildi",#D.Prot))
 
--- GUI YAPISI
-L("INFO","GUI yapisi toplaniyor...")
-local function scn(p,d) if d>20 or not p then return end;for _,c in ipairs(p:GetChildren()) do if c:IsA("GuiObject") then table.insert(D.Gui,{N=c.Name,Cl=c.ClassName,V=c.Visible,A=c.Active,P=tostring(c.Position),S=tostring(c.Size),Ad=c.Name:lower():find("admin") or c.Name:lower():find("panel") or c.Name:lower():find("sammy")});scn(c,d+1) end end end
-pcall(function() scn(S.LP:FindFirstChild("PlayerGui"),0) end)
-pcall(function() scn(game.CoreGui,0) end)
-L("OK",string.format("GUI: %d nesne bulundu",#D.Gui))
-
--- ANALİZ ÖZETİ
-D.Anl = {
-    TS=#D.All, RS=#D.Raw, TE=#D.Evt, TF=#D.Fnc, PS=#D.Prot, GO=#D.Gui,
-    AS=(function()local c=0;for _,s in ipairs(D.All)do if s.A then c=c+1 end end;return c end)(),
-    SR={}, TP={}
+-- // === ANTI-CHEAT PATTERN LIBRARY ===
+local AC_Patterns = {
+    {Name = "UserId Owner Check", Patterns = {"UserId", "userid"}, Category = "Yetkilendirme", Severity = "CRITICAL", Desc = "Belirli kullanıcı ID'si ile sahiplik doğrulaması"},
+    {Name = "Group Rank Verification", Patterns = {"GetRankInGroup", "GetRoleInGroup"}, Category = "Yetkilendirme", Severity = "HIGH", Desc = "Grup rank seviyesine göre yetki kontrolü"},
+    {Name = "PlayerGui Parent Validation", Patterns = {"PlayerGui", "playergui"}, Category = "Anti-Exploit", Severity = "HIGH", Desc = "GUI elementinin doğru parent'ta olup olmadığını kontrol eder"},
+    {Name = "Name-Specific Authorization", Patterns = {"Spyder", "spyder", "Sammy", "sammy"}, Category = "Yetkilendirme", Severity = "CRITICAL", Desc = "Spesifik kullanıcı adına özel yetkilendirme"},
+    {Name = "Remote Security Validation", Patterns = {"FireServer", "InvokeServer", "validate", "authorize"}, Category = "İletişim", Severity = "HIGH", Desc = "Remote event/function çağrılarında güvenlik doğrulaması"},
+    {Name = "Anti-Tamper Protection", Patterns = {"Destroy", "Disconnect", "Remove", "Kill"}, Category = "Anti-Exploit", Severity = "MEDIUM", Desc = "Yetkisiz değişiklik tespit ve imha sistemi"},
+    {Name = "Require Module Authorization", Patterns = {"require", "Require", "waitForChild"}, Category = "Yetkilendirme", Severity = "MEDIUM", Desc = "ModuleScript üzerinden yetki doğrulaması"},
+    {Name = "CoreGui Access Control", Patterns = {"CoreGui", "coregui"}, Category = "Anti-Exploit", Severity = "MEDIUM", Desc = "CoreGui erişim ve koruma kontrolleri"},
+    {Name = "Client-Side Detection", Patterns = {"FindFirstChildOfClass", "GetDescendants"}, Category = "Anti-Cheat", Severity = "MEDIUM", Desc = "Client-side obje tarama ile exploit tespiti"},
+    {Name = "Memory/Value Monitoring", Patterns = {"GetPropertyChangedSignal", "AttributeChanged"}, Category = "Anti-Cheat", Severity = "LOW", Desc = "Değer değişimlerini izleyerek hile tespiti"}
 }
-for _,e in ipairs(D.Evt) do if e.S then table.insert(D.Anl.SR,e) end end
-for _,f in ipairs(D.Fnc) do if f.S then table.insert(D.Anl.SR,f) end end
-local sp={};for _,p in ipairs(D.Prot) do table.insert(sp,p) end
-table.sort(sp,function(a,b)local ro={CRITICAL=3,HIGH=2,MEDIUM=1};return(ro[a.Rl]or 0)>(ro[b.Rl]or 0)end)
-for i=1,math.min(10,#sp) do table.insert(D.Anl.TP,{N=sp[i].Sc.N,P=sp[i].Sc.P,R=sp[i].Rl,Dc=sp[i].Dc}) end
 
-getgenv().BE.Ready = true
-L("DONE","========================================")
-L("DONE",string.format("TARAMA BITTI: Script:%d Remote:%d Koruma:%d GUI:%d",#D.All,#D.Evt+#D.Fnc,#D.Prot,#D.Gui))
-L("DONE","Parça 2'yi calistirarak GUI'yi acabilirsiniz")
-L("DONE","========================================")
-
-print([[
-=== PARÇA 1/3 TAMAMLANDI ===
-Veriler toplandi: getgenv().BE
-Simdi Parca 2'yi calistir
-=============================
-]])-- // BRAINROT NEW - KORUMA SİSTEMİ ÇIKARICI v4.0
--- // PARÇA 2/3: GUI Arayüzü
--- // Amaç: Kopyalanabilir kod bloklarıyla arayüz oluşturur
--- // Gereksinim: Parça 1 çalışmış olmalı (getgenv().BE.Ready == true)
 -- // ============================================================
-
-if not getgenv().BE or not getgenv().BE.Ready then error("Parça 1 calistirilmamis! Once Parca 1'i calistir.") end
-
-local BE = getgenv().BE
-local S = {
-    Players = game:GetService("Players"),
-    Http = game:GetService("HttpService"),
-    Tween = game:GetService("TweenService"),
-    LP = game:GetService("Players").LocalPlayer
-}
-
--- GUI Ana Yapı
-local SG = Instance.new("ScreenGui");SG.Name="BE_GUI";SG.Parent=game.CoreGui;SG.ZIndexBehavior=Enum.ZIndexBehavior.Sibling;SG.ResetOnSpawn=false
-
-local MF = Instance.new("Frame");MF.Name="Main";MF.Parent=SG;MF.BackgroundColor3=Color3.fromRGB(8,8,8);MF.BorderColor3=Color3.fromRGB(0,255,0);MF.BorderSizePixel=2;MF.Position=UDim2.new(0.08,0,0.04,0);MF.Size=UDim2.new(0,820,0,510);MF.Active=true;MF.Draggable=true
-
--- Gradient
-local GD = Instance.new("UIGradient");GD.Parent=MF;GD.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(10,20,10)),ColorSequenceKeypoint.new(1,Color3.fromRGB(5,5,5))});GD.Rotation=45
-
--- Başlık
-local TB = Instance.new("TextLabel");TB.Name="Title";TB.Parent=MF;TB.BackgroundColor3=Color3.fromRGB(0,70,0);TB.BorderSizePixel=0;TB.Size=UDim2.new(1,0,0,36);TB.Font=Enum.Font.SciFi;TB.Text="BRAINROT NEW - KORUMA KOD CIKARICI";TB.TextColor3=Color3.fromRGB(0,255,0);TB.TextSize=15
-
--- Durum
-local SB = Instance.new("TextLabel");SB.Name="Status";SB.Parent=MF;SB.BackgroundColor3=Color3.fromRGB(15,15,15);SB.BorderColor3=Color3.fromRGB(0,100,0);SB.Position=UDim2.new(0,0,0.07,0);SB.Size=UDim2.new(1,0,0,22);SB.Font=Enum.Font.SourceSansBold;SB.Text=string.format("Script:%d Remote:%d Koruma:%d",#BE.All,#BE.Evt+#BE.Fnc,#BE.Prot);SB.TextColor3=Color3.fromRGB(0,255,0);SB.TextSize=11;SB.TextXAlignment=Enum.TextXAlignment.Left
-
--- Sekmeler
-local TC = Instance.new("Frame");TC.Name="Tabs";TC.Parent=MF;TC.BackgroundColor3=Color3.fromRGB(10,10,10);TC.BorderSizePixel=0;TC.Position=UDim2.new(0,0,0.113,0);TC.Size=UDim2.new(1,0,0,32)
-
-local tabs = {
-    {N="KORUMA",I="S",C=Color3.fromRGB(255,80,0)},
-    {N="SCRIPTS",I="P",C=Color3.fromRGB(0,200,0)},
-    {N="ADMIN",I="A",C=Color3.fromRGB(255,0,0)},
-    {N="REMOTE",I="R",C=Color3.fromRGB(0,150,255)},
-    {N="GUI",I="G",C=Color3.fromRGB(200,200,0)},
-    {N="OZET",I="O",C=Color3.fromRGB(200,0,200)}
-}
-local sel = "KORUMA"
-local tbs = {}
-for i,t in ipairs(tabs) do
-    local b = Instance.new("TextButton");b.Name="Tab_"+t.N;b.Parent=TC;b.BackgroundColor3=(t.N==sel)and Color3.fromRGB(20,60,20)or Color3.fromRGB(20,20,20);b.BorderSizePixel=1;b.BorderColor3=t.C;b.Position=UDim2.new((i-1)*(1/#tabs),2,0,0);b.Size=UDim2.new(1/#tabs,-4,1,0);b.Font=Enum.Font.SourceSansBold;b.Text="["+t.I+"] "+t.N;b.TextColor3=t.C;b.TextSize=10;b.AutoButtonColor=false
-    b.MouseButton1Click:Connect(function()sel=t.N;for _,x in ipairs(tbs)do x.BackgroundColor3=Color3.fromRGB(20,20,20)end;b.BackgroundColor3=Color3.fromRGB(20,60,20);Upd()end)
-    tbs[#tbs+1]=b
-end
-
--- İçerik
-local CS = Instance.new("ScrollingFrame");CS.Name="Content";CS.Parent=MF;CS.BackgroundColor3=Color3.fromRGB(5,5,5);CS.BorderColor3=Color3.fromRGB(0,70,0);CS.BorderSizePixel=1;CS.Position=UDim2.new(0.01,0,0.18,0);CS.Size=UDim2.new(0.98,0,0,310);CS.CanvasSize=UDim2.new(0,0,0,0);CS.ScrollBarThickness=8;CS.ScrollBarImageColor3=Color3.fromRGB(0,170,0)
-local CL = Instance.new("UIListLayout");CL.Name="Layout";CL.Parent=CS;CL.SortOrder=Enum.SortOrder.Name;CL.Padding=UDim.new(0,4)
-
--- Alt bar
-local BB = Instance.new("Frame");BB.Name="Bottom";BB.Parent=MF;BB.BackgroundColor3=Color3.fromRGB(10,10,10);BB.BorderColor3=Color3.fromRGB(0,100,0);BB.BorderSizePixel=1;BB.Position=UDim2.new(0.01,0,0.81,0);BB.Size=UDim2.new(0.98,0,0,80)
-
-local CA = Instance.new("TextButton");CA.Name="CopyAll";CA.Parent=BB;CA.BackgroundColor3=Color3.fromRGB(0,90,0);CA.BorderColor3=Color3.fromRGB(0,255,0);CA.BorderSizePixel=2;CA.Position=UDim2.new(0.05,0,0.3,0);CA.Size=UDim2.new(0.4,0,0,36);CA.Font=Enum.Font.SciFi;CA.Text="TUM KODLARI KOPYALA";CA.TextColor3=Color3.fromRGB(0,255,0);CA.TextSize=13
-
-local RF = Instance.new("TextButton");RF.Name="Refresh";RF.Parent=BB;RF.BackgroundColor3=Color3.fromRGB(70,40,0);RF.BorderColor3=Color3.fromRGB(255,150,0);RF.BorderSizePixel=2;RF.Position=UDim2.new(0.5,0,0.3,0);RF.Size=UDim2.new(0.4,0,0,36);RF.Font=Enum.Font.SciFi;RF.Text="YENIDEN TARA";RF.TextColor3=Color3.fromRGB(255,200,0);RF.TextSize=13
-
--- Kod bloğu oluşturucu
-local function CB(tl,cd,ac)
-    local bl = Instance.new("Frame");bl.Name="Block";bl.BackgroundColor3=Color3.fromRGB(10,10,10);bl.BorderColor3=ac or Color3.fromRGB(0,150,0);bl.BorderSizePixel=1;bl.Size=UDim2.new(1,-16,0,160)
-    local hd = Instance.new("Frame");hd.Name="Head";hd.Parent=bl;hd.BackgroundColor3=Color3.fromRGB(18,28,18);hd.BorderSizePixel=0;hd.Size=UDim2.new(1,0,0,26)
-    local tl2 = Instance.new("TextLabel");tl2.Name="Title";tl2.Parent=hd;tl2.BackgroundTransparency=1;tl2.Size=UDim2.new(0.68,0,1,0);tl2.Font=Enum.Font.SourceSansBold;tl2.Text=" "+tl;tl2.TextColor3=ac;tl2.TextSize=11;tl2.TextXAlignment=Enum.TextXAlignment.Left
-    local cb2 = Instance.new("TextButton");cb2.Name="Copy";cb2.Parent=hd;cb2.BackgroundColor3=ac;cb2.BorderSizePixel=0;cb2.Position=UDim2.new(0.72,0,0.08,0);cb2.Size=UDim2.new(0,105,0,22);cb2.Font=Enum.Font.SourceSansBold;cb2.Text="KOPYALA";cb2.TextColor3=Color3.fromRGB(0,0,0);cb2.TextSize=10;cb2.AutoButtonColor=false
-    local bx = Instance.new("TextBox");bx.Name="Code";bx.Parent=bl;bx.BackgroundColor3=Color3.fromRGB(2,2,2);bx.BorderColor3=Color3.fromRGB(25,25,25);bx.BorderSizePixel=1;bx.Position=UDim2.new(0,0,0,26);bx.Size=UDim2.new(1,0,1,-26);bx.Font=Enum.Font.Code;bx.Text=cd;bx.TextColor3=Color3.fromRGB(170,255,170);bx.TextSize=11;bx.TextXAlignment=Enum.TextXAlignment.Left;bx.TextYAlignment=Enum.TextYAlignment.Top;bx.MultiLine=true;bx.ClearTextOnFocus=false;bx.TextEditable=false
-    cb2.MouseButton1Click:Connect(function()pcall(function()setclipboard(cd);cb2.Text="KOPYALANDI!";cb2.BackgroundColor3=Color3.fromRGB(0,200,0);wait(1.5);cb2.Text="KOPYALA";cb2.BackgroundColor3=ac end)end)
-    local lc=0;for _ in cd:gmatch("\n")do lc=lc+1 end;local h=math.max(140,(lc+2)*15+30);bl.Size=UDim2.new(1,-16,0,h)
-    return bl
-end
-
-local function IL(tx,cl)
-    local l=Instance.new("TextLabel");l.Name="Info";l.BackgroundTransparency=1;l.Size=UDim2.new(1,-20,0,18);l.Font=Enum.Font.SourceSansBold;l.Text=tx;l.TextColor3=cl or Color3.fromRGB(200,200,200);l.TextSize=11;l.TextXAlignment=Enum.TextXAlignment.Left
-    return l
-end
-
--- İçerik temizleme
-local function CC()
-    for _,c in ipairs(CS:GetChildren())do if c:IsA("Frame")or c:IsA("TextLabel")then c:Destroy()end end
-end
-
--- İçerik güncelleme fonksiyonu (Parça 3'te tanımlanacak)
-function Upd() if getgenv().BE_Upd then getgenv().BE_Upd(sel,CS,IL,CB,BE) end end
-
--- Buton eventleri
-CA.MouseButton1Click:Connect(function()
-    local all="-- BRAINROT NEW - TUM KORUMA KODLARI\n-- Toplam Script: "..#BE.Raw.."\n\n"
-    for i,s in ipairs(BE.Raw)do if s.Src then all=all.."--["..i.."] "..s.N.." ["..s.T.."]\n"..s.Src.."\n\n"..string.rep("=",40).."\n\n" end end
-    pcall(function()setclipboard(all)end)
-    CA.Text="KOPYALANDI!";wait(2);CA.Text="TUM KODLARI KOPYALA"
-end)
-
-RF.MouseButton1Click:Connect(function()
-    RF.Text="TARANIYOR...";RF.BackgroundColor3=Color3.fromRGB(0,100,0)
-    pcall(function()if getgenv().BE_Run then getgenv().BE_Run() end end)
-    wait(1);RF.Text="YENIDEN TARA";RF.BackgroundColor3=Color3.fromRGB(70,40,0)
-    SB.Text=string.format("Script:%d Remote:%d Koruma:%d",#BE.All,#BE.Evt+#BE.Fnc,#BE.Prot)
-    Upd()
-end)
-
--- Minimize
-local MN = Instance.new("TextButton");MN.Name="Min";MN.Parent=MF;MN.BackgroundColor3=Color3.fromRGB(0,50,0);MN.BorderSizePixel=0;MN.Position=UDim2.new(0.94,0,0,0);MN.Size=UDim2.new(0,32,0,20);MN.Font=Enum.Font.SciFi;MN.Text="_";MN.TextColor3=Color3.fromRGB(0,255,0);MN.TextSize=14
-local min=false
-MN.MouseButton1Click:Connect(function()
-    min=not min
-    if min then MF.Size=UDim2.new(0,820,0,36);for _,c in ipairs(MF:GetChildren())do if c~=TB and c~=MN then c.Visible=false end end;MN.Text="+"
-    else MF.Size=UDim2.new(0,820,0,510);for _,c in ipairs(MF:GetChildren())do c.Visible=true end;MN.Text="_" end
-end)
-
-print([[
-=== PARÇA 2/3 TAMAMLANDI ===
-GUI olusturuldu.
-Simdi Parca 3'u calistir
-(icerik guncelleme fonksiyonu)
-=============================
-]])-- // BRAINROT NEW - KORUMA SİSTEMİ ÇIKARICI v4.0
--- // PARÇA 3/3: İçerik Görüntüleyici
--- // Amaç: GUI sekmelerini kod bloklarıyla doldurur
--- // Gereksinim: Parça 1 ve 2 çalışmış olmalı
+-- // EXTRACTION: Meta veriler
 -- // ============================================================
+local function ExtractMetadata()
+    Log("INFO", "META", "Oyun meta verileri çıkarılıyor...")
+    SafeCall(function()
+        local info = MarketplaceService:GetProductInfo(game.PlaceId)
+        D.Meta.GameName = info.Name or "Unknown"
+    end, "GameName")
+    SafeCall(function()
+        D.Meta.TotalPlayers = #Players:GetPlayers()
+    end, "PlayerCount")
+    SafeCall(function()
+        D.Meta.ClientVersion = game.PlaceVersion or 0
+    end, "PlaceVersion")
+    Log("OK", "META", string.format("Oyun: %s | Place: %d | Oyuncu: %d", D.Meta.GameName, D.Meta.PlaceId, D.Meta.TotalPlayers))
+end
 
-if not getgenv().BE or not getgenv().BE.Ready then error("Parça 1 calistirilmamis!") end
+-- // ============================================================
+-- // EXTRACTION: Script kaynakları
+-- // ============================================================
+local function ExtractScripts()
+    Log("INFO", "SCRIPTS", "Script kaynakları taranıyor...")
+    local containers = {
+        {Name = "ReplicatedStorage", Obj = ReplicatedStorage},
+        {Name = "ReplicatedFirst", Obj = ReplicatedFirst},
+        {Name = "StarterGui", Obj = StarterGui},
+        {Name = "StarterPlayer", Obj = StarterPlayer},
+        {Name = "PlayerScripts", Obj = LocalPlayer:FindFirstChild("PlayerScripts")},
+        {Name = "PlayerGui", Obj = LocalPlayer:FindFirstChild("PlayerGui")},
+        {Name = "Workspace", Obj = workspace},
+        {Name = "CoreGui", Obj = game:FindFirstChild("CoreGui")}
+    }
+    local adminKw = {"admin", "owner", "sammy", "spyder", "panel", "control", "permission", "rank", "role", "command", "ban", "kick", "message", "broadcast", "announce", "protection", "security", "bypass", "check", "verify", "validate", "authorize", "mod", "manager", "staff"}
 
-local BE = getgenv().BE
+    for _, c in ipairs(containers) do
+        SafeCall(function()
+            if not c.Obj then return end
+            for _, obj in ipairs(c.Obj:GetDescendants()) do
+                local st = nil
+                if obj:IsA("Script") then st = "ServerScript"
+                elseif obj:IsA("LocalScript") then st = "LocalScript"
+                elseif obj:IsA("ModuleScript") then st = "ModuleScript" end
+                if not st then continue end
 
--- İçerik güncelleme fonksiyonu (Parça 2'deki GUI'ye bağlanır)
-function getgenv().BE_Upd(sel, CS, IL, CB)
-    -- CS: ContentScroll, IL: CreateInfoLine fonksiyonu, CB: CreateCodeBlock fonksiyonu
-    -- İçeriği temizle
-    for _,c in ipairs(CS:GetChildren())do if c:IsA("Frame")or c:IsA("TextLabel")then c:Destroy()end end
-    CS.CanvasSize = UDim2.new(0,0,0,0)
-    
-    if sel == "KORUMA" then
-        -- Koruma sistemleri sekmesi
-        IL("KORUMA SISTEMI ANALIZI ("..#BE.Prot.." sistem)",Color3.fromRGB(255,100,0)).Parent=CS
-        IL(string.rep("-",60),Color3.fromRGB(100,100,100)).Parent=CS
-        
-        if #BE.Prot == 0 then
-            IL("Koruma sistemi tespit edilemedi (script kaynaklari alinamamis olabilir)",Color3.fromRGB(255,200,0)).Parent=CS
-        else
-            for _,ps in ipairs(BE.Prot) do
-                local code = "-- Script: "..ps.Sc.P.."\n"
-                code = code.."-- Risk Seviyesi: "..ps.Rl.."\n"
-                code = code.."-- Tespit Sayisi: "..ps.Dc.."\n"
-                code = code..string.rep("-",40).."\n\n"
-                
-                for _,d in ipairs(ps.Dt) do
-                    code = code.."-- ["..d.Pt[3].."] "..d.Pt[1].."\n"
-                    if d.Lc > 0 then
-                        code = code.."-- Ilgili satirlar:\n"
-                        for _,l in ipairs(d.Ln) do
-                            code = code.."--   "..l.."\n"
+                D.Scripts.TotalCount = D.Scripts.TotalCount + 1
+                local src = GetSource(obj)
+                local isBC = false
+                if src then
+                    D.Scripts.WithSource = D.Scripts.WithSource + 1
+                    isBC = IsBytecode(src)
+                    if isBC then D.Scripts.BytecodeCount = D.Scripts.BytecodeCount + 1 end
+                end
+
+                local nl, pl = obj.Name:lower(), obj:GetFullName():lower()
+                local isAdmin, mk = false, {}
+                for _, kw in ipairs(adminKw) do
+                    if nl:find(kw) or pl:find(kw) then isAdmin = true; table.insert(mk, kw) end
+                end
+
+                local si = {Name = obj.Name, FullPath = obj:GetFullName(), Type = st, Container = c.Name, Source = (not isBC) and src or nil, SourceLength = src and #src or 0, IsBytecode = isBC, IsAdminRelated = isAdmin, MatchedKeywords = mk, HasSource = src ~= nil and not isBC, ACFindings = {}}
+
+                if st == "LocalScript" then table.insert(D.Scripts.LocalScripts, si)
+                elseif st == "ModuleScript" then table.insert(D.Scripts.ModuleScripts, si)
+                else table.insert(D.Scripts.ServerScripts, si) end
+
+                if src and not isBC then
+                    for _, pat in ipairs(AC_Patterns) do
+                        local found = false
+                        for _, p in ipairs(pat.Patterns) do
+                            if src:lower():find(p:lower()) then found = true; break end
+                        end
+                        if found then
+                            table.insert(si.ACFindings, pat)
+                            D.AntiCheat.TotalFindings = D.AntiCheat.TotalFindings + 1
                         end
                     end
-                    code = code.."\n"
-                end
-                
-                if ps.Sc.Src then
-                    code = code.."\n-- TAM KAYNAK KODU:\n"..ps.Sc.Src
-                end
-                
-                local ac = ps.Rl=="CRITICAL" and Color3.fromRGB(255,0,0) or (ps.Rl=="HIGH" and Color3.fromRGB(255,150,0) or Color3.fromRGB(255,200,0))
-                CB("["..ps.Rl.."] "..ps.Sc.N.." ("..ps.Dc.." koruma)",code,ac).Parent=CS
-            end
-        end
-        
-    elseif sel == "SCRIPTS" then
-        -- Tüm scriptler sekmesi
-        IL("TUM SCRIPT KAYNAK KODLARI ("..#BE.Raw.." script)",Color3.fromRGB(0,255,0)).Parent=CS
-        IL(string.rep("-",60),Color3.fromRGB(100,100,100)).Parent=CS
-        
-        if #BE.Raw == 0 then
-            IL("Kaynak kodu alinabilen script bulunamadi",Color3.fromRGB(255,200,0)).Parent=CS
-        else
-            for i,s in ipairs(BE.Raw) do
-                if s.Src and s.Src ~= "" then
-                    local hdr = "["..s.T.."] "..s.N
-                    if s.A then hdr = "ADMIN "..hdr end
-                    CB(hdr.." ("..s.Len.." karakter)",s.Src,s.A and Color3.fromRGB(255,100,0)or Color3.fromRGB(0,180,0)).Parent=CS
+                    if #si.ACFindings > 0 then table.insert(D.AntiCheat.Scripts_With_Protection, si) end
                 end
             end
-        end
-        
-    elseif sel == "ADMIN" then
-        -- Admin scriptleri sekmesi
-        local ac = 0;for _,s in ipairs(BE.All)do if s.A then ac=ac+1 end end
-        IL("ADMIN ILGILI SCRIPTS ("..ac.." script)",Color3.fromRGB(255,0,0)).Parent=CS
-        IL(string.rep("-",60),Color3.fromRGB(100,100,100)).Parent=CS
-        
-        local found = false
-        for _,s in ipairs(BE.Raw) do
-            if s.A and s.Src then
-                found = true
-                local kw = table.concat(s.K,", ")
-                CB("["..s.T.."] "..s.N.." | Eslesen: "..kw,s.Src,Color3.fromRGB(255,50,0)).Parent=CS
-            end
-        end
-        
-        if not found then
-            IL("Admin ilgili script bulunamadi veya kaynak kodlari alinamadi",Color3.fromRGB(255,200,0)).Parent=CS
-        end
-        
-    elseif sel == "REMOTE" then
-        -- Remote event/function sekmesi
-        IL("REMOTE EVENT & FUNCTION LISTESI",Color3.fromRGB(0,150,255)).Parent=CS
-        IL("Event: "..#BE.Evt.." | Function: "..#BE.Fnc.." | Sammy: "..#BE.Anl.SR,Color3.fromRGB(200,200,200)).Parent=CS
-        IL(string.rep("-",60),Color3.fromRGB(100,100,100)).Parent=CS
-        
-        -- Sammy ilgili olanlar
-        if #BE.Anl.SR > 0 then
-            IL("SAMMY ILGILI REMOTE'LAR:",Color3.fromRGB(255,100,100)).Parent=CS
-            local sc = "Sammy ile ilgili Remote'lar:\n\n"
-            for _,r in ipairs(BE.Anl.SR) do
-                sc = sc.."• "..r.N.."\n  Yol: "..r.P.."\n\n"
-            end
-            CB("Sammy Remote'lari ("..#BE.Anl.SR.." adet)",sc,Color3.fromRGB(255,0,0)).Parent=CS
-        end
-        
-        -- Tüm eventler
-        local ec = ""
-        for _,e in ipairs(BE.Evt) do
-            ec = ec.."[Event] "..e.N.."\n  Yol: "..e.P.."\n  Sammy: "..tostring(e.S).."\n\n"
-        end
-        if #BE.Evt > 0 then CB("RemoteEvent'ler ("..#BE.Evt..")",ec,Color3.fromRGB(0,100,200)).Parent=CS end
-        
-        -- Tüm function'lar
-        local fc = ""
-        for _,f in ipairs(BE.Fnc) do
-            fc = fc.."[Function] "..f.N.."\n  Yol: "..f.P.."\n  Sammy: "..tostring(f.S).."\n\n"
-        end
-        if #BE.Fnc > 0 then CB("RemoteFunction'lar ("..#BE.Fnc..")",fc,Color3.fromRGB(150,0,200)).Parent=CS end
-        
-    elseif sel == "GUI" then
-        -- GUI yapısı sekmesi
-        local ac2 = 0;for _,g in ipairs(BE.Gui)do if g.Ad then ac2=ac2+1 end end
-        IL("GUI YAPISI ("..#BE.Gui.." nesne | "..ac2.." admin)",Color3.fromRGB(200,200,0)).Parent=CS
-        IL(string.rep("-",60),Color3.fromRGB(100,100,100)).Parent=CS
-        
-        -- Admin GUI
-        if ac2 > 0 then
-            local gc = "Admin GUI Elementleri:\n\n"
-            for _,g in ipairs(BE.Gui)do
-                if g.Ad then
-                    gc = gc.."["..g.Cl.."] "..g.N.."\n"
-                    gc = gc.."  Gorunur: "..tostring(g.V).." | Aktif: "..tostring(g.A).."\n"
-                    gc = gc.."  Pos: "..g.P.." | Size: "..g.S.."\n\n"
-                end
-            end
-            CB("Admin GUI ("..ac2.." element)",gc,Color3.fromRGB(255,150,0)).Parent=CS
-        end
-        
-        -- Tüm GUI
-        local ga = "Tum GUI Nesneleri:\n\n"
-        for _,g in ipairs(BE.Gui)do
-            ga = ga.."["..g.Cl.."] "..g.N..(g.Ad and " [ADMIN]" or "").."\n"
-            ga = ga.."  Gorunur: "..tostring(g.V).." | Pos: "..g.P.."\n\n"
-        end
-        if #BE.Gui > 0 then CB("Tum GUI ("..#BE.Gui.." nesne)",ga,Color3.fromRGB(200,200,0)).Parent=CS end
-        
-    elseif sel == "OZET" then
-        -- Analiz özeti sekmesi
-        IL("ANALIZ OZETI",Color3.fromRGB(200,0,200)).Parent=CS
-        IL(string.rep("-",60),Color3.fromRGB(100,100,100)).Parent=CS
-        
-        local oz = "BRAINROT NEW - KORUMA SISTEMI ANALIZ OZETI\n"
-        oz = oz..string.rep("=",50).."\n\n"
-        oz = oz.."GENEL ISTATISTIK:\n"
-        oz = oz..string.rep("-",30).."\n"
-        oz = oz.."Toplam Script: "..BE.Anl.TS.."\n"
-        oz = oz.."Kaynak Alinan: "..BE.Anl.RS.."\n"
-        oz = oz.."Bytecode: "..(BE.Anl.TS-BE.Anl.RS).."\n"
-        oz = oz.."Admin Ilgili: "..BE.Anl.AS.."\n"
-        oz = oz.."RemoteEvent: "..BE.Anl.TE.."\n"
-        oz = oz.."RemoteFunction: "..BE.Anl.TF.."\n"
-        oz = oz.."Koruma Sistemi: "..BE.Anl.PS.."\n"
-        oz = oz.."GUI Nesnesi: "..BE.Anl.GO.."\n"
-        oz = oz.."Sammy Remote: "..#BE.Anl.SR.."\n\n"
-        
-        oz = oz.."EN KRITIK KORUMA SCRIPTLERI:\n"
-        oz = oz..string.rep("-",30).."\n"
-        for i,tp in ipairs(BE.Anl.TP)do
-            oz = oz..i..". ["..tp.R.."] "..tp.N.." ("..tp.Dc.." tespit)\n"
-            oz = oz.."   Yol: "..tp.P.."\n\n"
-        end
-        
-        oz = oz.."SAMMY REMOTE LISTESI:\n"
-        oz = oz..string.rep("-",30).."\n"
-        if #BE.Anl.SR > 0 then
-            for _,sr in ipairs(BE.Anl.SR)do
-                oz = oz.."• "..sr.N.."\n  "..sr.P.."\n\n"
-            end
-        else
-            oz = oz.."Sammy ilgili remote bulunamadi\n\n"
-        end
-        
-        oz = oz.."SCRIPT DETAYLARI:\n"
-        oz = oz..string.rep("-",30).."\n"
-        oz = oz.."ServerScript: "..#BE.Srv.."\n"
-        oz = oz.."LocalScript: "..#BE.Loc.."\n"
-        oz = oz.."ModuleScript: "..#BE.Mod.."\n"
-        
-        CB("ANALIZ OZETI",oz,Color3.fromRGB(200,0,200)).Parent=CS
-        
-        -- Script listesi
-        local sl = "TUM SCRIPT LISTESI:\n\n"
-        for i,s in ipairs(BE.All)do
-            sl = sl..i..". ["..s.T.."] "..s.N..(s.A and " [ADMIN]" or "").."\n"
-            sl = sl.."   Yol: "..s.P.."\n"
-            sl = sl.."   Kaynak: "..(s.Ok and "VAR ("..s.Len.." karakter)" or "YOK").."\n\n"
-        end
-        CB("Script Listesi ("..#BE.All.." script)",sl,Color3.fromRGB(150,0,200)).Parent=CS
+        end, "ScriptExtraction: " .. c.Name)
     end
-    
-    CS.CanvasSize = UDim2.new(0,0,0,CS:FindFirstChild("Layout") and CS.Layout.AbsoluteContentSize.Y+10 or 500)
+
+    local adminCount = 0
+    for _, s in ipairs(D.Scripts.LocalScripts) do if s.IsAdminRelated then adminCount = adminCount + 1 end end
+    for _, s in ipairs(D.Scripts.ModuleScripts) do if s.IsAdminRelated then adminCount = adminCount + 1 end end
+    Log("OK", "SCRIPTS", string.format("Total:%d | Source:%d | Bytecode:%d | Admin:%d | Protected:%d", D.Scripts.TotalCount, D.Scripts.WithSource, D.Scripts.BytecodeCount, adminCount, #D.AntiCheat.Scripts_With_Protection))
 end
 
--- İlk içerik yüklemesini yap
-if getgenv().BE_Upd_Trigger then getgenv().BE_Upd_Trigger() end
+-- // ============================================================
+-- // EXTRACTION: Remote Event/Function
+-- // ============================================================
+local function ExtractRemotes()
+    Log("INFO", "REMOTES", "Remote yapısı çıkarılıyor...")
+    local containers = {
+        {Name = "ReplicatedStorage", Obj = ReplicatedStorage},
+        {Name = "ReplicatedFirst", Obj = ReplicatedFirst},
+        {Name = "Workspace", Obj = workspace},
+        {Name = "PlayerGui", Obj = LocalPlayer:FindFirstChild("PlayerGui")},
+        {Name = "PlayerScripts", Obj = LocalPlayer:FindFirstChild("PlayerScripts")}
+    }
+    local suspiciousKw = {"admin", "ban", "kick", "message", "announce", "broadcast", "server", "control", "owner", "sammy", "spyder", "mod", "command", "execute", "script"}
 
--- Parça 2'deki Upd() fonksiyonu için trigger
-getgenv().BE_Upd_Trigger = function()
-    local gui = game.CoreGui:FindFirstChild("BE_GUI")
-    if gui then
-        local cs = gui.Main:FindFirstChild("Content")
-        if cs then
-            -- IL ve CB fonksiyonlarını yeniden tanımla (scope dışı olduğu için)
-            local function IL2(tx,cl)
-                local l=Instance.new("TextLabel");l.Name="Info";l.BackgroundTransparency=1;l.Size=UDim2.new(1,-20,0,18);l.Font=Enum.Font.SourceSansBold;l.Text=tx;l.TextColor3=cl or Color3.fromRGB(200,200,200);l.TextSize=11;l.TextXAlignment=Enum.TextXAlignment.Left
-                return l
+    for _, c in ipairs(containers) do
+        SafeCall(function()
+            if not c.Obj then return end
+            for _, obj in ipairs(c.Obj:GetDescendants()) do
+                local rt = nil
+                if obj:IsA("RemoteEvent") then rt = "RemoteEvent"
+                elseif obj:IsA("RemoteFunction") then rt = "RemoteFunction"
+                elseif obj:IsA("BindableEvent") then rt = "BindableEvent"
+                elseif obj:IsA("BindableFunction") then rt = "BindableFunction" end
+                if not rt then continue end
+
+                D.Remotes.TotalCount = D.Remotes.TotalCount + 1
+                local nl, pl = obj.Name:lower(), obj:GetFullName():lower()
+                local isSusp, sr = false, {}
+                for _, kw in ipairs(suspiciousKw) do
+                    if nl:find(kw) or pl:find(kw) then isSusp = true; table.insert(sr, kw) end
+                end
+
+                local ri = {Name = obj.Name, FullPath = obj:GetFullName(), Type = rt, Container = c.Name, Parent = obj.Parent and obj.Parent.Name or "Unknown", IsSuspicious = isSusp, SuspiciousReasons = sr}
+
+                if rt == "RemoteEvent" then table.insert(D.Remotes.RemoteEvents, ri)
+                elseif rt == "RemoteFunction" then table.insert(D.Remotes.RemoteFunctions, ri)
+                elseif rt == "BindableEvent" then table.insert(D.Remotes.BindableEvents, ri)
+                else table.insert(D.Remotes.BindableFunctions, ri) end
+                if isSusp then table.insert(D.Remotes.SuspiciousRemotes, ri) end
             end
-            local function CB2(tl,cd,ac)
-                local bl=Instance.new("Frame");bl.BackgroundColor3=Color3.fromRGB(10,10,10);bl.BorderColor3=ac or Color3.fromRGB(0,150,0);bl.BorderSizePixel=1;bl.Size=UDim2.new(1,-16,0,160)
-                local hd=Instance.new("Frame");hd.Parent=bl;hd.BackgroundColor3=Color3.fromRGB(18,28,18);hd.BorderSizePixel=0;hd.Size=UDim2.new(1,0,0,26)
-                local tl2=Instance.new("TextLabel");tl2.Parent=hd;tl2.BackgroundTransparency=1;tl2.Size=UDim2.new(0.68,0,1,0);tl2.Font=Enum.Font.SourceSansBold;tl2.Text=" "+tl;tl2.TextColor3=ac;tl2.TextSize=11;tl2.TextXAlignment=Enum.TextXAlignment.Left
-                local cb2=Instance.new("TextButton");cb2.Parent=hd;cb2.BackgroundColor3=ac;cb2.BorderSizePixel=0;cb2.Position=UDim2.new(0.72,0,0.08,0);cb2.Size=UDim2.new(0,105,0,22);cb2.Font=Enum.Font.SourceSansBold;cb2.Text="KOPYALA";cb2.TextColor3=Color3.fromRGB(0,0,0);cb2.TextSize=10;cb2.AutoButtonColor=false
-                local bx=Instance.new("TextBox");bx.Parent=bl;bx.BackgroundColor3=Color3.fromRGB(2,2,2);bx.BorderColor3=Color3.fromRGB(25,25,25);bx.BorderSizePixel=1;bx.Position=UDim2.new(0,0,0,26);bx.Size=UDim2.new(1,0,1,-26);bx.Font=Enum.Font.Code;bx.Text=cd;bx.TextColor3=Color3.fromRGB(170,255,170);bx.TextSize=11;bx.TextXAlignment=Enum.TextXAlignment.Left;bx.TextYAlignment=Enum.TextYAlignment.Top;bx.MultiLine=true;bx.ClearTextOnFocus=false;bx.TextEditable=false
-                cb2.MouseButton1Click:Connect(function()pcall(function()setclipboard(cd);cb2.Text="KOPYALANDI!";cb2.BackgroundColor3=Color3.fromRGB(0,200,0);wait(1.5);cb2.Text="KOPYALA";cb2.BackgroundColor3=ac end)end)
-                local lc=0;for _ in cd:gmatch("\n")do lc=lc+1 end;local h=math.max(140,(lc+2)*15+30);bl.Size=UDim2.new(1,-16,0,h)
-                return bl
+        end, "RemoteExtraction: " .. c.Name)
+    end
+    Log("OK", "REMOTES", string.format("Event:%d | Func:%d | Bindable:%d | Suspicious:%d", #D.Remotes.RemoteEvents, #D.Remotes.RemoteFunctions, #D.Remotes.BindableEvents + #D.Remotes.BindableFunctions, #D.Remotes.SuspiciousRemotes))
+end
+
+-- // ============================================================
+-- // EXTRACTION: GUI Yapısı
+-- // ============================================================
+local function ExtractGUI()
+    Log("INFO", "GUI", "GUI yapısı analiz ediliyor...")
+    local guiContainers = {
+        {Name = "PlayerGui", Obj = LocalPlayer:FindFirstChild("PlayerGui")},
+        {Name = "CoreGui", Obj = game:FindFirstChild("CoreGui")}
+    }
+    local adminGuiKw = {"admin", "panel", "control", "owner", "sammy", "spyder", "mod", "command", "manage"}
+
+    local function scanGUI(parent, depth, cn)
+        if depth > 15 or not parent then return end
+        for _, child in ipairs(parent:GetChildren()) do
+            if child:IsA("GuiObject") then
+                D.GUI.TotalElements = D.GUI.TotalElements + 1
+                local nl = child.Name:lower()
+                local isAdmin = false
+                for _, kw in ipairs(adminGuiKw) do if nl:find(kw) then isAdmin = true; break end end
+
+                local gi = {Name = child.Name, Class = child.ClassName, Container = cn, Depth = depth, Visible = child.Visible, Active = child:IsA("GuiObject") and child.Active or false, Position = child:IsA("GuiObject") and tostring(child.Position) or "N/A", Size = child:IsA("GuiObject") and tostring(child.Size) or "N/A", IsAdmin = isAdmin, HasChildren = #child:GetChildren() > 0}
+                if child:IsA("ScreenGui") then table.insert(D.GUI.ScreenGuis, gi) end
+                if isAdmin then table.insert(D.GUI.AdminPanels, gi) end
+                scanGUI(child, depth + 1, cn)
             end
-            getgenv().BE_Upd("KORUMA",cs,IL2,CB2)
         end
     end
+
+    for _, c in ipairs(guiContainers) do
+        SafeCall(function() if c.Obj then scanGUI(c.Obj, 0, c.Name) end end, "GUIScan: " .. c.Name)
+    end
+    Log("OK", "GUI", string.format("Total:%d | ScreenGui:%d | AdminPanel:%d", D.GUI.TotalElements, #D.GUI.ScreenGuis, #D.GUI.AdminPanels))
+end
+
+-- // ============================================================
+-- // NETWORK: Traffic Hook
+-- // ============================================================
+local function HookNetworkTraffic()
+    Log("INFO", "NETWORK", "Network traffic hook kuruluyor...")
+    SafeCall(function()
+        local mt = getrawmetatable(game)
+        if not mt then D.Network.Hooks.Active = false; Log("WARN", "NETWORK", "Metatable bulunamadı"); return end
+        local oldNc = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            if (method == "FireServer" or method == "InvokeServer") and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
+                local te = {Time = os.date("%H:%M:%S"), RemoteName = self.Name, RemotePath = self:GetFullName(), Method = method, ArgCount = #args, ArgTypes = {}}
+                for i, arg in ipairs(args) do te.ArgTypes[i] = typeof(arg) end
+                table.insert(D.Network.TrafficLog, te)
+                if #D.Network.TrafficLog > 500 then table.remove(D.Network.TrafficLog, 1) end
+            end
+            return oldNc(self, ...)
+        end)
+        setreadonly(mt, true)
+        D.Network.Hooks.Active = true
+        Log("OK", "NETWORK", "Namecall hook başarıyla kuruldu")
+    end, "NetworkHook")
+end
+
+-- // ============================================================
+-- // RISK: Değerlendirme
+-- // ============================================================
+local function AssessRisk()
+    local score = 0
+    local pc = #D.AntiCheat.Scripts_With_Protection
+    if pc > 10 then score = score + 30 elseif pc > 5 then score = score + 20 elseif pc > 0 then score = score + 10 end
+    local sc = #D.Remotes.SuspiciousRemotes
+    if sc > 5 then score = score + 25 elseif sc > 2 then score = score + 15 end
+    local ac = #D.GUI.AdminPanels
+    if ac > 3 then score = score + 20 elseif ac > 0 then score = score + 10 end
+    if D.Scripts.BytecodeCount > 5 then score = score + 15 end
+    if score >= 60 then D.AntiCheat.RiskAssessment = "HIGH"
+    elseif score >= 30 then D.AntiCheat.RiskAssessment = "MEDIUM"
+    elseif score > 0 then D.AntiCheat.RiskAssessment = "LOW"
+    else D.AntiCheat.RiskAssessment = "NONE" end
+    Log("INFO", "RISK", string.format("Değerlendirme: %s (Skor: %d)", D.AntiCheat.RiskAssessment, score))
+end
+
+-- // ============================================================
+-- // HTML: Escape utility
+-- // ============================================================
+local function HtmlEscape(str)
+    return tostring(str):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub("\"", "&quot;"):gsub("\n", "<br>")
+end
+
+-- // BU FONKSİYON PARÇA 2 İÇİN REFERANS - HTML üretimi Parça 2'de
+getgenv().AxiomData.HtmlEscape = HtmlEscape
+getgenv().AxiomData.AC_Patterns = AC_Patterns
+
+-- // ============================================================
+-- // MAIN: Çalıştırma
+-- // ============================================================
+local function RunExtraction()
+    Log("INFO", "MAIN", "═══════════════════════════════════")
+    Log("INFO", "MAIN", "Axiom Engine Parça 1 - Veri Toplama")
+    Log("INFO", "MAIN", "═══════════════════════════════════")
+    ExtractMetadata()
+    ExtractScripts()
+    ExtractRemotes()
+    ExtractGUI()
+    HookNetworkTraffic()
+    AssessRisk()
+    Log("DONE", "MAIN", string.format("Script:%d | Remote:%d | AC:%d | GUI:%d | Risk:%s", D.Scripts.TotalCount, D.Remotes.TotalCount, D.AntiCheat.TotalFindings, D.GUI.TotalElements, D.AntiCheat.RiskAssessment))
+    Log("DONE", "MAIN", "Veriler getgenv().AxiomData içinde hazır")
+    Log("DONE", "MAIN", "Şimdi Parça 2'yi çalıştırarak HTML raporu oluşturun")
+    Log("DONE", "MAIN", "═══════════════════════════════════")
+    return true
+end
+
+-- // Execute
+RunExtraction()
+
+-- // Public API
+getgenv().AxiomData.RunExtraction = RunExtraction
+getgenv().AxiomData.GetStats = function()
+    return {
+        Scripts = D.Scripts.TotalCount,
+        WithSource = D.Scripts.WithSource,
+        Remotes = D.Remotes.TotalCount,
+        SuspiciousRemotes = #D.Remotes.SuspiciousRemotes,
+        ACFindings = D.AntiCheat.TotalFindings,
+        ACProtected = #D.AntiCheat.Scripts_With_Protection,
+        GUIElements = D.GUI.TotalElements,
+        AdminPanels = #D.GUI.AdminPanels,
+        Risk = D.AntiCheat.RiskAssessment,
+        NetworkHooks = D.Network.Hooks.Active,
+        TrafficEntries = #D.Network.TrafficLog
+    }
+end
+getgenv().AxiomData.RefreshData = function()
+    -- Reset data
+    D.Scripts = {LocalScripts = {}, ModuleScripts = {}, ServerScripts = {}, TotalCount = 0, WithSource = 0, BytecodeCount = 0}
+    D.Remotes = {RemoteEvents = {}, RemoteFunctions = {}, BindableEvents = {}, BindableFunctions = {}, TotalCount = 0, SuspiciousRemotes = {}}
+    D.GUI = {ScreenGuis = {}, TotalElements = 0, AdminPanels = {}}
+    D.AntiCheat = {Detections = {}, Patterns = {}, Scripts_With_Protection = {}, RiskAssessment = "NONE", TotalFindings = 0}
+    D.Network.TrafficLog = {}
+    return RunExtraction()
 end
 
 print([[
-=== PARÇA 3/3 TAMAMLANDI ===
-Tum icerik goruntuleyici hazir.
-GUI uzerindeki sekmelerden:
-- KORUMA: Koruma sistemi kodlari
-- SCRIPTS: Tum script kaynaklari
-- ADMIN: Admin ilgili scriptler
-- REMOTE: Remote event/function
-- GUI: GUI yapisi
-- OZET: Analiz ozeti
-Kodlari KOPYALA butonu ile kopyalayin.
-=============================
-]])
+╔═══════════════════════════════════════╗
+║ PARÇA 1/2 TAMAMLANDI                 ║
+║ Veriler toplandı ve analiz edildi    ║
+║ getgenv().AxiomData hazır            ║
+║ Şimdi Parça 2'yi çalıştırın          ║
+╚═══════════════════════════════════════╝
+]])-- // ============================================================
+-- // Axiom - Game Infrastructure Analyzer v5.0
+-- // PARÇA 2/2: HTML Rapor Üretici
+-- // Gereksinim: Parça 1 çalışmış olmalı (getgenv().AxiomData)
+-- // Amaç: Toplanan verilerden beyaz tema HTML raporu üretir
+-- // Çıktı: Panoya kopyalanmış HTML + getgenv().AxiomReport
+-- // ============================================================
+
+-- // Parça 1 verilerini kontrol et
+if not getgenv().AxiomData then
+    error("[HATA] Parça 1 çalıştırılmamış! Önce Parça 1'i çalıştırın.")
+end
+
+local D = getgenv().AxiomData
+local HE = D.HtmlEscape or function(s) return tostring(s):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub("\"", "&quot;"):gsub("\n", "<br>") end
+
+-- // İstatistik kontrolü
+local stats = D.GetStats and D.GetStats() or {
+    Scripts = D.Scripts.TotalCount or 0,
+    WithSource = D.Scripts.WithSource or 0,
+    Remotes = D.Remotes.TotalCount or 0,
+    SuspiciousRemotes = #(D.Remotes.SuspiciousRemotes or {}),
+    ACFindings = D.AntiCheat.TotalFindings or 0,
+    ACProtected = #(D.AntiCheat.Scripts_With_Protection or {}),
+    GUIElements = D.GUI.TotalElements or 0,
+    AdminPanels = #(D.GUI.AdminPanels or {}),
+    Risk = D.AntiCheat.RiskAssessment or "NONE",
+    NetworkHooks = D.Network.Hooks.Active or false,
+    TrafficEntries = #(D.Network.TrafficLog or {})
+}
+
+print(string.format("[INFO] Stats: Scripts=%d Remotes=%d AC=%d GUI=%d Risk=%s", 
+    stats.Scripts, stats.Remotes, stats.ACFindings, stats.GUIElements, stats.Risk))
+
+-- // ============================================================
+-- // CSS TEMPLATE
+-- // ============================================================
+local CSS = [[
+:root {
+    --bg-primary: #ffffff; --bg-secondary: #f8f9fa; --bg-tertiary: #e9ecef;
+    --text-primary: #212529; --text-secondary: #495057; --text-muted: #6c757d;
+    --border: #dee2e6; --accent: #2563eb; --accent-hover: #1d4ed8;
+    --critical: #dc2626; --high: #ea580c; --medium: #ca8a04; --low: #16a34a; --none: #6b7280;
+    --code-bg: #f1f5f9; --code-border: #cbd5e1;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1); --shadow-lg: 0 4px 6px rgba(0,0,0,0.1);
+    --radius: 8px; --radius-sm: 4px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-secondary); color: var(--text-primary); line-height: 1.6; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.header { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); }
+.header h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.header .meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); }
+.risk-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+.risk-HIGH { background: #fef2f2; color: var(--critical); border: 1px solid #fecaca; }
+.risk-MEDIUM { background: #fffbeb; color: var(--medium); border: 1px solid #fde68a; }
+.risk-LOW { background: #f0fdf4; color: var(--low); border: 1px solid #bbf7d0; }
+.risk-NONE { background: #f9fafb; color: var(--none); border: 1px solid #e5e7eb; }
+.nav { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; box-shadow: var(--shadow); }
+.nav button { padding: 10px 20px; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: all 0.2s; }
+.nav button:hover { background: var(--bg-tertiary); }
+.nav button.active { background: var(--accent); color: white; }
+.section { display: none; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); }
+.section.active { display: block; }
+.section h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.stat-card .value { font-size: 28px; font-weight: 700; color: var(--accent); }
+.stat-card .label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.code-block { background: var(--code-bg); border: 1px solid var(--code-border); border-radius: var(--radius-sm); margin-bottom: 12px; overflow: hidden; }
+.code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-tertiary); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.badge { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+.badge-admin { background: #fef2f2; color: var(--critical); }
+.badge-module { background: #eff6ff; color: var(--accent); }
+.badge-local { background: #f0fdf4; color: var(--low); }
+.badge-server { background: #fefce8; color: var(--medium); }
+.copy-btn { padding: 4px 12px; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 11px; font-weight: 500; transition: background 0.2s; }
+.copy-btn:hover { background: var(--accent-hover); }
+.copy-btn.copied { background: var(--low); }
+.code-content { padding: 12px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre; max-height: 400px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; background: var(--bg-tertiary); border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--bg-secondary); }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.filter-bar input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; outline: none; transition: border 0.2s; }
+.filter-bar input:focus { border-color: var(--accent); }
+.severity-CRITICAL { color: var(--critical); font-weight: 700; }
+.severity-HIGH { color: var(--high); font-weight: 600; }
+.severity-MEDIUM { color: var(--medium); font-weight: 500; }
+.severity-LOW { color: var(--low); }
+.footer { text-align: center; padding: 16px; font-size: 11px; color: var(--text-muted); }
+@media (max-width: 768px) { .container { padding: 10px; } .header .meta { flex-direction: column; gap: 8px; } .nav { overflow-x: auto; } .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+]]
+
+-- // ============================================================
+-- // HTML HEADER
+-- // ============================================================
+local function BuildHeader()
+    return string.format([[
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Report - %s</title>
+<style>%s</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+    <h1>🔍 %s - Infrastructure Report</h1>
+    <div class="meta">
+        <span>🆔 Game: %s</span>
+        <span>📍 Place: %s</span>
+        <span>📋 Job: %s</span>
+        <span>🕐 %s</span>
+        <span>👥 %d players</span>
+        <span>Risk: <span class="risk-badge risk-%s">%s</span></span>
+    </div>
+</div>
+<div class="nav">
+    <button class="active" onclick="showSection('overview', this)">📊 Genel Bakış</button>
+    <button onclick="showSection('scripts', this)">📜 Scripts</button>
+    <button onclick="showSection('remotes', this)">📡 Remotes</button>
+    <button onclick="showSection('antichat', this)">🛡️ Anti-Cheat</button>
+    <button onclick="showSection('gui', this)">🖥️ GUI</button>
+    <button onclick="showSection('network', this)">🌐 Network</button>
+</div>
+]], HE(D.Meta.GameName), CSS, HE(D.Meta.GameName), D.Meta.GameId, D.Meta.PlaceId, HE(D.Meta.JobId), D.Meta.ExtractTime, D.Meta.TotalPlayers, stats.Risk, stats.Risk)
+end
+
+-- // ============================================================
+-- // OVERVIEW SECTION
+-- // ============================================================
+local function BuildOverview()
+    return string.format([[
+<div id="overview" class="section active">
+    <h2>Genel Bakış</h2>
+    <div class="stat-grid">
+        <div class="stat-card"><div class="value">%d</div><div class="label">Toplam Script</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Kaynak Alınan</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Remote Events</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Anti-Cheat Bulgusu</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">GUI Elementi</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Aktif Oyuncu</div></div>
+    </div>
+    <h3>Risk Değerlendirmesi: <span class="risk-badge risk-%s">%s</span></h3>
+    <p style="color: var(--text-muted); font-size: 13px;">
+        %d adet anti-cheat/koruma mekanizması tespit edildi. 
+        %d adet şüpheli remote event bulundu.
+        Network hook: %s.
+    </p>
+</div>
+]], stats.Scripts, stats.WithSource, stats.Remotes, stats.ACFindings, stats.GUIElements, D.Meta.TotalPlayers,
+   stats.Risk, stats.Risk, stats.ACFindings, stats.SuspiciousRemotes, stats.NetworkHooks and "✅ Aktif" or "❌ Pasif")
+end
+
+-- // ============================================================
+-- // SCRIPTS SECTION
+-- // ============================================================
+local function BuildScriptsSection()
+    local html = [[
+<div id="scripts" class="section">
+    <h2>Script Kaynak Kodları</h2>
+    <div class="filter-bar"><input type="text" placeholder="Script ara..." oninput="filterTable('scripts-table', this.value)"></div>
+    <div style="overflow-x: auto;">
+    <table id="scripts-table">
+        <thead><tr><th>#</th><th>Ad</th><th>Tür</th><th>Kaynak</th><th>Karakter</th><th>Admin</th><th>Kod</th></tr></thead>
+        <tbody>
+]]
+    local idx = 0
+    local allScripts = {}
+    for _, s in ipairs(D.Scripts.LocalScripts or {}) do table.insert(allScripts, s) end
+    for _, s in ipairs(D.Scripts.ModuleScripts or {}) do table.insert(allScripts, s) end
+    for _, s in ipairs(D.Scripts.ServerScripts or {}) do table.insert(allScripts, s) end
+
+    for _, s in ipairs(allScripts) do
+        idx = idx + 1
+        local tb = s.Type == "LocalScript" and '<span class="badge badge-local">Local</span>' or
+                   (s.Type == "ModuleScript" and '<span class="badge badge-module">Module</span>' or
+                   '<span class="badge badge-server">Server</span>')
+        local ab = s.IsAdminRelated and '<span class="badge badge-admin">ADMIN</span>' or '-'
+        local ss = s.HasSource and "✅" or (s.IsBytecode and "🔒 Bytecode" or "❌")
+        local cb = s.HasSource and s.Source and string.format('<button class="copy-btn" onclick="copyCode(this, `%s`)">Kopyala</button>', HE(s.Source):gsub("`", "\\`")) or "-"
+        html = html .. string.format('<tr><td>%d</td><td><strong>%s</strong></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+            idx, HE(s.Name), tb, ss, s.SourceLength > 0 and (s.SourceLength .. " chars") or "-", ab, cb)
+        if s.HasSource and s.Source then
+            html = html .. string.format('<tr><td colspan="7"><div class="code-block"><div class="code-header"><span>📄 %s</span><span>%d karakter</span></div><div class="code-content">%s</div></div></td></tr>',
+                HE(s.FullPath), s.SourceLength, HE(s.Source))
+        end
+    end
+    html = html .. '</tbody></table></div></div>'
+    return html
+end
+
+-- // ============================================================
+-- // REMOTES SECTION
+-- // ============================================================
+local function BuildRemotesSection()
+    local html = string.format([[
+<div id="remotes" class="section">
+    <h2>Remote Events & Functions</h2>
+    <div class="stat-grid">
+        <div class="stat-card"><div class="value">%d</div><div class="label">RemoteEvents</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">RemoteFunctions</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Bindable</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">⚠️ Şüpheli</div></div>
+    </div>
+    <h3>Şüpheli Remote Listesi</h3>
+    <table><thead><tr><th>Ad</th><th>Tür</th><th>Path</th><th>Şüphe Sebebi</th></tr></thead><tbody>
+]], #(D.Remotes.RemoteEvents or {}), #(D.Remotes.RemoteFunctions or {}),
+   #(D.Remotes.BindableEvents or {}) + #(D.Remotes.BindableFunctions or {}), stats.SuspiciousRemotes)
+
+    for _, r in ipairs(D.Remotes.SuspiciousRemotes or {}) do
+        html = html .. string.format('<tr><td><strong>%s</strong></td><td>%s</td><td style="font-size:11px;color:var(--text-muted)">%s</td><td>%s</td></tr>',
+            HE(r.Name), r.Type, HE(r.FullPath), table.concat(r.SuspiciousReasons or {}, ", "))
+    end
+    html = html .. '</tbody></table></div>'
+    return html
+end
+
+-- // ============================================================
+-- // ANTI-CHEAT SECTION
+-- // ============================================================
+local function BuildAntiCheatSection()
+    local html = string.format([[
+<div id="antichat" class="section">
+    <h2>Anti-Cheat & Koruma Analizi</h2>
+    <div class="stat-grid">
+        <div class="stat-card"><div class="value">%d</div><div class="label">Toplam Bulgu</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Korumalı Script</div></div>
+    </div>
+    <table><thead><tr><th>Script</th><th>Path</th><th>Tespitler</th><th>Risk</th></tr></thead><tbody>
+]], stats.ACFindings, stats.ACProtected)
+
+    for _, s in ipairs(D.AntiCheat.Scripts_With_Protection or {}) do
+        local detections, maxSev = {}, "LOW"
+        if s.ACFindings then
+            for _, f in ipairs(s.ACFindings) do
+                table.insert(detections, f.Name)
+                if f.Severity == "CRITICAL" then maxSev = "CRITICAL"
+                elseif f.Severity == "HIGH" and maxSev ~= "CRITICAL" then maxSev = "HIGH"
+                elseif f.Severity == "MEDIUM" and maxSev ~= "CRITICAL" and maxSev ~= "HIGH" then maxSev = "MEDIUM" end
+            end
+        end
+        html = html .. string.format('<tr><td><strong>%s</strong></td><td style="font-size:11px;color:var(--text-muted)">%s</td><td>%s</td><td><span class="severity-%s">%s</span></td></tr>',
+            HE(s.Name), HE(s.FullPath), table.concat(detections, ", "), maxSev, maxSev)
+    end
+    html = html .. '</tbody></table></div>'
+    return html
+end
+
+-- // ============================================================
+-- // GUI SECTION
+-- // ============================================================
+local function BuildGUISection()
+    local html = string.format([[
+<div id="gui" class="section">
+    <h2>GUI Yapısı</h2>
+    <div class="stat-grid">
+        <div class="stat-card"><div class="value">%d</div><div class="label">Toplam Element</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">ScreenGui</div></div>
+        <div class="stat-card"><div class="value">%d</div><div class="label">Admin Paneli</div></div>
+    </div>
+    <table><thead><tr><th>Ad</th><th>Sınıf</th><th>Görünür</th><th>Pozisyon</th><th>Boyut</th></tr></thead><tbody>
+]], stats.GUIElements, #(D.GUI.ScreenGuis or {}), stats.AdminPanels)
+
+    for _, g in ipairs(D.GUI.ScreenGuis or {}) do
+        html = html .. string.format('<tr><td><strong>%s</strong>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+            HE(g.Name), g.IsAdmin and ' <span class="badge badge-admin">ADMIN</span>' or '',
+            g.Class, g.Visible and "✅" or "❌", g.Position, g.Size)
+    end
+    html = html .. '</tbody></table></div>'
+    return html
+end
+
+-- // ============================================================
+-- // NETWORK SECTION
+-- // ============================================================
+local function BuildNetworkSection()
+    local html = string.format([[
+<div id="network" class="section">
+    <h2>Network Trafiği</h2>
+    <p style="color:var(--text-muted);margin-bottom:16px;">Son %d remote çağrısı loglandı. Hook: %s</p>
+    <table><thead><tr><th>Zaman</th><th>Remote</th><th>Method</th><th>Args</th><th>Tipler</th></tr></thead><tbody>
+]], stats.TrafficEntries, stats.NetworkHooks and "✅ Aktif" or "❌ Pasif")
+
+    for _, t in ipairs(D.Network.TrafficLog or {}) do
+        html = html .. string.format('<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td><td>%s</td></tr>',
+            t.Time, HE(t.RemoteName), t.Method, t.ArgCount, table.concat(t.ArgTypes or {}, ", "))
+    end
+    html = html .. '</tbody></table></div>'
+    return html
+end
+
+-- // ============================================================
+-- // FOOTER + JAVASCRIPT
+-- // ============================================================
+local function BuildFooter()
+    return string.format([[
+<div class="footer">
+    Generated by Axiom Extraction Engine | %s | Game: %s | Place: %s
+</div>
+<script>
+function showSection(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+}
+function filterTable(tableId, query) {
+    document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query.toLowerCase()) ? '' : 'none';
+    });
+}
+function copyCode(btn, code) {
+    navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Kopyalandı!'; btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+    });
+}
+</script>
+</div>
+</body>
+</html>
+]], os.date("%Y-%m-%d %H:%M:%S"), HE(D.Meta.GameName), D.Meta.PlaceId)
+end
+
+-- // ============================================================
+-- // BUILD COMPLETE HTML
+-- // ============================================================
+local function BuildHTML()
+    print("[INFO] HTML raporu oluşturuluyor...")
+    local parts = {
+        BuildHeader(),
+        BuildOverview(),
+        BuildScriptsSection(),
+        BuildRemotesSection(),
+        BuildAntiCheatSection(),
+        BuildGUISection(),
+        BuildNetworkSection(),
+        BuildFooter()
+    }
+    local html = table.concat(parts, "\n")
+    print(string.format("[OK] HTML raporu oluşturuldu (%d karakter)", #html))
+    return html
+end
+
+-- // ============================================================
+-- // EXECUTE
+-- // ============================================================
+local report = BuildHTML()
+
+-- Panoya kopyala
+pcall(function()
+    setclipboard(report)
+    print("[OK] Rapor panoya kopyalandı!")
+end)
+
+-- Global değişkene kaydet
+getgenv().AxiomReport = report
+
+-- Public API
+getgenv().AxiomData.GetHTMLReport = function() return report end
+getgenv().AxiomData.RegenerateHTML = function()
+    report = BuildHTML()
+    getgenv().AxiomReport = report
+    pcall(function() setclipboard(report) end)
+    return report
+end
+
+print([[
+╔═══════════════════════════════════════╗
+║ PARÇA 2/2 TAMAMLANDI                 ║
+║ HTML raporu oluşturuldu              ║
+║ ✅ 
+
+
+return report

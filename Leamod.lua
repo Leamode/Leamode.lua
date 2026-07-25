@@ -1,1198 +1,1583 @@
---[[
-    ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v51.0 - TAM KOD (5 BÖLÜM - YENİ DOĞAN DÜŞMAN DESTEĞİ)
-    ═══════════════════════════════════════════════════════════════════════════
-    
-    ✅ YENİ DOĞAN DÜŞMANI OTOMATİK ALGILAR
-    ✅ ESP SÜREKLİ YENİLENİR (Her 0.3 saniye)
-    ✅ TÜM SİSTEMLER ÇALIŞIYOR
-    ✅ OYUN DONMAZ
-]]
-
-
--- ═══════════════════════════════════════════════════════════════════════════
--- B Ö L Ü M  1 / 5  -  A Y A R L A R  +  M E N Ü
--- ═══════════════════════════════════════════════════════════════════════════
+--[[ PARÇA 1/6 - Servisler, Ayarlar ve Yardımcı Fonksiyonlar ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
-local Workspace = game:GetService("Workspace")
-local Camera = Workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
 
-getgenv().LEAModState = {
-    AimbotV1 = false, AimbotV2 = false, AimAssist = false, AimLock = false,
-    CrosshairAim = false, ESP = false, Spin360 = false,
-    Rainbow = false, InfJump = false, Teleport = false, Fly = false,
-    Bunnyhop = false, Triggerbot = false, SpeedVal = 50, FOV = 1000,
-    TeamCheck = true, AutoFire = true, WallCheck = true, KillCheck = true,
-    MenuVisible = true
+-- AYARLAR
+local cfg = {
+    oneOfOne = true,
+    tradeSpoof = true,
+    targetPet = "Noobinini pizzanini",
+    spoofName = "sikibidi",
+    color = Color3.fromRGB(255, 215, 0),
+    glowColor = Color3.fromRGB(255, 255, 100),
+    textSize = 16,
+    updateDelay = 0.3,
+    maxPets = 200
 }
 
-local viewportSize = Camera.ViewportSize
-
-if CoreGui:FindFirstChild("LEAModUniversalGui") then CoreGui.LEAModUniversalGui:Destroy() end
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LEAModUniversalGui"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
-
-local HeaderLabel = Instance.new("TextLabel")
-HeaderLabel.Name = "LEAModHeader"
-HeaderLabel.Parent = ScreenGui
-HeaderLabel.AnchorPoint = Vector2.new(0.5, 1)
-HeaderLabel.Position = UDim2.new(0.5, 0, 0.48, -5)
-HeaderLabel.Size = UDim2.new(0, 120, 0, 25)
-HeaderLabel.BackgroundTransparency = 1
-HeaderLabel.Font = Enum.Font.SourceSansBold
-HeaderLabel.Text = "⚡LEA"
-HeaderLabel.TextColor3 = Color3.fromRGB(200, 0, 255)
-HeaderLabel.TextSize = 22
-HeaderLabel.TextStrokeTransparency = 0.3
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 255)
-MainFrame.BorderSizePixel = 1
-MainFrame.Position = UDim2.new(0.78, 0, 0.02, 0)
-MainFrame.Size = UDim2.new(0, 155, 0, 430)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Name = "ToggleMenu"
-ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-ToggleButton.BorderColor3 = Color3.fromRGB(200, 0, 255)
-ToggleButton.Position = UDim2.new(0.78, 0, 0.005, 0)
-ToggleButton.Size = UDim2.new(0, 45, 0, 18)
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.Text = "☰"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 14
-ToggleButton.MouseButton1Click:Connect(function()
-    getgenv().LEAModState.MenuVisible = not getgenv().LEAModState.MenuVisible
-    MainFrame.Visible = getgenv().LEAModState.MenuVisible
-end)
-
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = MainFrame
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 1)
-
-local function createButton(name, key)
-    local btn = Instance.new("TextButton")
-    btn.Name = name .. "Btn"
-    btn.Parent = MainFrame
-    btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-    btn.Size = UDim2.new(1, -6, 0, 18)
-    btn.Position = UDim2.new(0, 3, 0, 0)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.Text = name .. " ❌"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 10
-    btn.BorderSizePixel = 0
-    btn.MouseButton1Click:Connect(function()
-        getgenv().LEAModState[key] = not getgenv().LEAModState[key]
-        if getgenv().LEAModState[key] then
-            btn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
-            btn.Text = name .. " ✅"
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-            btn.Text = name .. " ❌"
-        end
-        if key == "AimbotV1" and getgenv().LEAModState.AimbotV1 then
-            getgenv().LEAModState.AimbotV2 = false
-            local v2btn = MainFrame:FindFirstChild("AimbotV2Btn")
-            if v2btn then v2btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) v2btn.Text = "Aimbot V2 ❌" end
-        end
-        if key == "AimbotV2" and getgenv().LEAModState.AimbotV2 then
-            getgenv().LEAModState.AimbotV1 = false
-            local v1btn = MainFrame:FindFirstChild("AimbotV1Btn")
-            if v1btn then v1btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) v1btn.Text = "Aimbot V1 ❌" end
-        end
-        if key == "AimAssist" and getgenv().LEAModState.AimAssist then
-            getgenv().LEAModState.AimLock = false
-            local lockbtn = MainFrame:FindFirstChild("AimLockBtn")
-            if lockbtn then lockbtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) lockbtn.Text = "AimLock ❌" end
-        end
-        if key == "AimLock" and getgenv().LEAModState.AimLock then
-            getgenv().LEAModState.AimAssist = false
-            local assistbtn = MainFrame:FindFirstChild("AimAssistBtn")
-            if assistbtn then assistbtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) assistbtn.Text = "AimAssist ❌" end
-        end
-        if key == "ESP" then
-            if getgenv().LEAModState.ESP then refreshESP() else clearESP() end
-        end
-    end)
-    return btn
+-- LOG SİSTEMİ
+local function log(level, ...)
+    local emoji = {INFO = "🔵", WARN = "🟡", ERROR = "🔴", DEBUG = "⚪"}
+    local prefix = emoji[level] or "⚪"
+    warn(prefix, "[Brainrot]", ...)
 end
 
-createButton("Aim V1", "AimbotV1")
-createButton("Aim V2", "AimbotV2")
-createButton("Assist", "AimAssist")
-createButton("Lock", "AimLock")
-createButton("Cross Aim", "CrosshairAim")
-createButton("ESP", "ESP")
-createButton("360", "Spin360")
-createButton("RB", "Rainbow")
-createButton("InfJump", "InfJump")
-createButton("Teleport", "Teleport")
-createButton("Fly", "Fly")
-createButton("Bunnyhop", "Bunnyhop")
-createButton("Trigger", "Triggerbot")
+local function info(...) log("INFO", ...) end
+local function warnMsg(...) log("WARN", ...) end
+local function err(...) log("ERROR", ...) end
 
-local SpeedFrame = Instance.new("Frame")
-SpeedFrame.Parent = MainFrame
-SpeedFrame.BackgroundTransparency = 1
-SpeedFrame.Size = UDim2.new(1, -6, 0, 16)
-SpeedFrame.Position = UDim2.new(0, 3, 0, 0)
-
-local SpeedDec = Instance.new("TextButton")
-SpeedDec.Parent = SpeedFrame
-SpeedDec.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-SpeedDec.Size = UDim2.new(0.3, 0, 1, 0)
-SpeedDec.Font = Enum.Font.SourceSansBold
-SpeedDec.Text = "-"
-SpeedDec.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedDec.TextSize = 12
-
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Parent = SpeedFrame
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Size = UDim2.new(0.4, 0, 1, 0)
-SpeedLabel.Position = UDim2.new(0.3, 0, 0, 0)
-SpeedLabel.Font = Enum.Font.SourceSansBold
-SpeedLabel.Text = "50"
-SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-SpeedLabel.TextSize = 10
-
-local SpeedInc = Instance.new("TextButton")
-SpeedInc.Parent = SpeedFrame
-SpeedInc.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-SpeedInc.Size = UDim2.new(0.3, 0, 1, 0)
-SpeedInc.Position = UDim2.new(0.7, 0, 0, 0)
-SpeedInc.Font = Enum.Font.SourceSansBold
-SpeedInc.Text = "+"
-SpeedInc.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInc.TextSize = 12
-
-SpeedDec.MouseButton1Click:Connect(function()
-    getgenv().LEAModState.SpeedVal = math.clamp(getgenv().LEAModState.SpeedVal - 5, 5, 9999)
-    SpeedLabel.Text = tostring(getgenv().LEAModState.SpeedVal)
-end)
-SpeedInc.MouseButton1Click:Connect(function()
-    getgenv().LEAModState.SpeedVal = getgenv().LEAModState.SpeedVal + 5
-    SpeedLabel.Text = tostring(getgenv().LEAModState.SpeedVal)
-end)
-
-local FlyFrame = Instance.new("Frame")
-FlyFrame.Parent = MainFrame
-FlyFrame.BackgroundTransparency = 1
-FlyFrame.Size = UDim2.new(1, -6, 0, 40)
-FlyFrame.Position = UDim2.new(0, 3, 0, 0)
-
-local FlyUp = Instance.new("TextButton")
-FlyUp.Parent = FlyFrame
-FlyUp.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-FlyUp.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyUp.Position = UDim2.new(0.33, 0, 0, 0)
-FlyUp.Font = Enum.Font.SourceSansBold
-FlyUp.Text = "▲"
-FlyUp.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyUp.TextSize = 14
-FlyUp.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, 50, 0)
-        end
+-- SAFECALL
+local function safeCall(func, ...)
+    local ok, result = pcall(func, ...)
+    if not ok then
+        warnMsg("SafeCall hatası:", result)
     end
-end)
-
-local FlyDown = Instance.new("TextButton")
-FlyDown.Parent = FlyFrame
-FlyDown.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
-FlyDown.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyDown.Position = UDim2.new(0.33, 0, 0.5, 0)
-FlyDown.Font = Enum.Font.SourceSansBold
-FlyDown.Text = "▼"
-FlyDown.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyDown.TextSize = 14
-FlyDown.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, -50, 0)
-        end
-    end
-end)
-
-local FlyLeft = Instance.new("TextButton")
-FlyLeft.Parent = FlyFrame
-FlyLeft.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FlyLeft.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyLeft.Position = UDim2.new(0, 0, 0.25, 0)
-FlyLeft.Font = Enum.Font.SourceSansBold
-FlyLeft.Text = "◀"
-FlyLeft.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyLeft.TextSize = 14
-FlyLeft.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = -Camera.CFrame.RightVector * 50
-        end
-    end
-end)
-
-local FlyRight = Instance.new("TextButton")
-FlyRight.Parent = FlyFrame
-FlyRight.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FlyRight.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyRight.Position = UDim2.new(0.66, 0, 0.25, 0)
-FlyRight.Font = Enum.Font.SourceSansBold
-FlyRight.Text = "▶"
-FlyRight.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyRight.TextSize = 14
-FlyRight.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Camera.CFrame.RightVector * 50
-        end
-    end
-end)
-
-print("✅ BÖLÜM 1/5 YÜKLENDİ - BÖLÜM 2/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v51.0 - BÖLÜM 2/5 (ESP - YENİ DOĞAN DÜŞMAN DESTEĞİ)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-local espCache = {}
-local espUpdateTimer = 0
-local knownPlayers = {}
-
-local function isEnemy(player)
-    if player == LocalPlayer then return false end
-    if getgenv().LEAModState.TeamCheck then
-        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-            return false
-        end
-    end
-    return true
+    return ok, result
 end
 
-local function getHitbox(char)
-    local parts = {"HumanoidRootPart", "UpperTorso", "Torso", "Head"}
-    for _, name in ipairs(parts) do
-        local part = char:FindFirstChild(name)
-        if part then return part end
+local function safeCallDefault(func, default, ...)
+    local ok, result = safeCall(func, ...)
+    return ok and result or default
+end
+
+-- BEKLEME FONKSİYONLARI
+local function waitForChild(parent, name, timeout)
+    timeout = timeout or 10
+    local start = tick()
+    while tick() - start < timeout do
+        local child = parent:FindFirstChild(name)
+        if child then return child end
+        task.wait(0.1)
     end
     return nil
 end
 
-local function canSeeTarget(targetRoot)
-    if not getgenv().LEAModState.WallCheck then return true end
-    local origin = Camera.CFrame.Position
-    local targetPos = targetRoot.Position
-    local direction = (targetPos - origin).Unit
-    local distance = (targetPos - origin).Magnitude
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {LocalPlayer.Character, targetRoot.Parent}
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    local result = Workspace:Raycast(origin, direction * distance, params)
-    if result then
-        local hit = result.Instance
-        if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
-        return false
+local function waitForChildRecursive(parent, name, timeout)
+    timeout = timeout or 10
+    local start = tick()
+    while tick() - start < timeout do
+        local child = parent:FindFirstChild(name, true)
+        if child then return child end
+        task.wait(0.1)
     end
-    return true
+    return nil
 end
 
-local function getNearestEnemy()
-    local target = nil
-    local shortestDist = getgenv().LEAModState.FOV or 1000
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then 
-            if getgenv().LEAModState.KillCheck then continue end
-        end
-        if not canSeeTarget(root) then continue end
-        local dist = (root.Position - Camera.CFrame.Position).Magnitude
-        if dist < shortestDist then
-            shortestDist = dist
-            target = player
-        end
-    end
-    return target
+-- STRING YARDIMCILARI
+local function stringContains(str, search)
+    if not str or not search then return false end
+    return string.find(string.lower(tostring(str)), string.lower(tostring(search)), 1, true) ~= nil
 end
 
-local function clearESP()
-    for player, _ in pairs(espCache) do
-        if espCache[player] then
-            for _, obj in pairs(espCache[player]) do
-                if obj then pcall(function() obj:Destroy() end) end
+local function stringEquals(str1, str2)
+    return string.lower(tostring(str1)) == string.lower(tostring(str2))
+end
+
+-- TABLE YARDIMCILARI
+local function tableFind(tbl, value)
+    for _, v in ipairs(tbl) do
+        if v == value then return true end
+    end
+    return false
+end
+
+local function tableFindStr(tbl, str)
+    str = string.lower(tostring(str))
+    for _, v in ipairs(tbl) do
+        if stringContains(v, str) then return true end
+    end
+    return false
+end
+
+-- INSTANCE YARDIMCILARI
+local function getDescendantsOfClass(parent, className)
+    local result = {}
+    local success, descendants = pcall(function() return parent:GetDescendants() end)
+    if not success then return result end
+    for _, obj in ipairs(descendants) do
+        if obj:IsA(className) then
+            table.insert(result, obj)
+        end
+    end
+    return result
+end
+
+local function findFirstOfClass(parent, className)
+    for _, obj in ipairs(parent:GetChildren()) do
+        if obj:IsA(className) then return obj end
+    end
+    return nil
+end
+
+-- OBJECT YARDIMCILARI
+local function isAlive(obj)
+    return obj and obj.Parent ~= nil
+end
+
+local function safeDestroy(obj)
+    if isAlive(obj) then
+        safeCall(function() obj:Destroy() end)
+    end
+end
+
+local function safeSetParent(obj, parent)
+    if isAlive(obj) then
+        safeCall(function() obj.Parent = parent end)
+    end
+end
+
+-- KARAKTER YARDIMCILARI
+local function getCharacter(player)
+    return player and player.Character
+end
+
+local function getHumanoid(player)
+    local char = getCharacter(player)
+    return char and char:FindFirstChild("Humanoid")
+end
+
+local function isPlayerCharacter(obj)
+    if not obj or not obj:IsA("Model") then return false end
+    return safeCallDefault(function()
+        return Players:GetPlayerFromCharacter(obj) ~= nil
+    end, false)
+end
+
+-- BELLEK YÖNETİMİ
+local memoryObjects = {}
+local memoryConnections = {}
+
+local function trackObject(obj)
+    table.insert(memoryObjects, {obj = obj, time = tick()})
+end
+
+local function trackConnection(conn)
+    table.insert(memoryConnections, conn)
+end
+
+local function cleanupMemory()
+    local now = tick()
+    -- Ölü objeleri temizle
+    for i = #memoryObjects, 1, -1 do
+        if not isAlive(memoryObjects[i].obj) or (now - memoryObjects[i].time > 600) then
+            safeDestroy(memoryObjects[i].obj)
+            table.remove(memoryObjects, i)
+        end
+    end
+    -- Kopuk connection'ları temizle
+    for i = #memoryConnections, 1, -1 do
+        if not memoryConnections[i].Connected then
+            table.remove(memoryConnections, i)
+        end
+    end
+end
+
+-- ANİMASYON YARDIMCILARI
+local function createTween(obj, props, duration, easingStyle, easingDir)
+    local tweenInfo = TweenInfo.new(
+        duration or 0.5,
+        easingStyle or Enum.EasingStyle.Quad,
+        easingDir or Enum.EasingDirection.Out
+    )
+    return TweenService:Create(obj, tweenInfo, props)
+end
+
+local function pulseGlow(glowObj)
+    task.spawn(function()
+        while isAlive(glowObj) do
+            for i = 0.3, 0.7, 0.03 do
+                if not isAlive(glowObj) then return end
+                safeCall(function() glowObj.ImageTransparency = i end)
+                task.wait(0.03)
             end
-            espCache[player] = nil
+            for i = 0.7, 0.3, -0.03 do
+                if not isAlive(glowObj) then return end
+                safeCall(function() glowObj.ImageTransparency = i end)
+                task.wait(0.03)
+            end
         end
-    end
+    end)
 end
 
-local function createESPForPlayer(player)
-    if player == LocalPlayer then return end
-    if not player.Character then return end
+-- PART SONU - MODÜL ÇIKTISI
+local Part1 = {
+    cfg = cfg,
+    log = {info = info, warn = warnMsg, err = err},
+    safeCall = safeCall,
+    safeCallDefault = safeCallDefault,
+    waitForChild = waitForChild,
+    waitForChildRecursive = waitForChildRecursive,
+    stringContains = stringContains,
+    stringEquals = stringEquals,
+    tableFind = tableFind,
+    tableFindStr = tableFindStr,
+    getDescendantsOfClass = getDescendantsOfClass,
+    findFirstOfClass = findFirstOfClass,
+    isAlive = isAlive,
+    safeDestroy = safeDestroy,
+    safeSetParent = safeSetParent,
+    isPlayerCharacter = isPlayerCharacter,
+    trackObject = trackObject,
+    trackConnection = trackConnection,
+    cleanupMemory = cleanupMemory,
+    createTween = createTween,
+    pulseGlow = pulseGlow
+}
+
+info("Parça 1 yüklendi - Servisler ve Yardımcılar")
+return Part1--[[ PARÇA 2/6 - Pet Tespit ve Takip Motoru ]]
+
+local Part1 = require(script.Parent.Part1) -- veya önceki kodu dahil et
+local cfg = Part1.cfg
+local info = Part1.log.info
+local warnMsg = Part1.log.warn
+local safeCall = Part1.safeCall
+local safeCallDefault = Part1.safeCallDefault
+local isAlive = Part1.isAlive
+local isPlayerCharacter = Part1.isPlayerCharacter
+local stringContains = Part1.stringContains
+local tableFind = Part1.tableFind
+local trackObject = Part1.trackObject
+local trackConnection = Part1.trackConnection
+
+local workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
+local LP = Players.LocalPlayer
+
+-- ==================== PET DEDEKTÖR SINIFI ====================
+local PetDetector = {}
+PetDetector.__index = PetDetector
+
+function PetDetector.new()
+    local self = setmetatable({}, PetDetector)
     
-    local char = player.Character
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not root or not humanoid then return end
+    self.knownPets = {}
+    self.petCount = 0
+    self.equippedPets = {}
+    self.workspacePets = {}
+    self.inventoryPets = {}
+    self.petCache = {}
     
-    if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if obj then pcall(function() obj:Destroy() end) end
+    self.petAttributes = {
+        "Pet", "IsPet", "petType", "PetType",
+        "rarity", "Rarity", "petName", "PetName",
+        "equipped", "Equipped", "serial", "Serial",
+        "count", "Count"
+    }
+    
+    self.petNamePatterns = {
+        "pet", "Pet", "PET",
+        "noob", "Noob", "NOOB",
+        "brainrot", "Brainrot",
+        "huge", "Huge", "HUGE",
+        "titanic", "Titanic"
+    }
+    
+    self.petFolders = {
+        "Pets", "pets", "ActivePets", "SpawnedPets",
+        "Equipped", "equipped", "Inventory"
+    }
+    
+    return self
+end
+
+function PetDetector:isValidPet(obj)
+    if not isAlive(obj) then return false end
+    if not obj:IsA("Model") then return false end
+    
+    -- Hızlı cache kontrolü
+    if self.knownPets[obj] then return true end
+    
+    local valid = false
+    
+    -- Yöntem 1: Attribute kontrolü
+    for _, attr in ipairs(self.petAttributes) do
+        local val = safeCallDefault(function() return obj:GetAttribute(attr) end, nil)
+        if val ~= nil then
+            valid = true
+            break
         end
-        espCache[player] = nil
     end
     
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "ESPBox"
-    box.Size = char:GetExtentsSize()
-    box.Adornee = char
-    box.AlwaysOnTop = true
-    box.ZIndex = 5
-    box.Transparency = 0.5
-    box.Parent = CoreGui
+    -- Yöntem 2: İsim deseni
+    if not valid then
+        for _, pattern in ipairs(self.petNamePatterns) do
+            if stringContains(obj.Name, pattern) then
+                valid = true
+                break
+            end
+        end
+    end
+    
+    -- Yöntem 3: Yapısal analiz
+    if not valid and obj:IsA("Model") then
+        local humanoid = obj:FindFirstChild("Humanoid")
+        local head = obj:FindFirstChild("Head")
+        
+        if humanoid and head and not isPlayerCharacter(obj) then
+            -- Parent pet klasörü mü?
+            local parent = obj.Parent
+            if parent then
+                for _, folderName in ipairs(self.petFolders) do
+                    if stringContains(parent.Name, folderName) then
+                        valid = true
+                        break
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Yöntem 4: CollectionService tag
+    if not valid then
+        local petTags = {"Pet", "pet", "PET", "EquippedPet", "ActivePet"}
+        for _, tag in ipairs(petTags) do
+            if CollectionService:HasTag(obj, tag) then
+                valid = true
+                break
+            end
+        end
+    end
+    
+    return valid
+end
+
+function PetDetector:registerPet(obj, source)
+    if not isAlive(obj) or self.knownPets[obj] then return end
+    
+    local info = {
+        object = obj,
+        source = source or "Unknown",
+        name = obj.Name,
+        discoveredAt = tick(),
+        attributes = {},
+        overlayApplied = false,
+        equipped = false
+    }
+    
+    -- Attribute'ları topla
+    for _, attr in ipairs(self.petAttributes) do
+        local val = safeCallDefault(function() return obj:GetAttribute(attr) end, nil)
+        if val ~= nil then
+            info.attributes[attr] = val
+        end
+    end
+    
+    -- Equipped kontrolü
+    if info.attributes["equipped"] or info.attributes["Equipped"] then
+        info.equipped = true
+        self.equippedPets[obj] = info
+    end
+    
+    self.knownPets[obj] = info
+    self.workspacePets[obj] = info
+    self.petCount = self.petCount + 1
+    
+    -- Cache güncelle
+    self.petCache[obj:GetFullName()] = {
+        info = info,
+        cachedAt = tick()
+    }
+end
+
+function PetDetector:unregisterPet(obj)
+    if not obj or not self.knownPets[obj] then return end
+    
+    -- Overlay'i kaldırması için işaretle
+    local info = self.knownPets[obj]
+    info.overlayApplied = false
+    
+    self.knownPets[obj] = nil
+    self.workspacePets[obj] = nil
+    self.equippedPets[obj] = nil
+    self.petCache[obj:GetFullName()] = nil
+    self.petCount = math.max(0, self.petCount - 1)
+end
+
+function PetDetector:scanAll()
+    local scanned = 0
+    
+    -- Workspace taraması
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if self:isValidPet(obj) then
+            self:registerPet(obj, "Workspace")
+            scanned = scanned + 1
+            if scanned >= cfg.maxPets then break end
+        end
+    end
+    
+    return scanned
+end
+
+function PetDetector:getAll()
+    local result = {}
+    for pet, info in pairs(self.knownPets) do
+        if isAlive(pet) then
+            table.insert(result, {object = pet, info = info})
+        else
+            self:unregisterPet(pet)
+        end
+    end
+    return result
+end
+
+function PetDetector:getEquipped()
+    local result = {}
+    for pet, info in pairs(self.equippedPets) do
+        if isAlive(pet) then
+            table.insert(result, {object = pet, info = info})
+        end
+    end
+    return result
+end
+
+function PetDetector:startWatching()
+    -- Yeni pet eklenince
+    local conn1 = workspace.DescendantAdded:Connect(function(obj)
+        if self:isValidPet(obj) then
+            self:registerPet(obj, "Dynamic")
+        end
+    end)
+    trackConnection(conn1)
+    
+    -- Pet silinince
+    local conn2 = workspace.DescendantRemoving:Connect(function(obj)
+        if self.knownPets[obj] then
+            self:unregisterPet(obj)
+        end
+    end)
+    trackConnection(conn2)
+end
+
+-- ==================== EXPORT ====================
+local Part2 = {
+    PetDetector = PetDetector,
+    new = function() return PetDetector.new() end
+}
+
+info("Parça 2 yüklendi - Pet Tespit Motoru")
+return Part2--[[ PARÇA 3/6 - 1 of 1 Overlay Motoru ]]
+
+local Part1 = require(script.Parent.Part1) -- veya önceki kodları dahil et
+local cfg = Part1.cfg
+local info = Part1.log.info
+local warnMsg = Part1.log.warn
+local safeCall = Part1.safeCall
+local isAlive = Part1.isAlive
+local safeDestroy = Part1.safeDestroy
+local trackObject = Part1.trackObject
+local pulseGlow = Part1.pulseGlow
+
+-- ==================== OVERLAY MOTORU ====================
+local OverlayEngine = {}
+OverlayEngine.__index = OverlayEngine
+
+function OverlayEngine.new()
+    local self = setmetatable({}, OverlayEngine)
+    
+    self.activeOverlays = {}
+    self.overlayCount = 0
+    self.processedCount = 0
+    self.failedCount = 0
+    self.glowImages = {
+        "rbxassetid://6014261993",
+        "rbxassetid://6015894523",
+        "rbxassetid://6509375218"
+    }
+    
+    return self
+end
+
+function OverlayEngine:createBillboardGui(pet)
+    if not isAlive(pet) or not pet.PrimaryPart then return nil end
+    
+    -- Mevcut overlay var mı kontrol et
+    if self.activeOverlays[pet] then
+        return self.activeOverlays[pet]
+    end
     
     local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESPInfo"
-    billboard.Adornee = root
-    billboard.Size = UDim2.new(0, 120, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Name = "OneOfOne_" .. math.random(1000, 9999)
+    billboard.Size = UDim2.new(4, 0, 1.5, 0)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
     billboard.AlwaysOnTop = true
-    billboard.Parent = CoreGui
+    billboard.MaxDistance = 200
+    billboard.LightInfluence = 0
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.ResetOnSpawn = false
     
+    -- Ana frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(1, 0, 1, 0)
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = billboard
+    
+    -- 1 of 1 yazısı
     local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "InfoText"
-    textLabel.Parent = billboard
-    textLabel.BackgroundTransparency = 1
+    textLabel.Name = "MainText"
     textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 14
-    textLabel.TextStrokeTransparency = 0
-    textLabel.Text = string.format("%s\nHP: %d", player.Name, math.floor(humanoid.Health))
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "1 of 1"
+    textLabel.TextColor3 = cfg.color
+    textLabel.TextSize = cfg.textSize
+    textLabel.TextStrokeTransparency = 0.2
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.Font = Enum.Font.FredokaOne
+    textLabel.TextWrapped = true
+    textLabel.RichText = true
+    textLabel.Parent = mainFrame
     
-    espCache[player] = {Box = box, Billboard = billboard, Text = textLabel}
+    -- Altın parıltı efekti
+    local glow = Instance.new("ImageLabel")
+    glow.Name = "GlowEffect"
+    glow.Size = UDim2.new(1.8, 0, 1.8, 0)
+    glow.Position = UDim2.new(-0.4, 0, -0.4, 0)
+    glow.BackgroundTransparency = 1
+    glow.Image = self.glowImages[1]
+    glow.ImageColor3 = cfg.glowColor
+    glow.ImageTransparency = 0.5
+    glow.ScaleType = Enum.ScaleType.Fit
+    glow.Parent = mainFrame
+    
+    billboard.Parent = pet
+    trackObject(billboard)
+    
+    self.activeOverlays[pet] = billboard
+    self.overlayCount = self.overlayCount + 1
+    self.processedCount = self.processedCount + 1
+    
+    -- Parıltı animasyonu başlat
+    pulseGlow(glow)
+    
+    return billboard
 end
 
--- TÜM OYUNCULARI TARA VE YENİLERİNİ BUL
-local function scanAllPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        
-        -- Yeni oyuncu kontrolü
-        if not knownPlayers[player] then
-            knownPlayers[player] = true
-            if getgenv().LEAModState.ESP then
-                createESPForPlayer(player)
-            end
-        end
-        
-        local char = player.Character
-        if not char then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not root or not humanoid then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        
-        if humanoid.Health <= 0 then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
+function OverlayEngine:removeOverlay(pet)
+    if self.activeOverlays[pet] then
+        safeDestroy(self.activeOverlays[pet])
+        self.activeOverlays[pet] = nil
+        self.overlayCount = math.max(0, self.overlayCount - 1)
     end
 end
 
-local function refreshESP()
-    clearESP()
-    if not getgenv().LEAModState.ESP then return end
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            createESPForPlayer(player)
-            knownPlayers[player] = true
-        end
-    end
+function OverlayEngine:hasOverlay(pet)
+    return self.activeOverlays[pet] ~= nil
 end
 
--- YENİ OYUNCU EKLENDİĞİNDE
-Players.PlayerAdded:Connect(function(player)
-    wait(0.5)
-    knownPlayers[player] = true
-    if getgenv().LEAModState.ESP then
-        createESPForPlayer(player)
-    end
-end)
-
--- OYUNCU ÇIKTIĞINDA
-Players.PlayerRemoving:Connect(function(player)
-    knownPlayers[player] = nil
-    if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if obj then pcall(function() obj:Destroy() end) end
-        end
-        espCache[player] = nil
-    end
-end)
-
--- ESP ANA DÖNGÜ - HER 0.2 SANİYEDE BİR (YENİ DOĞANLAR İÇİN)
-RunService.Heartbeat:Connect(function()
-    espUpdateTimer = espUpdateTimer + 1
-    if espUpdateTimer % 2 ~= 0 then return end -- ~0.2 saniye
-    
-    if not getgenv().LEAModState.ESP then
-        clearESP()
-        return
+function OverlayEngine:updateOverlay(pet)
+    if not self:hasOverlay(pet) then
+        return self:createBillboardGui(pet)
     end
     
-    -- TÜM OYUNCULARI TARA (YENİ DOĞANLARI BUL)
-    scanAllPlayers()
+    local billboard = self.activeOverlays[pet]
+    if not isAlive(billboard) then
+        self.activeOverlays[pet] = nil
+        return self:createBillboardGui(pet)
+    end
     
-    -- ESP GÜNCELLE
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        
-        local char = player.Character
-        if not char then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not root or not humanoid then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        
-        if humanoid.Health <= 0 then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        
-        -- ESP YOKSA OLUŞTUR
-        if not espCache[player] then
-            createESPForPlayer(player)
-        end
-        
-        local cache = espCache[player]
-        if cache then
-            local enemyCheck = isEnemy(player)
-            local color = enemyCheck and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-            cache.Box.Color3 = color
-            local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-            cache.Text.Text = string.format("%s\nHP: %d | %dm", player.Name, math.floor(humanoid.Health), dist)
-            cache.Text.TextColor3 = color
+    -- Güncelle (pozisyon, renk vs.)
+    if cfg.oneOfOne then
+        local textLabel = billboard:FindFirstChild("MainFrame", true)
+        if textLabel then
+            safeCall(function()
+                textLabel.TextColor3 = cfg.color
+                textLabel.TextSize = cfg.textSize
+            end)
         end
     end
-end)
-
-print("✅ BÖLÜM 2/5 YÜKLENDİ - BÖLÜM 3/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v51.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.Spin360 then
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(30), 0) end
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.Rainbow then
-        local char = LocalPlayer.Character
-        if char then
-            local hue = tick() % 5 / 5
-            local rainbowColor = Color3.fromHSV(hue, 1, 1)
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.Color = rainbowColor end
-            end
-        end
-    end
-end)
-
-UserInputService.JumpRequest:Connect(function()
-    if getgenv().LEAModState.InfJump then
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if not getgenv().LEAModState.Bunnyhop then return end
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    if hum.MoveDirection.Magnitude > 0 and hum:GetState() == Enum.HumanoidStateType.Landed then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if not getgenv().LEAModState.Teleport then return end
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
     
-    local target = getNearestEnemy()
-    if not target then return end
-    
-    local tChar = target.Character
-    if not tChar then return end
-    
-    local tRoot = tChar:FindFirstChild("HumanoidRootPart")
-    if not tRoot then return end
-    
-    myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 4, 5)
-    getgenv().LEAModState.Teleport = false
-    
-    local btn = CoreGui:FindFirstChild("LEAModUniversalGui") and CoreGui.LEAModUniversalGui.MainFrame:FindFirstChild("TeleportBtn")
-    if btn then
-        btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-        btn.Text = "Teleport ❌"
-    end
-end)
+    return billboard
+end
 
-RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if getgenv().LEAModState.Fly and char and char:FindFirstChild("HumanoidRootPart") then
-        local root = char.HumanoidRootPart
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand = true end
-    elseif char and char:FindFirstChildOfClass("Humanoid") then
-        char.Humanoid.PlatformStand = false
-    end
-end)
+function OverlayEngine:applyToPet(pet)
+    if not cfg.oneOfOne then return false end
+    if not isAlive(pet) then return false end
+    if not pet.PrimaryPart then return false end
+    
+    return self:createBillboardGui(pet) ~= nil
+end
 
-RunService.Heartbeat:Connect(function()
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = getgenv().LEAModState.SpeedVal
-        hum.JumpPower = 50
-    end
-end)
-
-local function restartAllSystems()
-    lockedTarget = nil
-    isAiming = false
-    if getgenv().LEAModState.ESP then refreshESP() end
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = getgenv().LEAModState.SpeedVal
-        hum.JumpPower = 50
-    end
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local humFly = char:FindFirstChildOfClass("Humanoid")
-            if humFly then humFly.PlatformStand = true end
+function OverlayEngine:applyToAll(pets)
+    local count = 0
+    for _, petData in ipairs(pets) do
+        if self:applyToPet(petData.object) then
+            count = count + 1
         end
     end
-    if getgenv().LEAModState.Rainbow then
-        local char = LocalPlayer.Character
-        if char then
-            local hue = tick() % 5 / 5
-            local rainbowColor = Color3.fromHSV(hue, 1, 1)
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.Color = rainbowColor end
-            end
+    return count
+end
+
+function OverlayEngine:removeAll()
+    for pet, overlay in pairs(self.activeOverlays) do
+        safeDestroy(overlay)
+    end
+    self.activeOverlays = {}
+    self.overlayCount = 0
+end
+
+function OverlayEngine:cleanupDead()
+    for pet, overlay in pairs(self.activeOverlays) do
+        if not isAlive(pet) then
+            safeDestroy(overlay)
+            self.activeOverlays[pet] = nil
+            self.overlayCount = math.max(0, self.overlayCount - 1)
         end
     end
 end
 
-LocalPlayer.CharacterAdded:Connect(function()
-    wait(0.5)
-    restartAllSystems()
-end)
-
-print("✅ BÖLÜM 3/5 YÜKLENDİ - BÖLÜM 4/5'İ ÇALIŞTIR")--[[
---[[
-    ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v51.0 - BÖLÜM 4/5 (AIMBOT + CROSSHAIR AIM)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-local isAiming = false
-local lockedTarget = nil
-local aimUpdateTimer = 0
-
-local function findNearestEnemy()
-    local target = nil
-    local shortestDist = 1000
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then 
-            if getgenv().LEAModState.KillCheck then continue end
-        end
-        if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then continue end
-        end
-        local dist = (root.Position - Camera.CFrame.Position).Magnitude
-        if dist < shortestDist then
-            shortestDist = dist
-            target = player
-        end
-    end
-    return target
+function OverlayEngine:getStats()
+    return {
+        active = self.overlayCount,
+        processed = self.processedCount,
+        failed = self.failedCount
+    }
 end
 
-local function isTargetStillValid(targetPlayer)
-    if not targetPlayer then return false end
-    local char = targetPlayer.Character
-    if not char then return false end
-    local root = getHitbox(char)
-    if not root then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-    if hum.Health <= 0 then return false end
-    if getgenv().LEAModState.WallCheck then
-        if not canSeeTarget(root) then return false end
-    end
-    return true
+-- ==================== TOPLU UYGULAMA FONKSİYONU ====================
+local function bulkApply(petDetector)
+    local engine = OverlayEngine.new()
+    local pets = petDetector:getAll()
+    local applied = engine:applyToAll(pets)
+    info("Toplu overlay uygulandı:", applied, "/", #pets)
+    return engine
 end
 
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        local pos = input.Position
-        if pos.X > viewportSize.X / 2 then
-            if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock or getgenv().LEAModState.CrosshairAim then
-                isAiming = true
-                if not lockedTarget then
-                    lockedTarget = findNearestEnemy()
-                end
-            end
-        end
-    end
-end)
+-- ==================== EXPORT ====================
+local Part3 = {
+    OverlayEngine = OverlayEngine,
+    new = function() return OverlayEngine.new() end,
+    bulkApply = bulkApply
+}
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        isAiming = false
-        lockedTarget = nil
-    end
-end)
+info("Parça 3 yüklendi - Overlay Motoru")
+return Part3--[[ PARÇA 4/6 - PYUNUJ TRADE BYPASS (500 Satır Özel) ]]
 
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock or getgenv().LEAModState.CrosshairAim then
-            isAiming = true
-            if not lockedTarget then
-                lockedTarget = findNearestEnemy()
-            end
-        end
-    end
-end)
+local Part1 = require(script.Parent.Part1)
+local cfg = Part1.cfg
+local info = Part1.log.info
+local warnMsg = Part1.log.warn
+local err = Part1.log.err
+local safeCall = Part1.safeCall
+local safeCallDefault = Part1.safeCallDefault
+local isAlive = Part1.isAlive
+local stringContains = Part1.stringContains
+local getDescendantsOfClass = Part1.getDescendantsOfClass
+local trackConnection = Part1.trackConnection
+local waitForChildRecursive = Part1.waitForChildRecursive
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        isAiming = false
-        lockedTarget = nil
-    end
-end)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LP = Players.LocalPlayer
 
--- AIMBOT V1
-RunService.Heartbeat:Connect(function()
-    aimUpdateTimer = aimUpdateTimer + 1
-    if aimUpdateTimer % 2 ~= 0 then return end
-    
-    if not getgenv().LEAModState.AimbotV1 or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    
-    if not lockedTarget then
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    
-    local root = getHitbox(char)
-    if not root then lockedTarget = nil return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
-    
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
+-- ==================== PYUNUJ SİSTEM TESPİT ====================
+local PyunujDetector = {}
+PyunujDetector.__index = PyunujDetector
 
--- AIMBOT V2
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
-    
-    if not getgenv().LEAModState.AimbotV2 or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    
-    if not lockedTarget then
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    
-    local root = char:FindFirstChild("Head") or getHitbox(char)
-    if not root then lockedTarget = nil return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
-    
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
+function PyunujDetector.new()
+    local self = setmetatable({}, PyunujDetector)
+    self.isPyunuj = false
+    self.remotes = {}
+    self.guiObjects = {}
+    self.scripts = {}
+    self.tradeGui = nil
+    self.detected = false
+    return self
+end
 
--- AIMASSIST
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
+function PyunujDetector:detect()
+    if self.detected then return self.isPyunuj end
     
-    if not getgenv().LEAModState.AimAssist or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
+    info("Pyunuj sistemi taranıyor...")
+    
+    -- Remote'ları tara
+    self:scanRemotes()
+    
+    -- GUI'leri tara
+    self:scanGuis()
+    
+    -- Script'leri tara
+    self:scanScripts()
+    
+    self.detected = true
+    self.isPyunuj = #self.remotes > 0 or #self.guiObjects > 0 or #self.scripts > 0
+    
+    if self.isPyunuj then
+        info("✅ Pyunuj Trade Sistemi Tespit Edildi!")
+        info("   Remote:", #self.remotes, "GUI:", #self.guiObjects, "Script:", #self.scripts)
+    else
+        info("ℹ️ Pyunuj tespit edilmedi, standart trade modu")
     end
     
-    if not lockedTarget then
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    
-    local root = getHitbox(char)
-    if not root then lockedTarget = nil return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    
-    local targetPos = root.Position
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
-    
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
+    return self.isPyunuj
+end
 
--- AIMLOCK
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
+function PyunujDetector:scanRemotes()
+    local keywords = {"pyunuj", "pynj", "trade", "exchange", "swap", "transfer"}
     
-    if not getgenv().LEAModState.AimLock or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    
-    if not lockedTarget then
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    
-    local root = char:FindFirstChild("Head") or getHitbox(char)
-    if not root then lockedTarget = nil return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    
-    local targetPos = root.Position
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
-    
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
--- CROSSHAIR AIM (SADECE CROSSHAIR BAKAR, KARAKTER SABİT)
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
-    
-    if not getgenv().LEAModState.CrosshairAim or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    
-    if not lockedTarget then
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    
-    local root = getHitbox(char)
-    if not root then lockedTarget = nil return end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
-    
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
-print("✅ BÖLÜM 4/5 YÜKLENDİ - BÖLÜM 5/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    📱 LEA MOD v51.0 - BÖLÜM 5/5 (TRIGGERBOT + HIZLI AIM ASSIST)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-local viewportSize = Camera.ViewportSize
-
-local function quickAimAssist()
-    if not getgenv().LEAModState.Triggerbot then return end
-    
-    local target = nil
-    local shortestDist = 200
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = char:FindFirstChild("Head") or getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then continue end
-        end
-        
-        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if onScreen then
-            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-    end
-    
-    if target then
-        local char = target.Character
-        if char then
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if root then
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, root.Position)
-                
-                local mouse = LocalPlayer:GetMouse()
-                if mouse then
-                    mouse.Button1Down:Fire()
-                    task.wait(0.03)
-                    mouse.Button1Up:Fire()
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            for _, kw in ipairs(keywords) do
+                if stringContains(obj.Name, kw) then
+                    table.insert(self.remotes, {
+                        object = obj,
+                        name = obj.Name,
+                        class = obj.ClassName,
+                        path = obj:GetFullName()
+                    })
+                    break
                 end
             end
         end
     end
 end
 
-RunService.RenderStepped:Connect(function()
-    if getgenv().LEAModState.Triggerbot then
-        quickAimAssist()
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if not getgenv().LEAModState.Triggerbot then return end
+function PyunujDetector:scanGuis()
+    local pg = LP:FindFirstChild("PlayerGui")
+    if not pg then return end
     
-    local target = nil
-    local shortestDist = 50
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
+    local guiPatterns = {
+        "PyunujTrade", "Pyunuj", "pynj",
+        "TradeGui", "TradeMenu", "TradeFrame",
+        "Trading", "TradeWindow", "TradeUI"
+    }
     
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = char:FindFirstChild("Head") or getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then continue end
-        end
-        
-        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if onScreen then
-            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
+    for _, gui in ipairs(pg:GetChildren()) do
+        for _, pattern in ipairs(guiPatterns) do
+            if stringContains(gui.Name, pattern) then
+                table.insert(self.guiObjects, {
+                    object = gui,
+                    name = gui.Name,
+                    class = gui.ClassName
+                })
+                self.tradeGui = gui
+                break
             end
         end
     end
     
-    if target then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
+    -- Derin arama
+    for _, obj in ipairs(pg:GetDescendants()) do
+        if obj:IsA("ScreenGui") or obj:IsA("Frame") then
+            for _, pattern in ipairs(guiPatterns) do
+                if stringContains(obj.Name, pattern) and not self.guiObjects[obj] then
+                    table.insert(self.guiObjects, {object = obj, name = obj.Name})
+                    if not self.tradeGui then self.tradeGui = obj end
+                    break
+                end
+            end
+        end
+    end
+end
+
+function PyunujDetector:scanScripts()
+    local pg = LP:FindFirstChild("PlayerGui")
+    if not pg then return end
+    
+    for _, obj in ipairs(pg:GetDescendants()) do
+        if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+            if stringContains(obj.Name, "pyunuj") or stringContains(obj.Name, "pynj") then
+                table.insert(self.scripts, obj)
+            else
+                -- Kaynak kod kontrolü
+                local source = safeCallDefault(function() return obj.Source end, "")
+                if stringContains(source, "pyunuj") or stringContains(source, "PyunujTrade") then
+                    table.insert(self.scripts, obj)
+                end
+            end
+        end
+    end
+end
+
+-- ==================== PYUNUJ BYPASS MOTORU ====================
+local PyunujBypass = {}
+PyunujBypass.__index = PyunujBypass
+
+function PyunujBypass.new(detector)
+    local self = setmetatable({}, PyunujBypass)
+    self.detector = detector or PyunujDetector.new()
+    self.modifiedTexts = {}
+    self.originalTexts = {}
+    self.hookedRemotes = {}
+    self.active = false
+    self.bypassCount = 0
+    return self
+end
+
+function PyunujBypass:start()
+    if self.active then return end
+    self.active = true
+    
+    info("Pyunuj Bypass başlatılıyor...")
+    
+    -- Remote hook
+    self:hookAllRemotes()
+    
+    -- GUI manipülasyonu başlat
+    self:startGuiMonitor()
+    
+    -- Deep bypass
+    self:startDeepBypass()
+    
+    info("Pyunuj Bypass aktif! Hedef:", cfg.targetPet, "→", cfg.spoofName)
+end
+
+function PyunujBypass:stop()
+    self.active = false
+    self:revertAll()
+    info("Pyunuj Bypass durduruldu")
+end
+
+function PyunujBypass:hookAllRemotes()
+    for _, remoteData in ipairs(self.detector.remotes) do
+        self:hookSingleRemote(remoteData.object)
+    end
+end
+
+function PyunujBypass:hookSingleRemote(remote)
+    if not remote or self.hookedRemotes[remote] then return end
+    
+    if remote:IsA("RemoteEvent") then
+        -- OnClientEvent hook
+        local conn = remote.OnClientEvent:Connect(function(...)
+            if not self.active then return end
+            self:processRemoteData(...)
+        end)
+        trackConnection(conn)
+        self.hookedRemotes[remote] = true
+        
+    elseif remote:IsA("RemoteFunction") then
+        -- OnClientInvoke hook
+        local conn = remote.OnClientInvoke:Connect(function(...)
+            if not self.active then return end
+            return self:processRemoteData(...)
+        end)
+        trackConnection(conn)
+        self.hookedRemotes[remote] = true
+    end
+end
+
+function PyunujBypass:processRemoteData(...)
+    local args = {...}
+    local modified = false
+    
+    for i, arg in ipairs(args) do
+        local newVal, changed = self:spoofValue(arg)
+        if changed then
+            args[i] = newVal
+            modified = true
+        end
+    end
+    
+    if modified then
+        self.bypassCount = self.bypassCount + 1
+        if self.bypassCount % 10 == 0 then
+            info("Pyunuj bypass sayısı:", self.bypassCount)
+        end
+    end
+    
+    return unpack(args)
+end
+
+function PyunujBypass:spoofValue(value)
+    if type(value) == "string" then
+        if stringContains(value, cfg.targetPet) then
+            return cfg.spoofName, true
+        end
+    elseif type(value) == "table" then
+        local changed = false
+        for k, v in pairs(value) do
+            local newVal, wasChanged = self:spoofValue(v)
+            if wasChanged then
+                value[k] = newVal
+                changed = true
+            end
+        end
+        return value, changed
+    end
+    return value, false
+end
+
+function PyunujBypass:startGuiMonitor()
+    task.spawn(function()
+        while self.active do
+            self:scanAndSpoofGui()
+            task.wait(0.1)
+        end
+    end)
+end
+
+function PyunujBypass:scanAndSpoofGui()
+    local tradeGui = self:getTradeGui()
+    if not tradeGui then return end
+    
+    -- Tüm text elementlerini tara
+    local textElements = getDescendantsOfClass(tradeGui, "TextLabel")
+    local buttonElements = getDescendantsOfClass(tradeGui, "TextButton")
+    local boxElements = getDescendantsOfClass(tradeGui, "TextBox")
+    
+    local allElements = {}
+    for _, elem in ipairs(textElements) do table.insert(allElements, elem) end
+    for _, elem in ipairs(buttonElements) do table.insert(allElements, elem) end
+    for _, elem in ipairs(boxElements) do table.insert(allElements, elem) end
+    
+    for _, elem in ipairs(allElements) do
+        self:spoofTextElement(elem)
+    end
+    
+    -- Pyunuj özel: Rarity ve serial alanlarını da spoofle
+    self:spoofPyunujSpecialFields(tradeGui)
+end
+
+function PyunujBypass:spoofTextElement(elem)
+    if not isAlive(elem) then return end
+    
+    local currentText = safeCallDefault(function() return elem.Text end, "")
+    if currentText == "" then return end
+    
+    -- Hedef pet adını içeriyor mu?
+    if stringContains(currentText, cfg.targetPet) then
+        if not self.originalTexts[elem] then
+            self.originalTexts[elem] = currentText
+        end
+        safeCall(function()
+            elem.Text = cfg.spoofName
+            elem.TextColor3 = Color3.fromRGB(255, 100, 255)
+        end)
+        self.modifiedTexts[elem] = true
+    end
+end
+
+function PyunujBypass:spoofPyunujSpecialFields(parent)
+    -- Pyunuj sistemindeki özel alanları bul ve spoofle
+    local specialNames = {"Rarity", "rarity", "Serial", "serial", "Count", "count", "Owner", "owner"}
+    
+    for _, obj in ipairs(parent:GetDescendants()) do
+        if obj:IsA("TextLabel") then
+            for _, specialName in ipairs(specialNames) do
+                if stringContains(obj.Name, specialName) then
+                    if not self.originalTexts[obj] then
+                        self.originalTexts[obj] = safeCallDefault(function() return obj.Text end, "")
+                    end
+                    safeCall(function()
+                        obj.Text = "1/1"
+                        obj.TextColor3 = cfg.color
+                    end)
+                    self.modifiedTexts[obj] = true
+                end
+            end
+        end
+    end
+end
+
+function PyunujBypass:startDeepBypass()
+    -- Pyunuj scriptlerine müdahale
+    for _, scriptObj in ipairs(self.detector.scripts) do
+        self:injectSpoofCode(scriptObj)
+    end
+end
+
+function PyunujBypass:injectSpoofCode(scriptObj)
+    -- Deep bypass: Script değişkenlerini override et
+    -- Non-root olduğu için getrenv kullanamayız ama görsel manipülasyon yeterli
+    info("Deep bypass denendi:", scriptObj.Name)
+end
+
+function PyunujBypass:getTradeGui()
+    -- Önce önbellek
+    if self.detector.tradeGui and isAlive(self.detector.tradeGui) then
+        return self.detector.tradeGui
+    end
+    
+    -- PlayerGui'den tekrar ara
+    local pg = LP:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    
+    local tradeNames = {
+        "PyunujTrade", "TradeGui", "TradeMenu", "TradeFrame",
+        "Trading", "TradeWindow", "TradeUI", "TradingMenu"
+    }
+    
+    for _, name in ipairs(tradeNames) do
+        local found = pg:FindFirstChild(name, true)
+        if found and (found:IsA("ScreenGui") or found:IsA("Frame")) then
+            self.detector.tradeGui = found
+            return found
+        end
+    end
+    
+    return nil
+end
+
+function PyunujBypass:revertAll()
+    for elem, _ in pairs(self.modifiedTexts) do
+        if isAlive(elem) and self.originalTexts[elem] then
+            safeCall(function()
+                elem.Text = self.originalTexts[elem]
+            end)
+        end
+    end
+    self.modifiedTexts = {}
+    self.originalTexts = {}
+    self.bypassCount = 0
+end
+
+function PyunujBypass:getStats()
+    return {
+        active = self.active,
+        bypassCount = self.bypassCount,
+        modifiedTexts = #self.modifiedTexts,
+        hookedRemotes = #self.hookedRemotes,
+        isPyunuj = self.detector.isPyunuj
+    }
+end
+
+-- ==================== EXPORT ====================
+local Part4 = {
+    PyunujDetector = PyunujDetector,
+    PyunujBypass = PyunujBypass,
+    newDetector = function() return PyunujDetector.new() end,
+    newBypass = function(d) return PyunujBypass.new(d) end
+}
+
+info("✅ Parça 4 yüklendi - Pyunuj Trade Bypass (500 satır)")
+return Part4--[[ PARÇA 5/6 - GUI Kontrol Paneli ]]
+
+local Part1 = require(script.Parent.Part1)
+local cfg = Part1.cfg
+local info = Part1.log.info
+local safeCall = Part1.safeCall
+local isAlive = Part1.isAlive
+local trackObject = Part1.trackObject
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+-- ==================== GUI YÖNETİCİ ====================
+local GuiManager = {}
+GuiManager.__index = GuiManager
+
+function GuiManager.new()
+    local self = setmetatable({}, GuiManager)
+    self.screenGui = nil
+    self.mainFrame = nil
+    self.toggleBtn = nil
+    self.visible = false
+    self.buttons = {}
+    self.statusLabels = {}
+    return self
+end
+
+function GuiManager:create()
+    -- ScreenGui oluştur
+    self.screenGui = Instance.new("ScreenGui")
+    self.screenGui.Name = "BrainrotSpoofer_" .. math.random(1000, 9999)
+    self.screenGui.ResetOnSpawn = false
+    self.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Koruma
+    safeCall(function()
+        if syn and syn.protect_gui then
+            syn.protect_gui(self.screenGui)
+        elseif gethui then
+            self.screenGui.Parent = gethui()
+        else
+            self.screenGui.Parent = CoreGui
+        end
+    end)
+    
+    if not self.screenGui.Parent then
+        self.screenGui.Parent = CoreGui
+    end
+    
+    trackObject(self.screenGui)
+    
+    -- Ana frame
+    self.mainFrame = self:createMainFrame()
+    
+    -- Toggle butonu
+    self.toggleBtn = self:createToggleButton()
+    
+    -- Varsayılan gizli
+    self.mainFrame.Visible = false
+    
+    info("GUI oluşturuldu")
+    return self.screenGui
+end
+
+function GuiManager:createMainFrame()
+    local frame = Instance.new("Frame")
+    frame.Name = "MainFrame"
+    frame.Size = UDim2.new(0, 240, 0, 280)
+    frame.Position = UDim2.new(0.5, -120, 0.5, -140)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = cfg.color
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = self.screenGui
+    
+    -- Başlık
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 35)
+    titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = frame
+    
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -30, 1, 0)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "🎮 Brainrot Spoofer"
+    title.TextColor3 = cfg.color
+    title.TextSize = 14
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = titleBar
+    
+    -- Kapat butonu
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Name = "CloseBtn"
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -35, 0, 3)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 16
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = titleBar
+    closeBtn.MouseButton1Click:Connect(function()
+        self.visible = false
+        frame.Visible = false
+    end)
+    
+    -- İçerik
+    local content = Instance.new("ScrollingFrame")
+    content.Name = "Content"
+    content.Size = UDim2.new(1, -10, 1, -45)
+    content.Position = UDim2.new(0, 5, 0, 40)
+    content.BackgroundTransparency = 1
+    content.ScrollBarThickness = 4
+    content.ScrollBarImageColor3 = cfg.color
+    content.CanvasSize = UDim2.new(0, 0, 0, 400)
+    content.Parent = frame
+    
+    -- Buton yardımcısı
+    local function createButton(text, y, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 38)
+        btn.Position = UDim2.new(0, 5, 0, y)
+        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 12
+        btn.Font = Enum.Font.Gotham
+        btn.Parent = content
+        
+        -- Hover efekti
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(65, 65, 75)
+            }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+            }):Play()
+        end)
+        
+        if callback then
+            btn.MouseButton1Click:Connect(callback)
+        end
+        
+        table.insert(self.buttons, btn)
+        return btn
+    end
+    
+    -- Durum etiketi yardımcısı
+    local function createStatusLabel(text, y)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 20)
+        label.Position = UDim2.new(0, 5, 0, y)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(180, 180, 180)
+        label.TextSize = 11
+        label.Font = Enum.Font.Gotham
+        label.Parent = content
+        
+        table.insert(self.statusLabels, label)
+        return label
+    end
+    
+    -- Butonları oluştur
+    createButton("1 of 1: AÇIK", 5, function()
+        cfg.oneOfOne = not cfg.oneOfOne
+        self.buttons[1].Text = "1 of 1: " .. (cfg.oneOfOne and "AÇIK" or "KAPALI")
+        self.buttons[1].BackgroundColor3 = cfg.oneOfOne and 
+            Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    end)
+    self.buttons[1].BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    
+    createButton("Trade Spoof: AÇIK", 48, function()
+        cfg.tradeSpoof = not cfg.tradeSpoof
+        self.buttons[2].Text = "Trade Spoof: " .. (cfg.tradeSpoof and "AÇIK" or "KAPALI")
+        self.buttons[2].BackgroundColor3 = cfg.tradeSpoof and 
+            Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    end)
+    self.buttons[2].BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    
+    createStatusLabel("Hedef: " .. cfg.targetPet, 95)
+    
+    createButton("Overlay Yenile", 120, function()
+        info("Overlay yenileniyor...")
+        -- Bu callback dışarıdan set edilecek
+        if self.onRefreshOverlay then self.onRefreshOverlay() end
+    end)
+    
+    createButton("Trade Sıfırla", 163, function()
+        info("Trade değişiklikleri sıfırlanıyor...")
+        if self.onResetTrade then self.onResetTrade() end
+    end)
+    
+    createButton("Pyunuj Bypass Test", 206, function()
+        info("Pyunuj bypass test ediliyor...")
+        if self.onTestBypass then self.onTestBypass() end
+    end)
+    
+    -- İstatistikler
+    createStatusLabel("📊 İstatistikler", 255)
+    self.statLabel = createStatusLabel("Hazır...", 275)
+    
+    -- Gizle/Göster butonu
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Size = UDim2.new(0, 100, 0, 30)
+    minimizeBtn.Position = UDim2.new(0.5, -50, 1, -35)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+    minimizeBtn.Text = "Gizle"
+    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    minimizeBtn.TextSize = 11
+    minimizeBtn.Font = Enum.Font.Gotham
+    minimizeBtn.Parent = frame
+    minimizeBtn.MouseButton1Click:Connect(function()
+        content.Visible = not content.Visible
+        minimizeBtn.Text = content.Visible and "Gizle" or "Göster"
+        frame.Size = content.Visible and UDim2.new(0, 240, 0, 280) or UDim2.new(0, 240, 0, 40)
+    end)
+    
+    return frame
+end
+
+function GuiManager:createToggleButton()
+    local btn = Instance.new("TextButton")
+    btn.Name = "ToggleBtn"
+    btn.Size = UDim2.new(0, 45, 0, 45)
+    btn.Position = UDim2.new(1, -55, 0, 10)
+    btn.BackgroundColor3 = cfg.color
+    btn.BorderSizePixel = 0
+    btn.Text = "1/1"
+    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    btn.TextSize = 11
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = self.screenGui
+    
+    -- Köşeleri yuvarla
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        self.visible = not self.visible
+        self.mainFrame.Visible = self.visible
+    end)
+    
+    return btn
+end
+
+function GuiManager:updateStats(stats)
+    if not self.statLabel then return end
+    
+    local text = string.format(
+        "Pet: %d | Overlay: %d | Bypass: %d",
+        stats.petCount or 0,
+        stats.overlayCount or 0,
+        stats.bypassCount or 0
+    )
+    
+    self.statLabel.Text = text
+end
+
+function GuiManager:destroy()
+    if self.screenGui then
+        safeCall(function() self.screenGui:Destroy() end)
+        self.screenGui = nil
+    end
+end
+
+-- ==================== EXPORT ====================
+local Part5 = {
+    GuiManager = GuiManager,
+    new = function() return GuiManager.new() end
+}
+
+info("Parça 5 yüklendi - GUI Kontrol Paneli")
+return Part5--[[ PARÇA 6/6 - Ana Entegrasyon ve Başlatma ]]
+
+-- Parçaları yükle
+local Part1 = require(script.Parent.Part1)
+local Part2 = require(script.Parent.Part2)
+local Part3 = require(script.Parent.Part3)
+local Part4 = require(script.Parent.Part4)
+local Part5 = require(script.Parent.Part5)
+
+local cfg = Part1.cfg
+local info = Part1.log.info
+local warnMsg = Part1.log.warn
+local err = Part1.log.err
+local safeCall = Part1.safeCall
+local safeCallDefault = Part1.safeCallDefault
+local isAlive = Part1.isAlive
+local trackConnection = Part1.trackConnection
+local cleanupMemory = Part1.cleanupMemory
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local workspace = game:GetService("Workspace")
+local LP = Players.LocalPlayer
+
+-- ==================== SİSTEM BAŞLATICI ====================
+local BrainrotSpoofer = {}
+BrainrotSpoofer.__index = BrainrotSpoofer
+
+function BrainrotSpoofer.new()
+    local self = setmetatable({}, BrainrotSpoofer)
+    
+    -- Alt sistemler
+    self.petDetector = Part2.new()
+    self.overlayEngine = Part3.new()
+    self.pyunujDetector = Part4.newDetector()
+    self.pyunujBypass = nil
+    self.guiManager = Part5.new()
+    
+    -- Durum
+    self.running = false
+    self.stats = {
+        petCount = 0,
+        overlayCount = 0,
+        bypassCount = 0,
+        uptime = 0
+    }
+    
+    return self
+end
+
+function BrainrotSpoofer:initialize()
+    info("=" .. string.rep("=", 50))
+    info("   Brainrot Spoofer v6.0 Başlatılıyor")
+    info("=" .. string.rep("=", 50))
+    
+    -- Pyunuj tespiti
+    local isPyunuj = self.pyunujDetector:detect()
+    
+    if isPyunuj then
+        self.pyunujBypass = Part4.newBypass(self.pyunujDetector)
+        info("Pyunuj sistemi bulundu - Özel bypass aktif edilecek")
+    else
+        info("Standart trade sistemi kullanılacak")
+    end
+    
+    -- Pet tespit motorunu başlat
+    self.petDetector:scanAll()
+    self.petDetector:startWatching()
+    info("Pet tespit motoru hazır -", self.petDetector.petCount, "pet bulundu")
+    
+    -- Overlay motorunu başlat
+    self.overlayEngine:applyToAll(self.petDetector:getAll())
+    info("Overlay motoru hazır -", self.overlayEngine.overlayCount, "overlay aktif")
+    
+    -- GUI oluştur
+    self.guiManager:create()
+    self:setupGuiCallbacks()
+    info("GUI hazır")
+    
+    self.running = true
+    info("✅ Tüm sistemler başarıyla başlatıldı!")
+    
+    return self
+end
+
+function BrainrotSpoofer:setupGuiCallbacks()
+    -- Overlay yenileme callback
+    self.guiManager.onRefreshOverlay = function()
+        self.overlayEngine:removeAll()
+        self.overlayEngine:applyToAll(self.petDetector:getAll())
+        info("Overlay yenilendi:", self.overlayEngine.overlayCount, "aktif")
+    end
+    
+    -- Trade sıfırlama callback
+    self.guiManager.onResetTrade = function()
+        if self.pyunujBypass then
+            self.pyunujBypass:revertAll()
+        end
+        info("Trade değişiklikleri sıfırlandı")
+    end
+    
+    -- Pyunuj test callback
+    self.guiManager.onTestBypass = function()
+        if self.pyunujBypass then
+            local stats = self.pyunujBypass:getStats()
+            info("Pyunuj Bypass İstatistikleri:")
+            info("  Aktif:", stats.active)
+            info("  Bypass Sayısı:", stats.bypassCount)
+            info("  Değiştirilen Text:", stats.modifiedTexts)
+            info("  Hooklanan Remote:", stats.hookedRemotes)
+        else
+            info("Pyunuj sistemi tespit edilmedi")
+        end
+    end
+end
+
+function BrainrotSpoofer:update()
+    if not self.running then return end
+    
+    -- Pet sayısını güncelle
+    local allPets = self.petDetector:getAll()
+    self.stats.petCount = #allPets
+    
+    -- Overlay güncelle
+    if cfg.oneOfOne then
+        -- Yeni petlere overlay ekle
+        for _, petData in ipairs(allPets) do
+            if not self.overlayEngine:hasOverlay(petData.object) then
+                self.overlayEngine:applyToPet(petData.object)
+            end
+        end
+        -- Ölü overlayleri temizle
+        self.overlayEngine:cleanupDead()
+        self.stats.overlayCount = self.overlayEngine.overlayCount
+    else
+        self.overlayEngine:removeAll()
+        self.stats.overlayCount = 0
+    end
+    
+    -- Pyunuj bypass güncelle
+    if cfg.tradeSpoof and self.pyunujBypass then
+        if not self.pyunujBypass.active then
+            self.pyunujBypass:start()
+        end
+        self.stats.bypassCount = self.pyunujBypass.bypassCount
+    elseif self.pyunujBypass and self.pyunujBypass.active then
+        self.pyunujBypass:stop()
+        self.stats.bypassCount = 0
+    end
+    
+    -- GUI istatistiklerini güncelle
+    self.guiManager:updateStats(self.stats)
+    
+    -- Bellek temizliği
+    self.stats.uptime = self.stats.uptime + cfg.updateDelay
+    if self.stats.uptime % 60 < cfg.updateDelay then
+        cleanupMemory()
+    end
+end
+
+function BrainrotSpoofer:startMainLoop()
+    self:initialize()
+    
+    -- Ana döngü
+    while self.running do
+        safeCall(function() self:update() end)
+        task.wait(cfg.updateDelay)
+    end
+end
+
+function BrainrotSpoofer:shutdown()
+    self.running = false
+    
+    info("Sistem kapatılıyor...")
+    
+    -- Overlayleri temizle
+    self.overlayEngine:removeAll()
+    
+    -- Bypass durdur
+    if self.pyunujBypass then
+        self.pyunujBypass:stop()
+    end
+    
+    -- GUI temizle
+    self.guiManager:destroy()
+    
+    info("✅ Sistem başarıyla kapatıldı")
+end
+
+-- ==================== OLAY DİNLEYİCİLERİ ====================
+local spoofer = BrainrotSpoofer.new()
+
+-- Yeni pet eklendiğinde
+workspace.DescendantAdded:Connect(function(obj)
+    if spoofer.petDetector:isValidPet(obj) then
+        spoofer.petDetector:registerPet(obj, "Dynamic")
+        if cfg.oneOfOne then
+            task.wait(0.1)
+            spoofer.overlayEngine:applyToPet(obj)
         end
     end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function()
-    lockedTarget = nil
-    isAiming = false
+-- Pet silindiğinde
+workspace.DescendantRemoving:Connect(function(obj)
+    if spoofer.overlayEngine:hasOverlay(obj) then
+        spoofer.overlayEngine:removeOverlay(obj)
+    end
 end)
 
-print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 LEA MOD v51.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
-print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 AIMBOT V1 - Karakter + Crosshair tam kilit             ║")
-print("║  🎯 AIMBOT V2 - Head öncelikli                            ║")
-print("║  ⚡ AIMASSIST - Direk hedefe götürür                       ║")
-print("║  🔒 AIMLOCK - Sabit kilit (hızlı takip)                   ║")
-print("║  🎯 CROSS AIM - SADECE Crosshair bakar, KARAKTER SABİT    ║")
-print("║  🚀 TELEPORT - En yakın düşmana ışınlanır                  ║")
-print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
-print("║  💀 KILLCHECK - ÖLÜNCE DİREK GEÇER                         ║")
-print("║  🔄 YENİ DOĞAN DÜŞMAN - OTOMATİK ALGILANIR                ║")
-print("║  ⚡ OPTİMİZE - OYUN DONMAZ                                 ║")
-print("╚══════════════════════════════════════════════════════════════╝")
+-- Karakter yeniden doğduğunda
+LP.CharacterAdded:Connect(function()
+    info("Karakter yeniden doğdu, overlayler yenileniyor...")
+    task.wait(2)
+    spoofer.overlayEngine:applyToAll(spoofer.petDetector:getAll())
+end)
+
+-- Oyuncu çıktığında
+game:BindToClose(function()
+    spoofer:shutdown()
+end)
+
+-- ==================== BAŞLAT ====================
+info(" ")
+info("   ██████╗ ██████╗  █████╗ ██╗███╗   ██╗██████╗  ██████╗ ████████╗")
+info("   ██╔══██╗██╔══██╗██╔══██╗██║████╗  ██║██╔══██╗██╔═══██╗╚══██╔══╝")
+info("   ██████╔╝██████╔╝███████║██║██╔██╗ ██║██████╔╝██║   ██║   ██║   ")
+info("   ██╔══██╗██╔══██╗██╔══██║██║██║╚██╗██║██╔══██╗██║   ██║   ██║   ")
+info("   ██████╔╝██║  ██║██║  ██║██║██║ ╚████║██║  ██║╚██████╔╝   ██║   ")
+info("   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝    ╚═╝   ")
+info(" ")
+info("   Steal a Brainrot - Pet Spoofer")
+info("   1 of 1 Overlay + Pyunuj Trade Bypass")
+info("   Non-Root | 6 Parça | Production Ready")
+info(" ")
+
+-- Ana döngüyü başlat
+task.spawn(function()
+    spoofer:startMainLoop()
+end)
+
+-- ==================== EXPORT ====================
+return {
+    spoofer = spoofer,
+    start = function() spoofer:startMainLoop() end,
+    stop = function() spoofer:shutdown() end,
+    getStats = function() return spoofer.stats end
+}

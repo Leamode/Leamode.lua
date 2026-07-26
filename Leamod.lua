@@ -1,117 +1,139 @@
--- // Zombie Mayhem - Basit ve Çalışan Hack
--- // Mesafe bazlı algılama + direkt öldürme + gerçek para
+-- // ============================================
+-- // ZOMBIE MAYHEM - ULTIMATE HACK (STABLE)
+-- // ============================================
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+
+-- Karakter bekleme
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+print("✅ Karakter hazır:", Character.Name)
 
 -- ============================================
--- GUI OLUŞTUR
+-- OYUNCUYU ÖLÜMSÜZ YAP (GOD MODE)
 -- ============================================
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 200, 0, 180)
-Frame.Position = UDim2.new(0.5, -100, 0.6, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true
-
-local UICorner = Instance.new("UICorner", Frame)
-UICorner.CornerRadius = UDim.new(0, 8)
-
--- Başlık
-local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-Title.Text = "ZOMBIE HACK"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
-
--- Buton 1: Yakındakileri Öldür
-local Button1 = Instance.new("TextButton", Frame)
-Button1.Size = UDim2.new(0.9, 0, 0, 40)
-Button1.Position = UDim2.new(0.05, 0, 0.2, 0)
-Button1.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-Button1.Text = "💀 ETRAFI TEMİZLE"
-Button1.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button1.Font = Enum.Font.GothamBold
-Button1.TextSize = 11
-
-local Btn1Corner = Instance.new("UICorner", Button1)
-Btn1Corner.CornerRadius = UDim.new(0, 5)
-
--- Buton 2: Para Ekle
-local Button2 = Instance.new("TextButton", Frame)
-Button2.Size = UDim2.new(0.9, 0, 0, 40)
-Button2.Position = UDim2.new(0.05, 0, 0.48, 0)
-Button2.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-Button2.Text = "💰 PARA EKLE"
-Button2.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button2.Font = Enum.Font.GothamBold
-Button2.TextSize = 11
-
-local Btn2Corner = Instance.new("UICorner", Button2)
-Btn2Corner.CornerRadius = UDim.new(0, 5)
-
--- Durum yazısı
-local Status = Instance.new("TextLabel", Frame)
-Status.Size = UDim2.new(1, 0, 0, 20)
-Status.Position = UDim2.new(0, 0, 0.78, 0)
-Status.BackgroundTransparency = 1
-Status.Text = "Hazır"
-Status.TextColor3 = Color3.fromRGB(255, 255, 255)
-Status.Font = Enum.Font.Gotham
-Status.TextSize = 10
+spawn(function()
+    while true do
+        pcall(function()
+            if Humanoid and Humanoid.Health > 0 then
+                Humanoid.Health = Humanoid.MaxHealth
+            end
+        end)
+        wait(0.1)
+    end
+end)
+print("🛡️ God Mode aktif")
 
 -- ============================================
--- REMOTE BUL (TÜM REMOTELARI DENE)
+-- ANTI-AFK (DONMAYI ENGELLE)
 -- ============================================
-local AllRemotes = {}
+spawn(function()
+    while true do
+        pcall(function()
+            -- Karakteri hafif hareket ettir (donmayı engeller)
+            if RootPart then
+                RootPart.Velocity = Vector3.new(0, 0.1, 0)
+            end
+        end)
+        wait(5)
+    end
+end)
+print("🔄 Anti-AFK aktif")
 
-for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+-- ============================================
+-- REMOTE BULUCU
+-- ============================================
+local KillRemote = nil
+local MoneyRemote = nil
+
+for _, v in pairs(ReplicatedStorage:GetDescendants()) do
     if v:IsA("RemoteEvent") then
-        table.insert(AllRemotes, v)
+        local name = v.Name:lower()
+        
+        if not KillRemote then
+            if name:find("kill") or name:find("zombie") or name:find("death") then
+                KillRemote = v
+            end
+        end
+        
+        if not MoneyRemote then
+            if name:find("cash") or name:find("money") or name:find("coin") or 
+               name:find("gem") or name:find("point") or name:find("reward") then
+                MoneyRemote = v
+            end
+        end
     end
 end
 
-print("Bulunan remotelar: " .. #AllRemotes)
-for i, r in ipairs(AllRemotes) do
-    print(i, r.Name, r:GetFullName())
+-- Eğer bulunamazsa tüm remoteları al
+if not KillRemote then
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            KillRemote = v
+            break
+        end
+    end
 end
 
+if not MoneyRemote then
+    MoneyRemote = KillRemote -- Aynı remote'u kullan
+end
+
+print("🔫 Kill Remote:", KillRemote and KillRemote.Name or "YOK")
+print("💰 Money Remote:", MoneyRemote and MoneyRemote.Name or "YOK")
+
 -- ============================================
--- ETRAFI TEMİZLE FONKSİYONU
+-- PARA DEĞERİ BUL
 -- ============================================
-local function KillAllNearby()
-    if not Character or not HumanoidRootPart then
-        Character = LocalPlayer.Character
-        if Character then
-            HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+local MoneyValue = nil
+
+local function FindMoney()
+    -- leaderstats
+    local ls = LocalPlayer:FindFirstChild("leaderstats")
+    if ls then
+        for _, v in pairs(ls:GetChildren()) do
+            if v:IsA("IntValue") or v:IsA("NumberValue") then
+                MoneyValue = v
+                return v
+            end
         end
     end
     
-    if not HumanoidRootPart then
-        Status.Text = "Karakter bulunamadı!"
-        return 0
+    -- Player
+    for _, v in pairs(LocalPlayer:GetDescendants()) do
+        if v:IsA("IntValue") or v:IsA("NumberValue") then
+            local n = v.Name:lower()
+            if n:find("cash") or n:find("money") or n:find("coin") or n:find("point") then
+                MoneyValue = v
+                return v
+            end
+        end
     end
     
-    local myPos = HumanoidRootPart.Position
-    local killed = 0
+    return nil
+end
+
+FindMoney()
+print("💵 Para değeri:", MoneyValue and MoneyValue.Name or "BULUNAMADI")
+
+-- ============================================
+-- ZOMBİ BULMA
+-- ============================================
+local function GetZombies()
+    local zombies = {}
+    local myChar = Character
     
-    -- Workspace'teki TÜM modelleri tara
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            -- Kendimizi atla
-            if obj == Character then continue end
-            
-            -- Oyuncu mu kontrol et
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj ~= myChar then
+            -- Oyuncuları atla
             local isPlayer = false
-            for _, plr in ipairs(Players:GetPlayers()) do
+            for _, plr in pairs(Players:GetPlayers()) do
                 if plr.Character == obj then
                     isPlayer = true
                     break
@@ -119,186 +141,346 @@ local function KillAllNearby()
             end
             if isPlayer then continue end
             
-            -- Humanoid var mı?
-            local humanoid = obj:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                -- Mesafe kontrolü (1000 stud = yaklaşık 1000 metre oyun içi)
-                local objRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
-                if objRoot then
-                    local distance = (myPos - objRoot.Position).Magnitude
-                    
-                    if distance <= 1000 then
-                        -- REMOTE İLE ÖLDÜRME DENE
-                        for _, remote in ipairs(AllRemotes) do
-                            spawn(function()
-                                pcall(function()
-                                    remote:FireServer(obj)
-                                    remote:FireServer(humanoid)
-                                    remote:FireServer(objRoot)
-                                end)
-                            end)
-                        end
-                        
-                        -- DİREKT HASAR VER
-                        spawn(function()
-                            pcall(function()
-                                humanoid.Health = 0
-                                humanoid:TakeDamage(99999)
-                            end)
-                        end)
-                        
-                        -- PARÇALA
-                        spawn(function()
-                            pcall(function()
-                                for _, part in ipairs(obj:GetDescendants()) do
-                                    if part:IsA("BasePart") then
-                                        part:BreakJoints()
-                                    end
-                                end
-                            end)
-                        end)
-                        
-                        killed = killed + 1
-                    end
-                end
+            -- Humanoid kontrolü
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                table.insert(zombies, {
+                    Model = obj,
+                    Humanoid = hum,
+                    RootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+                })
             end
         end
     end
     
-    return killed
+    return zombies
 end
 
 -- ============================================
--- PARA EKLEME FONKSİYONU
+-- ÖLDÜRME FONKSİYONU
 -- ============================================
-local function AddMoney()
-    -- Yöntem 1: leaderstats'taki para değerini direkt değiştir
-    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in ipairs(leaderstats:GetChildren()) do
-            if v:IsA("IntValue") or v:IsA("NumberValue") then
-                local name = v.Name:lower()
-                if name:find("cash") or name:find("money") or name:find("coin") or 
-                   name:find("point") or name:find("credit") then
-                    v.Value = v.Value + 100000
-                    return true, "leaderstats: " .. v.Name
-                end
-            end
-        end
-    end
+local function KillZombie(zombie)
+    local model = zombie.Model
+    local hum = zombie.Humanoid
+    local root = zombie.RootPart
     
-    -- Yöntem 2: Player altındaki tüm değerleri dene
-    for _, v in ipairs(LocalPlayer:GetDescendants()) do
-        if v:IsA("IntValue") or v:IsA("NumberValue") then
-            local name = v.Name:lower()
-            if name:find("cash") or name:find("money") or name:find("coin") then
-                v.Value = v.Value + 100000
-                return true, "Player değer: " .. v.Name
-            end
-        end
-    end
-    
-    -- Yöntem 3: Karakter altındaki değerleri dene
-    if Character then
-        for _, v in ipairs(Character:GetDescendants()) do
-            if v:IsA("IntValue") or v:IsA("NumberValue") then
-                local name = v.Name:lower()
-                if name:find("cash") or name:find("money") or name:find("coin") then
-                    v.Value = v.Value + 100000
-                    return true, "Karakter değer: " .. v.Name
-                end
-            end
-        end
-    end
-    
-    -- Yöntem 4: TÜM remotelara para sinyali gönder
-    for _, remote in ipairs(AllRemotes) do
+    -- Remote ile öldür
+    if KillRemote then
         spawn(function()
-            for i = 1, 100 do
-                pcall(function()
-                    remote:FireServer(1000)
-                    remote:FireServer("Money")
-                    remote:FireServer("Cash")
-                    remote:FireServer(1000, "Kill")
-                    remote:FireServer(1000, "Reward")
-                end)
-            end
+            pcall(function()
+                KillRemote:FireServer(model)
+                KillRemote:FireServer(hum)
+                if root then KillRemote:FireServer(root) end
+            end)
         end)
     end
     
-    return false, "Remote sinyali gönderildi"
+    if MoneyRemote and MoneyRemote ~= KillRemote then
+        spawn(function()
+            pcall(function()
+                MoneyRemote:FireServer(model)
+                MoneyRemote:FireServer(hum)
+            end)
+        end)
+    end
+    
+    -- Direkt hasar
+    spawn(function()
+        pcall(function()
+            hum.Health = 0
+            hum:TakeDamage(99999)
+        end)
+    end)
+    
+    -- Parçala
+    spawn(function()
+        pcall(function()
+            model:BreakJoints()
+        end)
+    end)
 end
 
 -- ============================================
--- BUTON TIKLAMALARI
+-- PARA EKLEME
 -- ============================================
-Button1.MouseButton1Click:Connect(function()
-    Button1.Text = "Temizleniyor..."
-    Button1.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    Status.Text = "Tarama başladı..."
-    
-    local killed = KillAllNearby()
-    
-    if killed > 0 then
-        Status.Text = killed .. " hedef öldürüldü!"
-        Button1.Text = "✅ " .. killed .. " ÖLDÜRÜLDÜ"
-        Button1.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    else
-        Status.Text = "Yakında hedef yok!"
-        Button1.Text = "❌ HEDEF YOK"
-        Button1.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+local function AddMoney(amount)
+    -- Direkt değer değiştirme
+    if MoneyValue then
+        pcall(function()
+            MoneyValue.Value = MoneyValue.Value + amount
+        end)
+        return true
     end
     
-    wait(2)
-    Button1.Text = "💀 ETRAFI TEMİZLE"
-    Button1.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-end)
-
-Button2.MouseButton1Click:Connect(function()
-    Button2.Text = "Ekleniyor..."
-    Button2.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    Status.Text = "Para ekleniyor..."
-    
-    local success, method = AddMoney()
-    
-    if success then
-        Status.Text = "✅ Para eklendi! (" .. method .. ")"
-        Button2.Text = "✅ +100K"
-        Button2.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    else
-        Status.Text = "⚠️ " .. method
-        Button2.Text = "⚠️ DENE"
-        Button2.BackgroundColor3 = Color3.fromRGB(200, 200, 0)
+    -- Remote ile ekleme
+    if MoneyRemote then
+        for i = 1, 100 do
+            spawn(function()
+                pcall(function()
+                    MoneyRemote:FireServer(amount / 100)
+                    MoneyRemote:FireServer(amount / 100, "Kill")
+                    MoneyRemote:FireServer(amount / 100, "Zombie")
+                end)
+            end)
+        end
+        return true
     end
     
-    wait(2)
-    Button2.Text = "💰 PARA EKLE"
-    Button2.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    -- Tüm değerleri dene
+    for _, v in pairs(LocalPlayer:GetDescendants()) do
+        if v:IsA("IntValue") or v:IsA("NumberValue") then
+            pcall(function()
+                v.Value = v.Value + amount
+            end)
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- ============================================
+-- OTOMATİK ZOMBİ ÖLDÜRME (SÜREKLİ)
+-- ============================================
+local autoKill = false
+
+spawn(function()
+    while true do
+        if autoKill then
+            pcall(function()
+                local zombies = GetZombies()
+                for _, z in pairs(zombies) do
+                    KillZombie(z)
+                end
+            end)
+        end
+        wait(0.5)
+    end
 end)
 
 -- ============================================
--- KAPATMA BUTONU
+-- GUI - TEMİZ VE BASİT
 -- ============================================
-local Close = Instance.new("TextButton", Frame)
-Close.Size = UDim2.new(0, 22, 0, 22)
-Close.Position = UDim2.new(1, -24, 0, 2)
-Close.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-Close.Text = "X"
-Close.TextColor3 = Color3.fromRGB(255, 255, 255)
-Close.Font = Enum.Font.GothamBold
-Close.TextSize = 12
-Close.BorderSizePixel = 0
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "ZM_Hack"
+ScreenGui.ResetOnSpawn = false
 
-local CloseCorner = Instance.new("UICorner", Close)
-CloseCorner.CornerRadius = UDim.new(0, 4)
+-- Ana Panel
+local Panel = Instance.new("Frame", ScreenGui)
+Panel.Size = UDim2.new(0, 180, 0, 210)
+Panel.Position = UDim2.new(0.5, -90, 0.5, -105)
+Panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Panel.BorderSizePixel = 0
+Panel.Active = true
+Panel.Draggable = true
 
-Close.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 10)
+
+-- Başlık
+local Header = Instance.new("Frame", Panel)
+Header.Size = UDim2.new(1, 0, 0, 30)
+Header.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+Header.BorderSizePixel = 0
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
+
+local HeaderText = Instance.new("TextLabel", Header)
+HeaderText.Size = UDim2.new(0.7, 0, 1, 0)
+HeaderText.Position = UDim2.new(0.05, 0, 0, 0)
+HeaderText.BackgroundTransparency = 1
+HeaderText.Text = "🧟 HACK MENU"
+HeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeaderText.Font = Enum.Font.GothamBold
+HeaderText.TextSize = 12
+HeaderText.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Kapat
+local X = Instance.new("TextButton", Header)
+X.Size = UDim2.new(0, 22, 0, 22)
+X.Position = UDim2.new(1, -25, 0, 4)
+X.BackgroundColor3 = Color3.fromRGB(255, 30, 30)
+X.Text = "✕"
+X.TextColor3 = Color3.fromRGB(255, 255, 255)
+X.Font = Enum.Font.GothamBold
+X.TextSize = 12
+X.BorderSizePixel = 0
+Instance.new("UICorner", X).CornerRadius = UDim.new(0, 5)
+X.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- Buton Alanı
+local Buttons = Instance.new("Frame", Panel)
+Buttons.Size = UDim2.new(1, -10, 1, -40)
+Buttons.Position = UDim2.new(0, 5, 0, 35)
+Buttons.BackgroundTransparency = 1
+
+-- ============================================
+-- BUTON 1: TÜM ZOMBİLERİ ÖLDÜR
+-- ============================================
+local Btn1 = Instance.new("TextButton", Buttons)
+Btn1.Size = UDim2.new(1, 0, 0, 36)
+Btn1.Position = UDim2.new(0, 0, 0, 0)
+Btn1.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+Btn1.Text = "💀 TÜMÜNÜ ÖLDÜR"
+Btn1.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn1.Font = Enum.Font.GothamBold
+Btn1.TextSize = 11
+Btn1.BorderSizePixel = 0
+Instance.new("UICorner", Btn1).CornerRadius = UDim.new(0, 6)
+
+Btn1.MouseButton1Click:Connect(function()
+    Btn1.Text = "⏳ Öldürülüyor..."
+    Btn1.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    
+    spawn(function()
+        local zombies = GetZombies()
+        local count = #zombies
+        
+        for i, z in pairs(zombies) do
+            KillZombie(z)
+            if i % 20 == 0 then
+                Btn1.Text = "⏳ " .. i .. "/" .. count
+                wait()
+            end
+        end
+        
+        Btn1.Text = "✅ " .. count .. " ÖLDÜRÜLDÜ"
+        Btn1.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        wait(2)
+        Btn1.Text = "💀 TÜMÜNÜ ÖLDÜR"
+        Btn1.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+    end)
 end)
 
-print("====================================")
-print("✅ HACK AKTİF")
-print("🔴 Buton 1: 1000m içindeki tüm NPC'leri öldürür")
-print("🟢 Buton 2: Para değerini direkt değiştirir")
-print("📋 " .. #AllRemotes .. " remote bulundu")
-print("====================================")
+-- ============================================
+-- BUTON 2: OTOMATİK ÖLDÜR (AÇ/KAPA)
+-- ============================================
+local Btn2 = Instance.new("TextButton", Buttons)
+Btn2.Size = UDim2.new(1, 0, 0, 36)
+Btn2.Position = UDim2.new(0, 0, 0.22, 0)
+Btn2.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+Btn2.Text = "🔄 OTO ÖLDÜR: KAPALI"
+Btn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn2.Font = Enum.Font.GothamBold
+Btn2.TextSize = 11
+Btn2.BorderSizePixel = 0
+Instance.new("UICorner", Btn2).CornerRadius = UDim.new(0, 6)
+
+Btn2.MouseButton1Click:Connect(function()
+    autoKill = not autoKill
+    if autoKill then
+        Btn2.Text = "🔄 OTO ÖLDÜR: AÇIK"
+        Btn2.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    else
+        Btn2.Text = "🔄 OTO ÖLDÜR: KAPALI"
+        Btn2.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+    end
+end)
+
+-- ============================================
+-- BUTON 3: PARA EKLE
+-- ============================================
+local Btn3 = Instance.new("TextButton", Buttons)
+Btn3.Size = UDim2.new(1, 0, 0, 36)
+Btn3.Position = UDim2.new(0, 0, 0.44, 0)
+Btn3.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+Btn3.Text = "💰 +100K PARA"
+Btn3.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn3.Font = Enum.Font.GothamBold
+Btn3.TextSize = 11
+Btn3.BorderSizePixel = 0
+Instance.new("UICorner", Btn3).CornerRadius = UDim.new(0, 6)
+
+Btn3.MouseButton1Click:Connect(function()
+    Btn3.Text = "⏳ Ekleniyor..."
+    Btn3.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    
+    spawn(function()
+        local success = AddMoney(100000)
+        
+        if success then
+            Btn3.Text = "✅ +100K EKLENDİ"
+            Btn3.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        else
+            Btn3.Text = "❌ BULUNAMADI"
+            Btn3.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+        end
+        
+        wait(2)
+        Btn3.Text = "💰 +100K PARA"
+        Btn3.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    end)
+end)
+
+-- ============================================
+-- BUTON 4: 10K KİLL SİNYALİ
+-- ============================================
+local Btn4 = Instance.new("TextButton", Buttons)
+Btn4.Size = UDim2.new(1, 0, 0, 36)
+Btn4.Position = UDim2.new(0, 0, 0.66, 0)
+Btn4.BackgroundColor3 = Color3.fromRGB(150, 50, 200)
+Btn4.Text = "📡 10K KİLL SİNYALİ"
+Btn4.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn4.Font = Enum.Font.GothamBold
+Btn4.TextSize = 11
+Btn4.BorderSizePixel = 0
+Instance.new("UICorner", Btn4).CornerRadius = UDim.new(0, 6)
+
+Btn4.MouseButton1Click:Connect(function()
+    Btn4.Text = "⏳ Gönderiliyor..."
+    Btn4.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    
+    spawn(function()
+        local target = KillRemote or MoneyRemote
+        if target then
+            for i = 1, 10000 do
+                spawn(function()
+                    pcall(function()
+                        target:FireServer()
+                        target:FireServer("Kill")
+                        target:FireServer("ZombieKilled")
+                        target:FireServer(10)
+                    end)
+                end)
+                if i % 500 == 0 then
+                    Btn4.Text = "📡 " .. i .. "/10000"
+                    wait(0.01)
+                end
+            end
+            Btn4.Text = "✅ SİNYAL GÖNDERİLDİ"
+            Btn4.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        else
+            Btn4.Text = "❌ REMOTE YOK"
+            Btn4.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        end
+        
+        wait(2)
+        Btn4.Text = "📡 10K KİLL SİNYALİ"
+        Btn4.BackgroundColor3 = Color3.fromRGB(150, 50, 200)
+    end)
+end)
+
+-- ============================================
+-- DURUM ÇUBUĞU
+-- ============================================
+local StatusBar = Instance.new("TextLabel", Panel)
+StatusBar.Size = UDim2.new(1, 0, 0, 20)
+StatusBar.Position = UDim2.new(0, 0, 1, -20)
+StatusBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+StatusBar.BackgroundTransparency = 0.3
+StatusBar.Text = "✅ SİSTEM AKTİF | GOD MODE ON"
+StatusBar.TextColor3 = Color3.fromRGB(0, 255, 0)
+StatusBar.Font = Enum.Font.Gotham
+StatusBar.TextSize = 8
+
+-- ============================================
+-- BİLGİ YAZDIR
+-- ============================================
+print("╔══════════════════════════════╗")
+print("║   ZOMBIE MAYHEM HACK v2.0   ║")
+print("╠══════════════════════════════╣")
+print("║ 🛡️ God Mode: AKTİF         ║")
+print("║ 🔄 Anti-Donma: AKTİF       ║")
+print("║ 🔫 Kill Remote: " .. (KillRemote and "VAR" or "YOK") .. "         ║")
+print("║ 💰 Money Remote: " .. (MoneyRemote and "VAR" or "YOK") .. "       ║")
+print("║ 💵 Money Value: " .. (MoneyValue and "VAR" or "YOK") .. "         ║")
+print("║ 📋 4 Buton Hazır           ║")
+print("╚══════════════════════════════╝")

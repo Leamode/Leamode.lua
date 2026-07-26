@@ -1,1268 +1,518 @@
---[[
-    ═══════════════════════════════════════════════════════════════════════════
-    🔥 LEA HAX v52.0 - BÖLÜM 1/5 (COOL MENÜ + AYARLAR)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
+-- // Zombie Mayhem - Kill All Zombies v1.0
+-- // Sistem 1: Silahla vurmuş gibi algılatır
+-- // Sistem 2: Direkt bypass ile öldürür
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
-getgenv().LEAModState = {
-    AimbotV1 = false, AimbotV2 = false, AimAssist = false, AimLock = false,
-    CrosshairAim = false, ESP = false, Spin360 = false,
-    Rainbow = false, InfJump = false, Teleport = false, Fly = false,
-    Bunnyhop = false, Triggerbot = false, SpeedVal = 50, FOV = 1000,
-    TeamCheck = true, AutoFire = true, WallCheck = true, KillCheck = true,
-    MenuVisible = true, LEAHax = false, FlyHack = false,
-    NoClip = false, AntiBan = false, GodMode = false
-}
+-- ============================================
+-- REMOTE BULUCU
+-- ============================================
+local KillRemote = nil
+local DamageRemote = nil
+local HitRemote = nil
 
-local viewportSize = Camera.ViewportSize
+local killNames = {"KillZombie", "ZombieKilled", "ZombieKill", "Kill", "ZombieDeath", "EnemyKilled", "MobKill"}
+local damageNames = {"DamageZombie", "ZombieDamage", "DealDamage", "HitZombie", "ZombieHit", "ShootZombie", "WeaponHit"}
+local hitNames = {"HitEvent", "ShootEvent", "BulletHit", "WeaponFire", "GunHit", "FireWeapon"}
 
-if CoreGui:FindFirstChild("LEAModUniversalGui") then CoreGui.LEAModUniversalGui:Destroy() end
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LEAModUniversalGui"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
-
--- COOL HEADER
-local HeaderLabel = Instance.new("TextLabel")
-HeaderLabel.Name = "LEAModHeader"
-HeaderLabel.Parent = ScreenGui
-HeaderLabel.AnchorPoint = Vector2.new(0.5, 1)
-HeaderLabel.Position = UDim2.new(0.5, 0, 0.48, -5)
-HeaderLabel.Size = UDim2.new(0, 150, 0, 30)
-HeaderLabel.BackgroundTransparency = 1
-HeaderLabel.Font = Enum.Font.GothamBold
-HeaderLabel.Text = "🔥 LEA HAX"
-HeaderLabel.TextColor3 = Color3.fromRGB(255, 0, 200)
-HeaderLabel.TextSize = 24
-HeaderLabel.TextStrokeTransparency = 0.3
-HeaderLabel.TextStrokeColor3 = Color3.fromRGB(255, 0, 255)
-
--- COOL MENU (KÜÇÜK + COOL)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
-MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 200)
-MainFrame.BorderSizePixel = 2
-MainFrame.Position = UDim2.new(0.78, 0, 0.02, 0)
-MainFrame.Size = UDim2.new(0, 160, 0, 450)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-MainFrame.BackgroundTransparency = 0.1
-
--- COOL GRADIENT
-local Gradient = Instance.new("UIGradient")
-Gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 200)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 0, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255))
-})
-Gradient.Rotation = 45
-Gradient.Parent = MainFrame
-
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Name = "ToggleMenu"
-ToggleButton.Parent = ScreenGui
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-ToggleButton.BorderColor3 = Color3.fromRGB(255, 0, 200)
-ToggleButton.Position = UDim2.new(0.78, 0, 0.005, 0)
-ToggleButton.Size = UDim2.new(0, 50, 0, 20)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.Text = "🔥"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 0, 200)
-ToggleButton.TextSize = 16
-ToggleButton.MouseButton1Click:Connect(function()
-    getgenv().LEAModState.MenuVisible = not getgenv().LEAModState.MenuVisible
-    MainFrame.Visible = getgenv().LEAModState.MenuVisible
-end)
-
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = MainFrame
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 1)
-
-local function createButton(name, key)
-    local btn = Instance.new("TextButton")
-    btn.Name = name .. "Btn"
-    btn.Parent = MainFrame
-    btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-    btn.Size = UDim2.new(1, -6, 0, 18)
-    btn.Position = UDim2.new(0, 3, 0, 0)
-    btn.Font = Enum.Font.GothamBold
-    btn.Text = name .. " ❌"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 10
-    btn.BorderSizePixel = 0
-    btn.MouseButton1Click:Connect(function()
-        getgenv().LEAModState[key] = not getgenv().LEAModState[key]
-        if getgenv().LEAModState[key] then
-            btn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
-            btn.Text = name .. " ✅"
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-            btn.Text = name .. " ❌"
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+    if remote:IsA("RemoteEvent") then
+        local rName = remote.Name:lower()
+        
+        if not KillRemote then
+            for _, name in ipairs(killNames) do
+                if rName:find(name:lower()) then
+                    KillRemote = remote
+                    break
+                end
+            end
         end
-        if key == "AimbotV1" and getgenv().LEAModState.AimbotV1 then
-            getgenv().LEAModState.AimbotV2 = false
-            local v2btn = MainFrame:FindFirstChild("AimbotV2Btn")
-            if v2btn then v2btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) v2btn.Text = "Aim V2 ❌" end
+        
+        if not DamageRemote then
+            for _, name in ipairs(damageNames) do
+                if rName:find(name:lower()) then
+                    DamageRemote = remote
+                    break
+                end
+            end
         end
-        if key == "AimbotV2" and getgenv().LEAModState.AimbotV2 then
-            getgenv().LEAModState.AimbotV1 = false
-            local v1btn = MainFrame:FindFirstChild("AimbotV1Btn")
-            if v1btn then v1btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) v1btn.Text = "Aim V1 ❌" end
+        
+        if not HitRemote then
+            for _, name in ipairs(hitNames) do
+                if rName:find(name:lower()) then
+                    HitRemote = remote
+                    break
+                end
+            end
         end
-        if key == "AimAssist" and getgenv().LEAModState.AimAssist then
-            getgenv().LEAModState.AimLock = false
-            local lockbtn = MainFrame:FindFirstChild("AimLockBtn")
-            if lockbtn then lockbtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) lockbtn.Text = "Lock ❌" end
+    end
+end
+
+print("Bulunan Remote'lar:")
+print("  Kill:", KillRemote and KillRemote.Name or "YOK")
+print("  Damage:", DamageRemote and DamageRemote.Name or "YOK")
+print("  Hit:", HitRemote and HitRemote.Name or "YOK")
+
+if not KillRemote and not DamageRemote and not HitRemote then
+    print("❌ Hiç remote bulunamadı! Mevcut remote'lar:")
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") then print("  -", v.Name) end
+    end
+end
+
+-- ============================================
+-- ZOMBİ BULUCU
+-- ============================================
+local function FindAllZombies()
+    local zombies = {}
+    
+    -- Workspace'te ara
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+            local humanoid = obj:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                -- Zombi isimleri
+                local modelName = obj.Name:lower()
+                if modelName:find("zombie") or modelName:find("zombi") or 
+                   modelName:find("enemy") or modelName:find("mob") or
+                   modelName:find("undead") or modelName:find("monster") then
+                    table.insert(zombies, obj)
+                end
+            end
         end
-        if key == "AimLock" and getgenv().LEAModState.AimLock then
-            getgenv().LEAModState.AimAssist = false
-            local assistbtn = MainFrame:FindFirstChild("AimAssistBtn")
-            if assistbtn then assistbtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40) assistbtn.Text = "Assist ❌" end
+    end
+    
+    -- İsimle bulunamazsa tüm humanoid'li modelleri al
+    if #zombies == 0 then
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                local humanoid = obj:FindFirstChild("Humanoid")
+                if humanoid and humanoid.Health > 0 and obj.Name ~= LocalPlayer.Character.Name then
+                    table.insert(zombies, obj)
+                end
+            end
         end
-        if key == "ESP" then
-            if getgenv().LEAModState.ESP then refreshESP() else clearESP() end
+    end
+    
+    return zombies
+end
+
+-- ============================================
+-- SİSTEM 1: SİLAHLA VURMUŞ GİBİ ÖLDÜR
+-- ============================================
+local WeaponKill = {}
+
+function WeaponKill:KillAll()
+    local zombies = FindAllZombies()
+    local killedCount = 0
+    
+    print("🔫 Sistem 1: Silah simülasyonu başladı -", #zombies, "zombi bulundu")
+    
+    for _, zombie in pairs(zombies) do
+        spawn(function()
+            local humanoid = zombie:FindFirstChild("Humanoid")
+            local head = zombie:FindFirstChild("Head")
+            local torso = zombie:FindFirstChild("Torso") or zombie:FindFirstChild("UpperTorso")
+            local humanoidRootPart = zombie:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and humanoid.Health > 0 then
+                -- Silahla vurma simülasyonu
+                local hitPart = head or torso or humanoidRootPart
+                
+                if hitPart then
+                    -- Damage remote'una vurma sinyali
+                    if DamageRemote then
+                        for _ = 1, 5 do
+                            spawn(function()
+                                pcall(function()
+                                    DamageRemote:FireServer(hitPart, 999999)
+                                    DamageRemote:FireServer(zombie, 999999)
+                                    DamageRemote:FireServer(humanoid, 999999)
+                                end)
+                            end)
+                        end
+                    end
+                    
+                    -- Hit remote'una vurma sinyali
+                    if HitRemote then
+                        for _ = 1, 5 do
+                            spawn(function()
+                                pcall(function()
+                                    HitRemote:FireServer(hitPart)
+                                    HitRemote:FireServer(zombie)
+                                    HitRemote:FireServer(hitPart.Position)
+                                end)
+                            end)
+                        end
+                    end
+                    
+                    -- Kill remote'una öldürme sinyali
+                    if KillRemote then
+                        for _ = 1, 3 do
+                            spawn(function()
+                                pcall(function()
+                                    KillRemote:FireServer(zombie)
+                                    KillRemote:FireServer(humanoid)
+                                    KillRemote:FireServer(hitPart)
+                                end)
+                            end)
+                        end
+                    end
+                    
+                    -- Direkt hasar ver
+                    spawn(function()
+                        pcall(function()
+                            humanoid:TakeDamage(999999)
+                            humanoid.Health = 0
+                        end)
+                    end)
+                    
+                    killedCount = killedCount + 1
+                end
+            end
+        end)
+    end
+    
+    wait(0.5)
+    return killedCount
+end
+
+-- ============================================
+-- SİSTEM 2: BYPASS İLE TOPLU ÖLDÜR
+-- ============================================
+local BypassKill = {}
+
+function BypassKill:KillAll()
+    local zombies = FindAllZombies()
+    local killedCount = 0
+    
+    print("💀 Sistem 2: Bypass öldürme başladı -", #zombies, "zombi bulundu")
+    
+    -- Method 1: Tüm remote'lara flood
+    if KillRemote or DamageRemote or HitRemote then
+        local allRemotes = {}
+        if KillRemote then table.insert(allRemotes, KillRemote) end
+        if DamageRemote then table.insert(allRemotes, DamageRemote) end
+        if HitRemote then table.insert(allRemotes, HitRemote) end
+        
+        for _, zombie in pairs(zombies) do
+            spawn(function()
+                local humanoid = zombie:FindFirstChild("Humanoid")
+                local parts = {}
+                for _, part in pairs(zombie:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        table.insert(parts, part)
+                    end
+                end
+                
+                -- Her remote'a farklı formatlarda spam
+                for _, remote in pairs(allRemotes) do
+                    for _ = 1, 10 do
+                        spawn(function()
+                            pcall(function()
+                                remote:FireServer(zombie)
+                                remote:FireServer(humanoid)
+                                remote:FireServer(parts[math.random(#parts)] or zombie)
+                                remote:FireServer(999999)
+                                remote:FireServer()
+                            end)
+                        end)
+                    end
+                end
+                
+                -- Direkt yok et
+                spawn(function()
+                    pcall(function()
+                        if humanoid then
+                            humanoid.Health = 0
+                            humanoid:Destroy()
+                        end
+                        zombie:Destroy()
+                    end)
+                end)
+                
+                killedCount = killedCount + 1
+            end)
         end
-        if key == "LEAHax" then
-            if getgenv().LEAModState.LEAHax then startLEAHax() else stopLEAHax() end
+    end
+    
+    -- Method 2: Workspace'teki tüm zombileri yok et
+    spawn(function()
+        for _, zombie in pairs(zombies) do
+            pcall(function()
+                local humanoid = zombie:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.Health = 0
+                    humanoid.MaxHealth = 0
+                end
+                zombie:BreakJoints()
+                zombie:Destroy()
+            end)
         end
     end)
-    return btn
-end
-
--- BUTONLAR
-createButton("Aim V1", "AimbotV1")
-createButton("Aim V2", "AimbotV2")
-createButton("Assist", "AimAssist")
-createButton("Lock", "AimLock")
-createButton("Cross Aim", "CrosshairAim")
-createButton("ESP", "ESP")
-createButton("360", "Spin360")
-createButton("RB", "Rainbow")
-createButton("InfJump", "InfJump")
-createButton("Teleport", "Teleport")
-createButton("Fly", "Fly")
-createButton("Bunnyhop", "Bunnyhop")
-createButton("Trigger", "Triggerbot")
-createButton("🔥 LEA HAX", "LEAHax")
-createButton("Fly Hack", "FlyHack")
-createButton("No Clip", "NoClip")
-createButton("God Mode", "GodMode")
-
--- SPEED
-local SpeedFrame = Instance.new("Frame")
-SpeedFrame.Parent = MainFrame
-SpeedFrame.BackgroundTransparency = 1
-SpeedFrame.Size = UDim2.new(1, -6, 0, 16)
-SpeedFrame.Position = UDim2.new(0, 3, 0, 0)
-
-local SpeedDec = Instance.new("TextButton")
-SpeedDec.Parent = SpeedFrame
-SpeedDec.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-SpeedDec.Size = UDim2.new(0.3, 0, 1, 0)
-SpeedDec.Font = Enum.Font.GothamBold
-SpeedDec.Text = "-"
-SpeedDec.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedDec.TextSize = 12
-
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Parent = SpeedFrame
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Size = UDim2.new(0.4, 0, 1, 0)
-SpeedLabel.Position = UDim2.new(0.3, 0, 0, 0)
-SpeedLabel.Font = Enum.Font.GothamBold
-SpeedLabel.Text = "50"
-SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-SpeedLabel.TextSize = 10
-
-local SpeedInc = Instance.new("TextButton")
-SpeedInc.Parent = SpeedFrame
-SpeedInc.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-SpeedInc.Size = UDim2.new(0.3, 0, 1, 0)
-SpeedInc.Position = UDim2.new(0.7, 0, 0, 0)
-SpeedInc.Font = Enum.Font.GothamBold
-SpeedInc.Text = "+"
-SpeedInc.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInc.TextSize = 12
-
-SpeedDec.MouseButton1Click:Connect(function()
-    getgenv().LEAModState.SpeedVal = math.clamp(getgenv().LEAModState.SpeedVal - 5, 5, 9999)
-    SpeedLabel.Text = tostring(getgenv().LEAModState.SpeedVal)
-end)
-SpeedInc.MouseButton1Click:Connect(function()
-    getgenv().LEAModState.SpeedVal = getgenv().LEAModState.SpeedVal + 5
-    SpeedLabel.Text = tostring(getgenv().LEAModState.SpeedVal)
-end)
-
--- FLY BUTONLARI
-local FlyFrame = Instance.new("Frame")
-FlyFrame.Parent = MainFrame
-FlyFrame.BackgroundTransparency = 1
-FlyFrame.Size = UDim2.new(1, -6, 0, 40)
-FlyFrame.Position = UDim2.new(0, 3, 0, 0)
-
-local FlyUp = Instance.new("TextButton")
-FlyUp.Parent = FlyFrame
-FlyUp.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-FlyUp.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyUp.Position = UDim2.new(0.33, 0, 0, 0)
-FlyUp.Font = Enum.Font.GothamBold
-FlyUp.Text = "▲"
-FlyUp.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyUp.TextSize = 14
-FlyUp.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, 50, 0)
-        end
-    end
-end)
-
-local FlyDown = Instance.new("TextButton")
-FlyDown.Parent = FlyFrame
-FlyDown.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
-FlyDown.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyDown.Position = UDim2.new(0.33, 0, 0.5, 0)
-FlyDown.Font = Enum.Font.GothamBold
-FlyDown.Text = "▼"
-FlyDown.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyDown.TextSize = 14
-FlyDown.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Vector3.new(0, -50, 0)
-        end
-    end
-end)
-
-local FlyLeft = Instance.new("TextButton")
-FlyLeft.Parent = FlyFrame
-FlyLeft.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FlyLeft.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyLeft.Position = UDim2.new(0, 0, 0.25, 0)
-FlyLeft.Font = Enum.Font.GothamBold
-FlyLeft.Text = "◀"
-FlyLeft.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyLeft.TextSize = 14
-FlyLeft.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = -Camera.CFrame.RightVector * 50
-        end
-    end
-end)
-
-local FlyRight = Instance.new("TextButton")
-FlyRight.Parent = FlyFrame
-FlyRight.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-FlyRight.Size = UDim2.new(0.33, -2, 0.5, -1)
-FlyRight.Position = UDim2.new(0.66, 0, 0.25, 0)
-FlyRight.Font = Enum.Font.GothamBold
-FlyRight.Text = "▶"
-FlyRight.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyRight.TextSize = 14
-FlyRight.MouseButton1Click:Connect(function()
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.Velocity = Camera.CFrame.RightVector * 50
-        end
-    end
-end)
-
-print("✅ BÖLÜM 1/5 YÜKLENDİ - BÖLÜM 2/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    🔥 LEA HAX v52.0 - BÖLÜM 2/5 (ESP - YENİ DOĞAN DÜŞMAN)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-local espCache = {}
-local espUpdateTimer = 0
-local knownPlayers = {}
-
-local function isEnemy(player)
-    if player == LocalPlayer then return false end
-    if getgenv().LEAModState.TeamCheck then
-        if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-            return false
-        end
-    end
-    return true
-end
-
-local function getHitbox(char)
-    local parts = {"HumanoidRootPart", "UpperTorso", "Torso", "Head"}
-    for _, name in ipairs(parts) do
-        local part = char:FindFirstChild(name)
-        if part then return part end
-    end
-    return nil
-end
-
-local function canSeeTarget(targetRoot)
-    if not getgenv().LEAModState.WallCheck then return true end
-    local origin = Camera.CFrame.Position
-    local targetPos = targetRoot.Position
-    local direction = (targetPos - origin).Unit
-    local distance = (targetPos - origin).Magnitude
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {LocalPlayer.Character, targetRoot.Parent}
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    local result = Workspace:Raycast(origin, direction * distance, params)
-    if result then
-        local hit = result.Instance
-        if hit and hit:IsDescendantOf(targetRoot.Parent) then return true end
-        return false
-    end
-    return true
-end
-
-local function getNearestEnemy()
-    local target = nil
-    local shortestDist = getgenv().LEAModState.FOV or 1000
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then 
-            if getgenv().LEAModState.KillCheck then continue end
-        end
-        if not canSeeTarget(root) then continue end
-        local dist = (root.Position - Camera.CFrame.Position).Magnitude
-        if dist < shortestDist then
-            shortestDist = dist
-            target = player
-        end
-    end
-    return target
-end
-
-local function clearESP()
-    for player, _ in pairs(espCache) do
-        if espCache[player] then
-            for _, obj in pairs(espCache[player]) do
-                if obj then pcall(function() obj:Destroy() end) end
-            end
-            espCache[player] = nil
-        end
-    end
-end
-
-local function createESPForPlayer(player)
-    if player == LocalPlayer then return end
-    if not player.Character then return end
     
-    local char = player.Character
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not root or not humanoid then return end
-    
-    if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if obj then pcall(function() obj:Destroy() end) end
+    -- Method 3: Tüm humanoid'leri bul ve öldür
+    spawn(function()
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Humanoid") and obj.Health > 0 and 
+               obj.Parent and obj.Parent ~= LocalPlayer.Character then
+                pcall(function()
+                    obj.Health = 0
+                end)
+            end
         end
-        espCache[player] = nil
-    end
+    end)
     
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "ESPBox"
-    box.Size = char:GetExtentsSize()
-    box.Adornee = char
-    box.AlwaysOnTop = true
-    box.ZIndex = 5
-    box.Transparency = 0.5
-    box.Parent = CoreGui
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ESPInfo"
-    billboard.Adornee = root
-    billboard.Size = UDim2.new(0, 120, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = CoreGui
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "InfoText"
-    textLabel.Parent = billboard
-    textLabel.BackgroundTransparency = 1
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 14
-    textLabel.TextStrokeTransparency = 0
-    textLabel.Text = string.format("%s\nHP: %d", player.Name, math.floor(humanoid.Health))
-    
-    espCache[player] = {Box = box, Billboard = billboard, Text = textLabel}
+    wait(0.3)
+    return killedCount
 end
 
-local function scanAllPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        if not knownPlayers[player] then
-            knownPlayers[player] = true
-            if getgenv().LEAModState.ESP then
-                createESPForPlayer(player)
-            end
-        end
-        local char = player.Character
-        if not char then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not root or not humanoid then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        if humanoid.Health <= 0 then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-    end
-end
+-- ============================================
+-- MİNİ MENÜ (Telefon Uyumlu)
+-- ============================================
+local Menu = Instance.new("ScreenGui", game.CoreGui)
+Menu.Name = "ZM_KillMenu"
+Menu.ResetOnSpawn = false
+Menu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local function refreshESP()
-    clearESP()
-    if not getgenv().LEAModState.ESP then return end
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            createESPForPlayer(player)
-            knownPlayers[player] = true
-        end
-    end
-end
+-- Ana frame
+local BG = Instance.new("Frame", Menu)
+BG.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+BG.BackgroundTransparency = 0.05
+BG.BorderSizePixel = 0
+BG.Position = UDim2.new(0.5, -85, 0.55, 0)
+BG.Size = UDim2.new(0, 170, 0, 185)
+BG.ClipsDescendants = true
 
-Players.PlayerAdded:Connect(function(player)
-    wait(0.5)
-    knownPlayers[player] = true
-    if getgenv().LEAModState.ESP then
-        createESPForPlayer(player)
-    end
+local MainCorner = Instance.new("UICorner", BG)
+MainCorner.CornerRadius = UDim.new(0, 10)
+
+-- Başlık
+local TitleBar = Instance.new("Frame", BG)
+TitleBar.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+TitleBar.BorderSizePixel = 0
+TitleBar.Size = UDim2.new(1, 0, 0, 26)
+
+local TitleCorner = Instance.new("UICorner", TitleBar)
+TitleCorner.CornerRadius = UDim.new(0, 10)
+
+local Title = Instance.new("TextLabel", TitleBar)
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(0.6, 0, 1, 0)
+Title.Position = UDim2.new(0.05, 0, 0, 0)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "💀 Kill All"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 11
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Kapat
+local Close = Instance.new("TextButton", TitleBar)
+Close.Size = UDim2.new(0, 22, 0, 22)
+Close.Position = UDim2.new(1, -24, 0, 2)
+Close.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
+Close.BorderSizePixel = 0
+Close.Font = Enum.Font.GothamBold
+Close.Text = "✕"
+Close.TextColor3 = Color3.fromRGB(255, 255, 255)
+Close.TextSize = 11
+
+local CloseCorner = Instance.new("UICorner", Close)
+CloseCorner.CornerRadius = UDim.new(0, 5)
+
+Close.MouseButton1Click:Connect(function()
+    Menu:Destroy()
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    knownPlayers[player] = nil
-    if espCache[player] then
-        for _, obj in pairs(espCache[player]) do
-            if obj then pcall(function() obj:Destroy() end) end
-        end
-        espCache[player] = nil
-    end
-end)
+-- İçerik
+local Content = Instance.new("Frame", BG)
+Content.BackgroundTransparency = 1
+Content.Position = UDim2.new(0, 5, 0, 32)
+Content.Size = UDim2.new(1, -10, 1, -38)
 
-RunService.Heartbeat:Connect(function()
-    espUpdateTimer = espUpdateTimer + 1
-    if espUpdateTimer % 2 ~= 0 then return end
-    if not getgenv().LEAModState.ESP then
-        clearESP()
-        return
-    end
-    scanAllPlayers()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        local char = player.Character
-        if not char then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not root or not humanoid then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        if humanoid.Health <= 0 then
-            if espCache[player] then
-                for _, obj in pairs(espCache[player]) do
-                    if obj then pcall(function() obj:Destroy() end) end
-                end
-                espCache[player] = nil
-            end
-            continue
-        end
-        if not espCache[player] then
-            createESPForPlayer(player)
-        end
-        local cache = espCache[player]
-        if cache then
-            local enemyCheck = isEnemy(player)
-            local color = enemyCheck and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-            cache.Box.Color3 = color
-            local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-            cache.Text.Text = string.format("%s\nHP: %d | %dm", player.Name, math.floor(humanoid.Health), dist)
-            cache.Text.TextColor3 = color
-        end
-    end
-end)
+-- Zombi sayacı
+local ZombieCount = Instance.new("TextLabel", Content)
+ZombieCount.BackgroundTransparency = 1
+ZombieCount.Size = UDim2.new(1, 0, 0, 16)
+ZombieCount.Position = UDim2.new(0, 0, 0, 0)
+ZombieCount.Font = Enum.Font.Gotham
+ZombieCount.Text = "🧟 Zombi: Taranıyor..."
+ZombieCount.TextColor3 = Color3.fromRGB(200, 200, 200)
+ZombieCount.TextSize = 9
 
-print("✅ BÖLÜM 2/5 YÜKLENDİ - BÖLÜM 3/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    🔥 LEA HAX v52.0 - BÖLÜM 3/5 (TÜM ÖZELLİKLER + YENİ MODLAR)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
+-- ============================================
+-- BUTON 1: SİLAH SİMÜLASYONU
+-- ============================================
+local Button1 = Instance.new("TextButton", Content)
+Button1.Size = UDim2.new(1, 0, 0, 36)
+Button1.Position = UDim2.new(0, 0, 0.15, 0)
+Button1.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+Button1.BorderSizePixel = 0
+Button1.Font = Enum.Font.GothamBold
+Button1.Text = "🔫 SİLAHLA ÖLDÜR"
+Button1.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button1.TextSize = 11
+Button1.AutoButtonColor = true
 
--- 360 SPIN
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.Spin360 then
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(30), 0) end
-    end
-end)
+local Btn1Corner = Instance.new("UICorner", Button1)
+Btn1Corner.CornerRadius = UDim.new(0, 7)
 
--- RAINBOW
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.Rainbow then
-        local char = LocalPlayer.Character
-        if char then
-            local hue = tick() % 5 / 5
-            local rainbowColor = Color3.fromHSV(hue, 1, 1)
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.Color = rainbowColor end
-            end
-        end
-    end
-end)
+-- Buton 1 açıklama
+local Desc1 = Instance.new("TextLabel", Content)
+Desc1.BackgroundTransparency = 1
+Desc1.Size = UDim2.new(1, 0, 0, 12)
+Desc1.Position = UDim2.new(0, 0, 0.38, 0)
+Desc1.Font = Enum.Font.Gotham
+Desc1.Text = "Silahla vurmuş gibi algılatır"
+Desc1.TextColor3 = Color3.fromRGB(150, 200, 255)
+Desc1.TextSize = 7
 
--- INFINITE JUMP
-UserInputService.JumpRequest:Connect(function()
-    if getgenv().LEAModState.InfJump then
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end
-end)
+-- ============================================
+-- BUTON 2: BYPASS ÖLDÜR
+-- ============================================
+local Button2 = Instance.new("TextButton", Content)
+Button2.Size = UDim2.new(1, 0, 0, 36)
+Button2.Position = UDim2.new(0, 0, 0.48, 0)
+Button2.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+Button2.BorderSizePixel = 0
+Button2.Font = Enum.Font.GothamBold
+Button2.Text = "💀 BYPASS İLE ÖLDÜR"
+Button2.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button2.TextSize = 11
+Button2.AutoButtonColor = true
 
--- BUNNYHOP
-RunService.Heartbeat:Connect(function()
-    if not getgenv().LEAModState.Bunnyhop then return end
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    if hum.MoveDirection.Magnitude > 0 and hum:GetState() == Enum.HumanoidStateType.Landed then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
+local Btn2Corner = Instance.new("UICorner", Button2)
+Btn2Corner.CornerRadius = UDim.new(0, 7)
 
--- TELEPORT
-RunService.Heartbeat:Connect(function()
-    if not getgenv().LEAModState.Teleport then return end
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local target = getNearestEnemy()
-    if not target then return end
-    local tChar = target.Character
-    if not tChar then return end
-    local tRoot = tChar:FindFirstChild("HumanoidRootPart")
-    if not tRoot then return end
-    myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 4, 5)
-    getgenv().LEAModState.Teleport = false
-    local btn = CoreGui:FindFirstChild("LEAModUniversalGui") and CoreGui.LEAModUniversalGui.MainFrame:FindFirstChild("TeleportBtn")
-    if btn then
-        btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-        btn.Text = "Teleport ❌"
-    end
-end)
+-- Buton 2 açıklama
+local Desc2 = Instance.new("TextLabel", Content)
+Desc2.BackgroundTransparency = 1
+Desc2.Size = UDim2.new(1, 0, 0, 12)
+Desc2.Position = UDim2.new(0, 0, 0.71, 0)
+Desc2.Font = Enum.Font.Gotham
+Desc2.Text = "Direkt yok eder, anında ölür"
+Desc2.TextColor3 = Color3.fromRGB(255, 150, 150)
+Desc2.TextSize = 7
 
--- FLY
-RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if getgenv().LEAModState.Fly and char and char:FindFirstChild("HumanoidRootPart") then
-        local root = char.HumanoidRootPart
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand = true end
-    elseif char and char:FindFirstChildOfClass("Humanoid") then
-        char.Humanoid.PlatformStand = false
-    end
-end)
+-- Durum
+local StatusLabel = Instance.new("TextLabel", Content)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Size = UDim2.new(1, 0, 0, 14)
+StatusLabel.Position = UDim2.new(0, 0, 0.85, 0)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Text = "🟢 Hazır"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+StatusLabel.TextSize = 9
 
--- FLY HACK (Sınırsız uçuş)
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.FlyHack then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local root = char.HumanoidRootPart
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.PlatformStand = true
-                hum.Sit = false
-            end
-            local moveDir = Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-            root.Velocity = moveDir * 80
+-- ============================================
+-- ZOMBİ SAYACI GÜNCELLEME
+-- ============================================
+spawn(function()
+    while wait(2) do
+        local zombies = FindAllZombies()
+        ZombieCount.Text = "🧟 Zombi: " .. #zombies .. " adet"
+        if #zombies > 0 then
+            ZombieCount.TextColor3 = Color3.fromRGB(255, 100, 100)
+        else
+            ZombieCount.TextColor3 = Color3.fromRGB(100, 255, 100)
+            ZombieCount.Text = "🧟 Zombi: 0 (Temiz)"
         end
     end
 end)
 
--- NO CLIP
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.NoClip then
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
+-- ============================================
+-- BUTON İŞLEVLERİ
+-- ============================================
+local isKilling = false
+
+local function KillAnimation(button, desc, systemType)
+    if isKilling then return end
+    isKilling = true
+    
+    button.Interactable = false
+    StatusLabel.Text = "🔴 Öldürülüyor..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    
+    local killed = 0
+    
+    if systemType == 1 then
+        killed = WeaponKill:KillAll()
     else
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
+        killed = BypassKill:KillAll()
     end
-end)
-
--- GOD MODE
-RunService.Heartbeat:Connect(function()
-    if getgenv().LEAModState.GodMode then
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.MaxHealth = 999999
-            hum.Health = 999999
-            hum.BreakJointsOnDeath = false
-        end
-    end
-end)
-
--- SPEED
-RunService.Heartbeat:Connect(function()
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = getgenv().LEAModState.SpeedVal
-        hum.JumpPower = 50
-    end
-end)
-
-local function restartAllSystems()
-    lockedTarget = nil
-    isAiming = false
-    if getgenv().LEAModState.ESP then refreshESP() end
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = getgenv().LEAModState.SpeedVal
-        hum.JumpPower = 50
-    end
-    if getgenv().LEAModState.Fly then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local humFly = char:FindFirstChildOfClass("Humanoid")
-            if humFly then humFly.PlatformStand = true end
-        end
-    end
-    if getgenv().LEAModState.Rainbow then
-        local char = LocalPlayer.Character
-        if char then
-            local hue = tick() % 5 / 5
-            local rainbowColor = Color3.fromHSV(hue, 1, 1)
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.Color = rainbowColor end
-            end
-        end
-    end
-end
-
-LocalPlayer.CharacterAdded:Connect(function()
-    wait(0.5)
-    restartAllSystems()
-end)
-
-print("✅ BÖLÜM 3/5 YÜKLENDİ - BÖLÜM 4/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    🔥 LEA HAX v52.0 - BÖLÜM 4/5 (AIMBOT + CROSSHAIR AIM)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-local isAiming = false
-local lockedTarget = nil
-local aimUpdateTimer = 0
-
-local function findNearestEnemy()
-    local target = nil
-    local shortestDist = 1000
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then 
-            if getgenv().LEAModState.KillCheck then continue end        end
-        if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then continue end
-        end
-        local dist = (root.Position - Camera.CFrame.Position).Magnitude
-        if dist < shortestDist then
-            shortestDist = dist
-            target = player
-        end
-    end
-    return target
-end
-
-local function isTargetStillValid(targetPlayer)
-    if not targetPlayer then return false end
-    local char = targetPlayer.Character
-    if not char then return false end
-    local root = getHitbox(char)
-    if not root then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-    if hum.Health <= 0 then return false end
-    if getgenv().LEAModState.WallCheck then
-        if not canSeeTarget(root) then return false end
-    end
-    return true
-end
-
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        local pos = input.Position
-        if pos.X > viewportSize.X / 2 then
-            if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock or getgenv().LEAModState.CrosshairAim then
-                isAiming = true
-                if not lockedTarget then
-                    lockedTarget = findNearestEnemy()
-                end
-            end
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        isAiming = false
-        lockedTarget = nil
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        if getgenv().LEAModState.AimbotV1 or getgenv().LEAModState.AimbotV2 or getgenv().LEAModState.AimAssist or getgenv().LEAModState.AimLock or getgenv().LEAModState.CrosshairAim then
-            isAiming = true
-            if not lockedTarget then
-                lockedTarget = findNearestEnemy()
-            end
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        isAiming = false
-        lockedTarget = nil
-    end
-end)
-
--- AIMBOT V1
-RunService.Heartbeat:Connect(function()
-    aimUpdateTimer = aimUpdateTimer + 1
-    if aimUpdateTimer % 2 ~= 0 then return end
-    if not getgenv().LEAModState.AimbotV1 or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    if not lockedTarget then
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    local root = getHitbox(char)
-    if not root then lockedTarget = nil return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
--- AIMBOT V2
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
-    if not getgenv().LEAModState.AimbotV2 or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    if not lockedTarget then
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    local root = char:FindFirstChild("Head") or getHitbox(char)
-    if not root then lockedTarget = nil return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
--- AIMASSIST
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
-    if not getgenv().LEAModState.AimAssist or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    if not lockedTarget then
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    local root = getHitbox(char)
-    if not root then lockedTarget = nil return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    local targetPos = root.Position
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
--- AIMLOCK
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
-    if not getgenv().LEAModState.AimLock or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    if not lockedTarget then
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        local target = nil
-        local shortestDist = 1000
-        for _, player in ipairs(Players:GetPlayers()) do
-            if not isEnemy(player) then continue end
-            local char = player.Character
-            if not char then continue end
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if not root then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum or hum.Health <= 0 then
-                if getgenv().LEAModState.KillCheck then continue end
-            end
-            if getgenv().LEAModState.WallCheck then
-                if not canSeeTarget(root) then continue end
-            end
-            local dist = (root.Position - Camera.CFrame.Position).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-        lockedTarget = target
-        if not lockedTarget then return end
-    end
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    local root = char:FindFirstChild("Head") or getHitbox(char)
-    if not root then lockedTarget = nil return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    local targetPos = root.Position
-    Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPos)
-    end
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
--- CROSSHAIR AIM
-RunService.Heartbeat:Connect(function()
-    if aimUpdateTimer % 2 ~= 0 then return end
-    if not getgenv().LEAModState.CrosshairAim or not isAiming then
-        if lockedTarget then lockedTarget = nil end
-        return
-    end
-    if not lockedTarget then
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    if not isTargetStillValid(lockedTarget) then
-        lockedTarget = nil
-        lockedTarget = findNearestEnemy()
-        if not lockedTarget then return end
-    end
-    local char = lockedTarget.Character
-    if not char then lockedTarget = nil return end
-    local root = getHitbox(char)
-    if not root then lockedTarget = nil return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then
-        if getgenv().LEAModState.KillCheck then lockedTarget = nil return end
-    end
-    local targetPos = root.Position
-    local currentPos = Camera.CFrame.Position
-    Camera.CFrame = CFrame.new(currentPos, targetPos)
-    if getgenv().LEAModState.AutoFire then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
-    end
-end)
-
-print("✅ BÖLÜM 4/5 YÜKLENDİ - BÖLÜM 5/5'İ ÇALIŞTIR")--[[
-    ═══════════════════════════════════════════════════════════════════════════
-    🔥 LEA HAX v52.0 - BÖLÜM 5/5 (LEA HAX + TRIGGERBOT)
-    ═══════════════════════════════════════════════════════════════════════════
-]]
-
-local viewportSize = Camera.ViewportSize
-local leaHaxActive = false
-local leaHaxTexts = {}
-
--- LEA HAX - HERKESİN EKRANINA LEA HAX YAZ
-local function startLEAHax()
-    if leaHaxActive then return end
-    leaHaxActive = true
-    print("🔥 LEA HAX AKTİF - HERKESİN EKRANINA YAZIYOR!")
     
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        local playerGui = player:FindFirstChild("PlayerGui")
-        if playerGui then
-            local text = Instance.new("TextLabel")
-            text.Name = "LEAHaxText"
-            text.Size = UDim2.new(1, 0, 1, 0)
-            text.Position = UDim2.new(0, 0, 0, 0)
-            text.BackgroundTransparency = 1
-            text.Font = Enum.Font.GothamBold
-            text.Text = "🔥 LEA HAX 🔥\nHACKED GAME"
-            text.TextColor3 = Color3.fromRGB(255, 0, 0)
-            text.TextSize = 60
-            text.TextScaled = true
-            text.TextStrokeTransparency = 0
-            text.TextStrokeColor3 = Color3.fromRGB(255, 0, 200)
-            text.ZIndex = 999
-            text.Parent = playerGui
-            table.insert(leaHaxTexts, text)
-        end
-    end
+    wait(0.5)
+    
+    -- Sonuç
+    local remaining = #FindAllZombies()
+    StatusLabel.Text = "✅ " .. killed .. " zombi öldü!"
+    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    button.Text = "✅ BAŞARILI!"
+    button.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+    
+    wait(2)
+    button.Text = systemType == 1 and "🔫 SİLAHLA ÖLDÜR" or "💀 BYPASS İLE ÖLDÜR"
+    button.BackgroundColor3 = systemType == 1 and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(180, 0, 0)
+    button.Interactable = true
+    isKilling = false
 end
 
-local function stopLEAHax()
-    leaHaxActive = false
-    for _, text in ipairs(leaHaxTexts) do
-        pcall(function() text:Destroy() end)
-    end
-    leaHaxTexts = {}
-    print("❌ LEA HAX PASİF")
-end
+Button1.MouseButton1Click:Connect(function()
+    KillAnimation(Button1, Desc1, 1)
+end)
 
--- YENİ OYUNCU GELİNCE LEA HAX GÖSTER
-Players.PlayerAdded:Connect(function(player)
-    wait(1)
-    if leaHaxActive then
-        local playerGui = player:FindFirstChild("PlayerGui")
-        if playerGui then
-            local text = Instance.new("TextLabel")
-            text.Name = "LEAHaxText"
-            text.Size = UDim2.new(1, 0, 1, 0)
-            text.Position = UDim2.new(0, 0, 0, 0)
-            text.BackgroundTransparency = 1
-            text.Font = Enum.Font.GothamBold
-            text.Text = "🔥 LEA HAX 🔥\nHACKED GAME"
-            text.TextColor3 = Color3.fromRGB(255, 0, 0)
-            text.TextSize = 60
-            text.TextScaled = true
-            text.TextStrokeTransparency = 0
-            text.TextStrokeColor3 = Color3.fromRGB(255, 0, 200)
-            text.ZIndex = 999
-            text.Parent = playerGui
-            table.insert(leaHaxTexts, text)
-        end
+Button2.MouseButton1Click:Connect(function()
+    KillAnimation(Button2, Desc2, 2)
+end)
+
+-- ============================================
+-- SÜRÜKLENEBİLİR MENÜ
+-- ============================================
+local UIS = game:GetService("UserInputService")
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = BG.Position
     end
 end)
 
--- TRIGGERBOT
-local function quickAimAssist()
-    if not getgenv().LEAModState.Triggerbot then return end
-    local target = nil
-    local shortestDist = 200
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = char:FindFirstChild("Head") or getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then continue end
-        end
-        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if onScreen then
-            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-    end
-    if target then
-        local char = target.Character
-        if char then
-            local root = char:FindFirstChild("Head") or getHitbox(char)
-            if root then
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, root.Position)
-                local mouse = LocalPlayer:GetMouse()
-                if mouse then
-                    mouse.Button1Down:Fire()
-                    task.wait(0.03)
-                    mouse.Button1Up:Fire()
-                end
-            end
-        end
-    end
-end
-
-RunService.RenderStepped:Connect(function()
-    if getgenv().LEAModState.Triggerbot then
-        quickAimAssist()
+UIS.InputChanged:Connect(function(input)
+    if dragging then
+        local delta = input.Position - dragStart
+        BG.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-    if not getgenv().LEAModState.Triggerbot then return end
-    local target = nil
-    local shortestDist = 50
-    local centerX = viewportSize.X / 2
-    local centerY = viewportSize.Y / 2
-    for _, player in ipairs(Players:GetPlayers()) do
-        if not isEnemy(player) then continue end
-        local char = player.Character
-        if not char then continue end
-        local root = char:FindFirstChild("Head") or getHitbox(char)
-        if not root then continue end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then continue end
-        if getgenv().LEAModState.WallCheck then
-            if not canSeeTarget(root) then continue end
-        end
-        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if onScreen then
-            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(centerX, centerY)).Magnitude
-            if dist < shortestDist then
-                shortestDist = dist
-                target = player
-            end
-        end
-    end
-    if target then
-        local mouse = LocalPlayer:GetMouse()
-        if mouse then
-            mouse.Button1Down:Fire()
-            task.wait(0.03)
-            mouse.Button1Up:Fire()
-        end
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
     end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function()
-    lockedTarget = nil
-    isAiming = false
-end)
-
-print("╔══════════════════════════════════════════════════════════════╗")
-print("║   🔥 LEA HAX v52.0 - TÜM SİSTEMLER HAZIR ⚡                ║")
-print("╠══════════════════════════════════════════════════════════════╣")
-print("║  🎯 AIMBOT V1 - Karakter + Crosshair tam kilit             ║")
-print("║  🎯 AIMBOT V2 - Head öncelikli                            ║")
-print("║  ⚡ AIMASSIST - Direk hedefe götürür                       ║")
-print("║  🔒 AIMLOCK - Sabit kilit (hızlı takip)                   ║")
-print("║  🎯 CROSS AIM - SADECE Crosshair bakar, KARAKTER SABİT    ║")
-print("║  🚀 TELEPORT - En yakın düşmana ışınlanır                  ║")
-print("║  🧱 WALLCHECK - DUVAR ARKASINA KİTLENMEZ                  ║")
-print("║  💀 KILLCHECK - ÖLÜNCE DİREK GEÇER                         ║")
-print("║  🔥 LEA HAX - HERKESİN EKRANINA LEA HAX YAZAR             ║")
-print("║  ✈️  FLY HACK - Sınırsız uçuş                              ║")
-print("║  🧊 NO CLIP - Duvarlardan geçer                           ║")
-print("║  👑 GOD MODE - Ölümsüz                                     ║")
-print("╚══════════════════════════════════════════════════════════════╝")
+-- ============================================
+-- BAŞLANGIÇ
+-- ============================================
+print("╔══════════════════════════════════╗")
+print("║    💀 Zombie Mayhem Kill All    ║")
+print("╠══════════════════════════════════╣")
+print("║  🔫 Sistem 1: Silah Simülasyonu ║")
+print("║  💀 Sistem 2: Bypass Öldürme    ║")
+print("║  🧟 Otomatik zombi sayacı       ║")
+print("║  📱 Telefon uyumlu mini menü    ║")
+print("╚══════════════════════════════════╝")

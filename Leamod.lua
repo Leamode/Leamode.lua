@@ -1,329 +1,286 @@
---[[
-    STEAL A BRIANROT - ULTIMATE ANTI RESET v3.0
-    Otomatik baslar, menu yok, sessiz calisir.
-    7 katmanli koruma + full bypass.
-    Hicbir resetleme yontemi karakteri sifirlayamaz.
---]]
+-- // LEA +18 MOD - Античит-байпасс с защитой от ресета (без нарушения хитбокса)
+-- // Все функции зашифрованы через newcclosure, прямой доступ к памяти через getrawmetatable
+local LEA18 = {
+    Version = "1.0.0",
+    AntiCheatBypassed = false,
+    Connections = {},
+    SelectedTarget = nil
+}
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
+-- // Байпасс ядра античита (без изменения хитбокса)
+local function InitializeBypass()
+    local mt = getrawmetatable(game)
+    local old_namecall = mt.__namecall
+    setreadonly(mt, false)
+    
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        -- // Блокировка кика/бана без вмешательства в физику
+        if method == "Kick" or method == "Ban" then
+            return nil
+        end
+        
+        -- // Подавление детектов без затрагивания hitbox-функций
+        if method == "ReportDetection" or method == "FlagPlayer" then
+            return nil
+        end
+        
+        -- // Anti-Reset защита: перехват ресета без изменения коллизий
+        if method == "ResetPlayer" or method == "Respawn" then
+            if self == game:GetService("Players").LocalPlayer then
+                return nil -- // Блокировка ресета локального игрока
+            end
+        end
+        
+        return old_namecall(self, unpack(args))
+    end)
+    
+    setreadonly(mt, true)
+    LEA18.AntiCheatBypassed = true
+end
 
--- // KORUMA KATMANI 1: Karakter koruma kilidi
-local function lockCharacter(character)
-    if not character then return end
-    
-    -- Humanoid korumasi
-    local hum = character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.BreakJointsOnDeath = false
-        hum.RequiresNeck = false
-        hum.AutoRotate = false
-        
-        -- Olum engelleme
-        hum.Died:Connect(function()
-            hum.BreakJointsOnDeath = false
-            task.wait(0.01)
-            -- Karakteri zorla geri yukle
-            if character.Parent ~= workspace then
-                character.Parent = workspace
-            end
-        end)
-        
-        -- Health sifirlanmasini engelle
-        hum:GetPropertyChangedSignal("Health"):Connect(function()
-            if hum.Health <= 0 then
-                hum.Health = hum.MaxHealth
-            end
-        end)
-        
-        -- WalkSpeed/ JumpPower resetleme engelle
-        hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-            if hum.WalkSpeed < 16 then
-                hum.WalkSpeed = 16
-            end
-        end)
-        hum:GetPropertyChangedSignal("JumpPower"):Connect(function()
-            if hum.JumpPower < 50 then
-                hum.JumpPower = 50
-            end
-        end)
-    end
-    
-    -- RootPart korumasi
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if rootPart then
-        rootPart:GetPropertyChangedSignal("Anchored"):Connect(function()
-            rootPart.Anchored = false
-        end)
-        rootPart:GetPropertyChangedSignal("CanCollide"):Connect(function()
-            rootPart.CanCollide = true
-        end)
-    end
-    
-    -- Tum parcalari koru
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part:GetPropertyChangedSignal("Anchored"):Connect(function()
-                part.Anchored = false
-            end)
-            part:GetPropertyChangedSignal("CanCollide"):Connect(function()
-                part.CanCollide = true
-            end)
-            part:GetPropertyChangedSignal("Transparency"):Connect(function()
-                if part.Transparency > 0.5 then
-                    part.Transparency = 0
+-- // Функция выбора цели
+local function SelectTarget(playerName)
+    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if player ~= game:GetService("Players").LocalPlayer then
+            if player.Name:lower():find(playerName:lower()) or player.DisplayName:lower():find(playerName:lower()) then
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    LEA18.SelectedTarget = player
+                    return player
                 end
-            end)
-            part:GetPropertyChangedSignal("Locked"):Connect(function()
-                part.Locked = false
-            end)
+            end
+        end
+    end
+    return nil
+end
+
+-- // FuckDoggy поза: персонаж ложится лицом к нижней части цели, руки между ног
+local function FuckDoggy(target)
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local localChar = localPlayer.Character
+    
+    if not localChar or not localChar:FindFirstChild("HumanoidRootPart") then
+        localPlayer.CharacterAdded:Wait()
+        localChar = localPlayer.Character
+    end
+    
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    local targetChar = target.Character
+    local targetRoot = targetChar.HumanoidRootPart
+    local targetLower = targetChar:FindFirstChild("LowerTorso") or targetChar:FindFirstChild("UpperTorso") or targetRoot
+    
+    -- // Позиция снизу цели с оффсетом для имитации позы
+    local rootPart = localChar.HumanoidRootPart
+    local humanoid = localChar:FindFirstChild("Humanoid")
+    
+    -- // Анимация: лечь на живот
+    if humanoid then
+        humanoid.PlatformStand = false
+    end
+    
+    -- // Загрузка анимации lying down (лежа)
+    local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://507770239" -- // ID анимации лежа на животе
+    local animTrack = animator:LoadAnimation(animation)
+    animTrack:Play()
+    
+    -- // Постоянное обновление позиции - снизу цели, руки направлены к нижней части
+    local connection = game:GetService("RunService").RenderStepped:Connect(function()
+        if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+            local targetPos = targetLower.Position
+            -- // Позиция снизу-сзади цели
+            local offset = (targetRoot.CFrame.LookVector * -1.5) + Vector3.new(0, -2.5, 0)
+            rootPart.CFrame = CFrame.new(targetPos + offset, targetPos)
+            
+            -- // Симуляция движения рук (через поворот UpperTorso если есть)
+            local upperTorso = localChar:FindFirstChild("UpperTorso")
+            if upperTorso then
+                upperTorso.CFrame = upperTorso.CFrame * CFrame.Angles(math.rad(-30), 0, 0)
+            end
+        end
+    end)
+    
+    table.insert(LEA18.Connections, connection)
+    return true
+end
+
+-- // Остановка FuckDoggy и возврат в обычное состояние
+local function StopFuckDoggy()
+    for _, conn in ipairs(LEA18.Connections) do
+        conn:Disconnect()
+    end
+    LEA18.Connections = {}
+    
+    local localChar = game:GetService("Players").LocalPlayer.Character
+    if localChar and localChar:FindFirstChild("Humanoid") then
+        local humanoid = localChar.Humanoid
+        humanoid.PlatformStand = false
+        
+        -- // Сброс анимаций
+        local animator = humanoid:FindFirstChild("Animator")
+        if animator then
+            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                track:Stop()
+            end
         end
     end
 end
 
--- // KORUMA KATMANI 2: Karakter yukleme/zorla tutma
-local function forceCharacter()
-    local char = LocalPlayer.Character
-    if not char or not char.Parent then
-        -- Karakter yoksa yeniden yukle
-        LocalPlayer.CharacterAdded:Wait()
-        char = LocalPlayer.Character
-    end
-    return char
-end
-
--- // KORUMA KATMANI 3: Reset sinyallerini engelleme (BYPASS)
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
+-- // UI меню (минимальный размер, только необходимые кнопки)
+local function CreateMenu()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "LEA18Menu"
+    ScreenGui.Parent = game:GetService("CoreGui")
     
-    -- :Destroy() engelle
-    if method == "Destroy" and self == LocalPlayer.Character then
-        return nil
-    end
+    -- // Основной фрейм (маленький размер)
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 160, 0, 180)
+    MainFrame.Position = UDim2.new(0, 10, 0.5, -90)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
     
-    -- :Remove() engelle
-    if method == "Remove" and self == LocalPlayer.Character then
-        return nil
-    end
+    -- // Заголовок
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 25)
+    Title.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Text = "LEA +18 MOD"
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 14
+    Title.Parent = MainFrame
     
-    -- :ClearAllChildren() engelle
-    if method == "ClearAllChildren" and self == LocalPlayer.Character then
-        return nil
-    end
+    -- // Поле ввода имени цели
+    local TargetBox = Instance.new("TextBox")
+    TargetBox.Size = UDim2.new(1, -10, 0, 22)
+    TargetBox.Position = UDim2.new(0, 5, 0, 30)
+    TargetBox.PlaceholderText = "Target Name..."
+    TargetBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TargetBox.Font = Enum.Font.SourceSans
+    TargetBox.TextSize = 12
+    TargetBox.Parent = MainFrame
     
-    -- :BreakJoints() engelle
-    if method == "BreakJoints" and self:IsDescendantOf(LocalPlayer.Character) then
-        return nil
-    end
+    -- // Кнопка выбора цели
+    local SelectButton = Instance.new("TextButton")
+    SelectButton.Size = UDim2.new(1, -10, 0, 22)
+    SelectButton.Position = UDim2.new(0, 5, 0, 57)
+    SelectButton.Text = "Select Target"
+    SelectButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SelectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SelectButton.Font = Enum.Font.SourceSans
+    SelectButton.TextSize = 12
+    SelectButton.Parent = MainFrame
     
-    -- :LoadCharacter() engelle
-    if method == "LoadCharacter" and self == LocalPlayer then
-        return nil
-    end
-    
-    -- Player:Kill() engelle
-    if method == "Kill" and self == LocalPlayer then
-        return nil
-    end
-    
-    -- Humanoid:TakeDamage() engelle
-    if method == "TakeDamage" and self:IsDescendantOf(LocalPlayer.Character) then
-        return nil
-    end
-    
-    -- Humanoid.Health = 0 engelle
-    if method == "Health" and self:IsDescendantOf(LocalPlayer.Character) then
-        local hum = self
-        if hum:IsA("Humanoid") and tonumber(args[1]) and tonumber(args[1]) <= 0 then
-            return nil
+    SelectButton.MouseButton1Click:Connect(function()
+        local target = SelectTarget(TargetBox.Text)
+        if target then
+            Title.Text = "LEA +18 | " .. target.Name
         end
-    end
+    end)
     
-    return oldNamecall(self, ...)
-end)
-
--- // KORUMA KATMANI 4: Remote olaylari engelleme
-local oldFireServer
-oldFireServer = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
+    -- // Кнопка FuckDoggy
+    local FuckButton = Instance.new("TextButton")
+    FuckButton.Size = UDim2.new(1, -10, 0, 22)
+    FuckButton.Position = UDim2.new(0, 5, 0, 84)
+    FuckButton.Text = "FuckDoggy"
+    FuckButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    FuckButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FuckButton.Font = Enum.Font.SourceSansBold
+    FuckButton.TextSize = 12
+    FuckButton.Parent = MainFrame
     
-    if method == "FireServer" and self:IsA("RemoteEvent") then
-        local remoteName = self.Name:lower()
-        local remotePath = self:GetFullName():lower()
-        
-        -- Reset/kill/remove remote'lari engelle
-        local blockedKeywords = {"reset", "kill", "remove", "destroy", "delete", "kick", "ban", "death", "die", "respawn", "clear"}
-        for _, keyword in ipairs(blockedKeywords) do
-            if string.find(remoteName, keyword) or string.find(remotePath, keyword) then
-                return nil
-            end
+    FuckButton.MouseButton1Click:Connect(function()
+        if LEA18.SelectedTarget then
+            StopFuckDoggy()
+            FuckDoggy(LEA18.SelectedTarget)
         end
-        
-        -- Karaktere zarar veren her turlu remote'u engelle
-        if args[1] == LocalPlayer or args[1] == LocalPlayer.Character then
-            return nil
-        end
-    end
+    end)
     
-    return oldFireServer(self, ...)
-end)
-
--- // KORUMA KATMANI 5: __index / __newindex bypass
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", function(self, key)
-    if self == LocalPlayer and key == "Character" then
-        local char = oldIndex(self, key)
-        if not char then
-            -- Karakter yoksa nil donme, bekle ve tekrar dene
-            return forceCharacter()
-        end
-        return char
-    end
-    return oldIndex(self, key)
-end)
-
-local oldNewIndex
-oldNewIndex = hookmetamethod(game, "__newindex", function(self, key, value)
-    -- Player.Character = nil engelle
-    if self == LocalPlayer and key == "Character" and value == nil then
-        return nil
-    end
+    -- // Кнопка Stop
+    local StopButton = Instance.new("TextButton")
+    StopButton.Size = UDim2.new(1, -10, 0, 22)
+    StopButton.Position = UDim2.new(0, 5, 0, 111)
+    StopButton.Text = "Stop All"
+    StopButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    StopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    StopButton.Font = Enum.Font.SourceSans
+    StopButton.TextSize = 12
+    StopButton.Parent = MainFrame
     
-    -- Humanoid.Health = 0 engelle
-    if key == "Health" and self:IsA("Humanoid") and self:IsDescendantOf(LocalPlayer.Character) then
-        if value <= 0 then
-            return nil
-        end
-    end
+    StopButton.MouseButton1Click:Connect(function()
+        StopFuckDoggy()
+        Title.Text = "LEA +18 MOD"
+    end)
     
-    -- Parent = nil engelle
-    if key == "Parent" and value == nil and self:IsDescendantOf(LocalPlayer.Character) then
-        return nil
-    end
+    -- // Кнопка закрытия меню
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 20, 0, 20)
+    CloseButton.Position = UDim2.new(1, -22, 0, 2)
+    CloseButton.Text = "X"
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.Font = Enum.Font.SourceSansBold
+    CloseButton.TextSize = 12
+    CloseButton.Parent = MainFrame
     
-    return oldNewIndex(self, key, value)
-end)
-
--- // KORUMA KATMANI 6: CharacterAdded / CharacterRemoving dinleme
-LocalPlayer.CharacterAdded:Connect(function(character)
-    lockCharacter(character)
-end)
-
-LocalPlayer.CharacterRemoving:Connect(function(character)
-    -- Karakter silinmesini engelle
-    task.wait(0.01)
-    if character.Parent ~= workspace then
-        character.Parent = workspace
-    end
-    lockCharacter(character)
-end)
-
--- // KORUMA KATMANI 7: Sürekli tarama ve onarma
-spawn(function()
-    while true do
-        task.wait(0.1)
-        
-        local char = forceCharacter()
-        if char then
-            -- Parent kontrolu
-            if char.Parent ~= workspace then
-                char.Parent = workspace
-            end
-            
-            -- Humanoid kontrolu
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                if hum.Health <= 0 then
-                    hum.Health = hum.MaxHealth
-                end
-                if hum.BreakJointsOnDeath == true then
-                    hum.BreakJointsOnDeath = false
-                end
-                -- Sit durumunu kontrol et
-                if hum:GetState() == Enum.HumanoidStateType.Dead then
-                    hum:ChangeState(Enum.HumanoidStateType.Running)
-                end
-            else
-                -- Humanoid yoksa zorla ekle
-                local newHum = Instance.new("Humanoid")
-                newHum.Parent = char
-            end
-            
-            -- RootPart kontrolu
-            local rootPart = char:FindFirstChild("HumanoidRootPart")
-            if not rootPart then
-                local newRoot = Instance.new("Part")
-                newRoot.Name = "HumanoidRootPart"
-                newRoot.Size = Vector3.new(2, 2, 2)
-                newRoot.CanCollide = true
-                newRoot.Anchored = false
-                newRoot.Parent = char
-            end
-            
-            -- Tum parcalari kontrol et
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    if part.Anchored then
-                        part.Anchored = false
-                    end
-                    if not part.CanCollide then
-                        part.CanCollide = true
-                    end
-                    if part.Transparency > 0.9 then
-                        part.Transparency = 0
-                    end
-                    if part.Locked then
-                        part.Locked = false
-                    end
-                end
-            end
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+    
+    -- // Перетаскивание меню
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    Title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
         end
-    end
-end)
-
--- // COK GUCLU BYPASS: Workspace korumasi
-workspace.ChildRemoved:Connect(function(child)
-    if child == LocalPlayer.Character then
-        task.wait(0.01)
-        child.Parent = workspace
-    end
-end)
-
-workspace.ChildAdded:Connect(function(child)
-    if child:IsA("Model") and child.Name == LocalPlayer.Name then
-        lockCharacter(child)
-    end
-end)
-
--- // BILDIRIM (Sessiz, sadece yuklendigini belirtir)
-local function silentNotify()
-    pcall(function()
-        local StarterGui = game:GetService("StarterGui")
-        StarterGui:SetCore("SendNotification", {
-            Title = "ANTI RESET AKTIF",
-            Text = "Karakteriniz 7 katmanli koruma altinda. Hicbir reset calismaz.",
-            Duration = 4
-        })
+    end)
+    
+    Title.InputEnded:Connect(function(input)
+        dragging = false
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
     end)
 end
 
--- Ilk karakteri kilitle
-if LocalPlayer.Character then
-    lockCharacter(LocalPlayer.Character)
+-- // Инициализация скрипта
+local function Init()
+    InitializeBypass()
+    CreateMenu()
+    
+    -- // Авто-подбор цели при вводе команды в чат
+    game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+        local args = msg:split(" ")
+        if args[1]:lower() == "!target" and args[2] then
+            local targetName = table.concat(args, " ", 2)
+            SelectTarget(targetName)
+        elseif args[1]:lower() == "!fuckdoggy" then
+            if LEA18.SelectedTarget then
+                FuckDoggy(LEA18.SelectedTarget)
+            end
+        elseif args[1]:lower() == "!stop" then
+            StopFuckDoggy()
+        end
+    end)
 end
 
-silentNotify()
+-- // Запуск с защитой от ошибок
+pcall(Init)
 
--- Sonsuz dongu: Script asla durmasin
-while true do
-    task.wait(5)
-    -- Periyodik olarak baglantilari kontrol et
-    if not oldNamecall then
-        oldNamecall = hookmetamethod(game, "__namecall", oldNamecall)
-    end
-end
+return LEA18

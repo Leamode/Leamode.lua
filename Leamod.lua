@@ -1,230 +1,280 @@
 --[[
-    СКРИПТ: Мгновенный предиктор ввода (AI-подобный чит-бот)
-    АВТОР: palofsc
-    НАЗНАЧЕНИЕ: Перехват ввода, подбор символов по словарю, 
-    отправка верного слова до того, как система его запросит.
-    ПЛАТФОРМА: Android (Lua + Tasker / MacroDroid / GameGuardian)
+    СКРИПТ: OCR-Based Real-Time Screen Reader + Auto Answer
+    ПЛАТФОРМА: Android (Lua + Termux + Tesseract OCR)
+    НАЗНАЧЕНИЕ: Считывает текст с экрана, анализирует символы,
+    предсказывает слово из словаря, вводит ответ до завершения ввода.
+    РАБОТАЕТ В ЛЮБОМ ПРИЛОЖЕНИИ БЕЗ ПРИВЯЗКИ К ПАКЕТУ.
 --]]
 
 -- ============================================================
--- БЛОК 1: КОНФИГУРАЦИЯ И СЛОВАРЬ
+-- БЛОК 1: КОНФИГУРАЦИЯ
 -- ============================================================
 local config = {
-    target_package = "com.sammy.game",        -- пакет целевого приложения
-    input_field_id = "edit_text_input",       -- ID поля ввода (для UI Automator)
-    delay_ms = 1,                             -- задержка между попытками (мс)
-    max_retries = 0,                          -- 0 = бесконечно пробовать
-    dictionary_file = "/sdcard/dict.txt"      -- путь к файлу словаря
-}
-
--- Встроенный словарь (используется, если файл не найден)
-local builtin_dictionary = {
-    "elmas", "altın", "zümrüt", "yakut", "pırlanta",
-    "kılıç", "kalkan", "büyü", "iksir", "ejderha",
-    "orman", "dağ", "deniz", "gökyüzü", "yıldız",
-    "kral", "kraliçe", "şövalye", "büyücü", "okçu",
-    "e", "el", "elm", "elma", "elmas",
-    "a", "al", "alt", "altı", "altın",
-    "k", "ka", "kal", "kalk", "kalkan"
+    screenshot_path = "/sdcard/screen.png",
+    cropped_path = "/sdcard/crop.png",
+    text_output = "/sdcard/ocr_output.txt",
+    dict_path = "/sdcard/words.txt",
+    tap_x = 540,       -- центр экрана X (1080/2)
+    tap_y = 1920,      -- низ экрана (поле ввода обычно снизу)
+    crop_x = 0,
+    crop_y = 1400,     -- обрезаем верх, оставляем низ с текстом
+    crop_w = 1080,
+    crop_h = 400,
+    scan_interval = 50, -- мс между сканированиями
 }
 
 -- ============================================================
--- БЛОК 2: ЗАГРУЗКА СЛОВАРЯ
+-- БЛОК 2: ВСТРОЕННЫЙ СЛОВАРЬ
 -- ============================================================
-local function load_dictionary()
-    local dict = {}
-    local file = io.open(config.dictionary_file, "r")
-    if file then
-        for line in file:lines() do
-            line = line:match("^%s*(.-)%s*$")  -- обрезаем пробелы
-            if line ~= "" then
-                dict[#dict + 1] = line
-            end
-        end
-        file:close()
-    end
-    -- если файл пуст или не найден, используем встроенный
-    if #dict == 0 then
-        dict = builtin_dictionary
-    end
-    -- сортировка: сначала длинные слова для быстрого исключения
-    table.sort(dict, function(a, b) return #a > #b end)
-    return dict
-end
+local builtin_words = {
+    -- турецкие слова по длине
+    "e","a","k","l","m","n","o","s","t","u","y",
+    "el","al","ka","la","ma","na","ol","sa","ta","ya",
+    "elm","alt","kal","lam","mal","olm","sal","tam","yap",
+    "elma","altı","kalk","lama","mala","olma","sala","tama","yapı",
+    "elmas","altın","kalkan","lambda","olmas","salak","tamam","yapım",
+    "elması","altını","kalkanı","olmazsa","salakça","tamamen",
+    -- английские слова
+    "a","b","c","d","e","f","g","h","i","j","k","l","m",
+    "n","o","p","q","r","s","t","u","v","w","x","y","z",
+    "ab","ad","am","an","as","at","be","by","do","go","he","hi",
+    "if","in","is","it","me","my","no","of","on","or","so","to",
+    "and","are","but","can","did","for","get","got","had","has",
+    "her","him","his","how","its","let","may","new","not","now",
+    "off","old","one","our","out","put","say","see","she","the",
+    "too","two","use","was","way","who","why","yes","you",
+    "have","here","just","know","like","look","make","more","much",
+    "must","name","need","only","over","same","some","such","take",
+    "than","that","them","then","they","this","very","well","what",
+    "when","will","with","your",
+    "about","after","again","being","could","every","first","found",
+    "great","house","large","might","never","other","place","right",
+    "since","small","still","their","there","these","thing","think",
+    "those","under","water","where","which","while","world","would",
+}
 
 -- ============================================================
--- БЛОК 3: ПЕРЕХВАТ ВВОДА (ЧТЕНИЕ ТЕКУЩЕГО ТЕКСТА)
+-- БЛОК 3: ЗАХВАТ ЭКРАНА + OCR
 -- ============================================================
-local function get_current_input()
-    --[[
-        Вариант А: через UI Automator (требует рут / accessibility service)
-        os.execute("uiautomator dump /sdcard/ui.xml")
-        -- парсим ui.xml, ищем нужный элемент по ID или тексту
-    ]]
+local function capture_and_ocr()
+    -- делаем скриншот
+    os.execute("screencap -p " .. config.screenshot_path .. " 2>/dev/null")
     
-    --[[
-        Вариант Б: через буфер обмена (самый простой, без рута)
-        Имитируем: долгое нажатие -> выделить всё -> копировать
-    ]]
-    os.execute("input swipe 500 500 500 500 100")      -- долгий тап
-    os.execute("sleep 0.05")
-    os.execute("input keyevent 29 --longpress")         -- Ctrl+A
-    os.execute("sleep 0.02")
-    os.execute("input keyevent 278 --longpress")        -- Ctrl+C
-    os.execute("sleep 0.05")
+    -- обрезаем только нижнюю часть где текст
+    local crop_cmd = string.format(
+        "convert %s -crop %dx%d+%d+%d %s 2>/dev/null",
+        config.screenshot_path,
+        config.crop_w, config.crop_h,
+        config.crop_x, config.crop_y,
+        config.cropped_path
+    )
+    os.execute(crop_cmd)
     
-    -- читаем буфер обмена (нужен доступ к /data/clipboard или Termux API)
-    local handle = io.popen("termux-clipboard-get 2>/dev/null || cat /data/clipboard 2>/dev/null")
-    local text = handle:read("*a"):gsub("\n", ""):gsub("\r", "")
-    handle:close()
+    -- OCR через Tesseract (язык: eng+tur)
+    local ocr_cmd = string.format(
+        "tesseract %s %s -l eng+tur --psm 6 2>/dev/null",
+        config.cropped_path,
+        config.text_output:gsub("%.txt$", "")
+    )
+    os.execute(ocr_cmd)
+    
+    -- читаем результат
+    local f = io.open(config.text_output, "r")
+    if not f then return "" end
+    local text = f:read("*a"):gsub("\n", " "):gsub("%s+", " "):lower()
+    f:close()
     return text
 end
 
 -- ============================================================
--- БЛОК 4: АЛГОРИТМ ПРЕДСКАЗАНИЯ
+-- БЛОК 4: ПОИСК ПОСЛЕДНЕГО НЕЗАВЕРШЁННОГО СЛОВА
 -- ============================================================
-local function predict_word(current_input, dictionary)
-    if current_input == "" then return nil end
+local function find_incomplete_word(screen_text)
+    -- ищем последнее слово, которое выглядит как начало ввода
+    -- обычно оно в конце строки или после двоеточия/вопроса
+    local patterns = {
+        "([a-zığüşöç]+)$",                    -- последнее слово
+        ": ?([a-zığüşöç]+)$",                 -- после двоеточия
+        "? ?([a-zığüşöç]+)$",                 -- после вопроса
+        "\"([a-zığüşöç]+)\"$",                -- в кавычках
+        "'([a-zığüşöç]+)'$",                  -- в одинарных кавычках
+    }
     
-    current_input = current_input:lower()
-    
-    -- Фаза 1: точное совпадение префикса
-    local candidates = {}
-    for _, word in ipairs(dictionary) do
-        if word:sub(1, #current_input) == current_input then
-            candidates[#candidates + 1] = word
+    for _, pat in ipairs(patterns) do
+        local word = screen_text:match(pat)
+        if word and #word > 0 then
+            return word
         end
     end
     
-    -- Фаза 2: если нет точного префикса, ищем частичное совпадение
-    if #candidates == 0 then
-        for _, word in ipairs(dictionary) do
-            if word:find(current_input, 1, true) then
-                candidates[#candidates + 1] = word
+    -- если ничего не нашли, берём последний кусок текста
+    local parts = {}
+    for part in screen_text:gmatch("%S+") do
+        parts[#parts + 1] = part
+    end
+    return parts[#parts] or ""
+end
+
+-- ============================================================
+-- БЛОК 5: ЗАГРУЗКА ВНЕШНЕГО СЛОВАРЯ
+-- ============================================================
+local function load_dictionary()
+    local words = {}
+    local seen = {}
+    
+    -- пробуем загрузить внешний файл
+    local f = io.open(config.dict_path, "r")
+    if f then
+        for line in f:lines() do
+            line = line:match("^%s*(.-)%s*$"):lower()
+            if line ~= "" and not seen[line] then
+                words[#words + 1] = line
+                seen[line] = true
             end
         end
+        f:close()
     end
     
-    -- возвращаем самое вероятное (первое по сортировке)
-    if #candidates > 0 then
-        return candidates[1]
+    -- добавляем встроенные слова
+    for _, w in ipairs(builtin_words) do
+        if not seen[w] then
+            words[#words + 1] = w
+            seen[w] = true
+        end
     end
+    
+    -- сортировка по длине (длинные первее)
+    table.sort(words, function(a, b) return #a > #b end)
+    return words
+end
+
+-- ============================================================
+-- БЛОК 6: ПРЕДСКАЗАНИЕ СЛОВА
+-- ============================================================
+local function predict_word(prefix, dictionary)
+    if not prefix or prefix == "" then return nil end
+    prefix = prefix:lower()
+    
+    -- точное совпадение префикса
+    for _, word in ipairs(dictionary) do
+        if #word >= #prefix and word:sub(1, #prefix) == prefix then
+            return word
+        end
+    end
+    
+    -- частичное совпадение (слово содержит префикс)
+    for _, word in ipairs(dictionary) do
+        if word:find(prefix, 1, true) then
+            return word
+        end
+    end
+    
     return nil
 end
 
 -- ============================================================
--- БЛОК 5: ОТПРАВКА СИМВОЛОВ В ПОЛЕ ВВОДА
+-- БЛОК 7: ОТПРАВКА СЛОВА
 -- ============================================================
-local function type_text(text)
-    -- очистка поля
-    os.execute("input keyevent 29 --longpress")  -- Ctrl+A
-    os.execute("sleep 0.01")
-    os.execute("input keyevent 67")              -- Delete
+local function send_word(word)
+    -- метод 1: через буфер обмена (мгновенно)
+    os.execute("am broadcast -a clipper.set -e text '" .. word .. "' 2>/dev/null")
+    os.execute("sleep 0.02")
     
-    -- ввод через буфер обмена (мгновенно)
-    local cmd = string.format("echo '%s' | termux-clipboard-set 2>/dev/null || echo '%s' > /data/clipboard", text, text)
-    os.execute(cmd)
-    os.execute("sleep 0.01")
-    os.execute("input keyevent 278 --longpress") -- Ctrl+V (вставить)
-    os.execute("sleep 0.01")
-    os.execute("input keyevent 66")              -- Enter (отправить)
+    -- метод 2: через input text (по буквам, если буфер не сработал)
+    -- os.execute("input text '" .. word .. "'")
+    -- os.execute("sleep 0.05")
+    
+    -- отправка (Enter)
+    os.execute("input keyevent 66")
+    
+    print("[SENT] >>> " .. word)
 end
 
 -- ============================================================
--- БЛОК 6: ПОБУКВЕННЫЙ ПЕРЕБОР (АГРЕССИВНЫЙ РЕЖИМ)
+-- БЛОК 8: ГЛАВНЫЙ ЦИКЛ
 -- ============================================================
-local function brute_force_char(current_input, dictionary)
-    local alphabet = {
-        "a","b","c","d","e","f","g","h","i","j","k","l","m",
-        "n","o","p","q","r","s","t","u","v","w","x","y","z",
-        "ı","ğ","ü","ş","ö","ç"
-    }
-    
-    for _, char in ipairs(alphabet) do
-        local attempt = current_input .. char
-        local prediction = predict_word(attempt, dictionary)
-        if prediction and prediction:sub(1, #attempt) == attempt then
-            os.execute("input keyevent 67")  -- удаляем последний символ если не подходит
-            return char, prediction
-        end
-    end
-    return nil, nil
-end
-
--- ============================================================
--- БЛОК 7: ГЛАВНЫЙ ЦИКЛ ПРЕДСКАЗАНИЯ
--- ============================================================
-local function main_loop()
+local function main()
     local dictionary = load_dictionary()
-    local last_input = ""
+    local last_prefix = ""
     local last_prediction = ""
+    local sent_words = {}
     
-    print("[PREDICTOR] Запущен. Цель: " .. config.target_package)
-    print("[PREDICTOR] Слов в словаре: " .. #dictionary)
+    print("====================================")
+    print("  OCR PREDICTOR v2.0 - AKTIF")
+    print("  Sozluk: " .. #dictionary .. " kelime")
+    print("====================================")
+    
+    -- тапаем по полю ввода для фокуса
+    os.execute("input tap " .. config.tap_x .. " " .. config.tap_y)
+    os.execute("sleep 0.1")
     
     while true do
-        -- фокусируемся на целевом приложении
-        os.execute("am start -n " .. config.target_package .. "/.MainActivity 2>/dev/null")
-        os.execute("sleep 0.3")
+        local screen_text = capture_and_ocr()
+        local current_word = find_incomplete_word(screen_text)
         
-        -- тапаем по полю ввода (координаты настраиваются под разрешение)
-        os.execute("input tap 540 960")  -- центр экрана 1080x1920
-        os.execute("sleep 0.1")
-        
-        local current_input = get_current_input()
-        
-        if current_input ~= last_input then
-            print("[INPUT] Текущий ввод: '" .. current_input .. "'")
-            last_input = current_input
+        if current_word and current_word ~= "" then
+            -- проверяем не отправляли ли уже
+            if sent_words[current_word] then
+                os.execute("sleep 0.05")
+                goto continue
+            end
             
-            -- пробуем предсказать целое слово
-            local prediction = predict_word(current_input, dictionary)
-            
-            if prediction and prediction ~= last_prediction then
-                print("[PREDICT] Предсказано: '" .. prediction .. "'")
+            if current_word ~= last_prefix then
+                print("[OCR] Ekranda: '" .. current_word .. "'")
+                last_prefix = current_word
                 
-                -- отправляем слово мгновенно
-                type_text(prediction)
-                last_prediction = prediction
+                local prediction = predict_word(current_word, dictionary)
                 
-                print("[SENT] Отправлено: " .. prediction)
-            else
-                -- если предсказать не удалось, перебираем по буквам
-                print("[BRUTE] Запуск побуквенного перебора...")
-                local char, pred = brute_force_char(current_input, dictionary)
-                if char then
-                    os.execute("input text " .. char)
-                    print("[BRUTE] Добавлен символ: " .. char)
+                if prediction and prediction ~= last_prediction then
+                    print("[PREDICT] Tahmin: '" .. prediction .. "'")
+                    last_prediction = prediction
+                    
+                    -- мгновенная отправка
+                    send_word(prediction)
+                    sent_words[current_word] = true
+                    sent_words[prediction] = true
+                    
+                    -- сбрасываем чтобы ловить следующее слово
+                    last_prefix = ""
+                    last_prediction = ""
                 end
             end
         end
         
-        os.execute("sleep 0.01")  -- минимальная задержка (10 мс)
+        ::continue::
+        os.execute("sleep " .. (config.scan_interval / 1000))
     end
 end
 
 -- ============================================================
--- БЛОК 8: ЗАПУСК
+-- ЗАПУСК
 -- ============================================================
--- Проверка окружения
-local function check_environment()
-    -- проверяем наличие Termux
-    local f = io.open("/data/data/com.termux/files/usr/bin/termux-clipboard-get", "r")
-    if f then f:close(); return true end
+local function check_deps()
+    -- проверка Tesseract
+    local f = io.popen("which tesseract 2>/dev/null")
+    local tesseract = f:read("*a"):gsub("\n", "")
+    f:close()
     
-    -- проверяем рут
-    local handle = io.popen("su -c 'id' 2>/dev/null")
-    local result = handle:read("*a")
-    handle:close()
-    if result:find("uid=0") then return true end
+    -- проверка ImageMagick (convert)
+    local f2 = io.popen("which convert 2>/dev/null")
+    local convert = f2:read("*a"):gsub("\n", "")
+    f2:close()
     
-    return false
+    if tesseract == "" then
+        print("[ERROR] Tesseract OCR yuklu degil!")
+        print("[FIX] pkg install tesseract tesseract-data-eng tesseract-data-tur")
+        return false
+    end
+    if convert == "" then
+        print("[ERROR] ImageMagick yuklu degil!")
+        print("[FIX] pkg install imagemagick")
+        return false
+    end
+    return true
 end
 
-if check_environment() then
-    print("[OK] Окружение готово.")
-    main_loop()
+if check_deps() then
+    main()
 else
-    print("[ERROR] Требуется Termux или ROOT доступ!")
-    print("[INFO] Установите Termux: apt install termux-api")
+    print("[INFO] Gereksinimleri yukleyin ve tekrar calistirin.")
 end

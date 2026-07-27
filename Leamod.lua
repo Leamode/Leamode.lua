@@ -1,51 +1,42 @@
 -- =====================================================================
--- LEA MOD: MEGA FULL VERSION - DUAL ENGINE SAMMY CODE DETECTOR
+-- LEA MOD: KEYBOARD FOCUS & SAMMY DETECTOR ENGINE
+-- Platform: Mobile (Infinix Note 30 Pro Optimized)
 -- Target Game: Steal a Brainrot
--- Platform: Mobile Optimized (Infinix Note 30 Pro Compatible)
--- Architecture: Deep Filtering (Pet Base / Log / World UI / Auto-Submit)
 -- =====================================================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- [1. GLOBAL STATE & CONFIGURATION]
-getgenv().LeaMegaConfig = {
-    Engine1_Screen = true,  -- Motor 1: Ekran ve Dünya Nesneleri Tarayıcısı
-    Engine2_Log = true,     -- Motor 2: Chat, Server Log ve Filtre İnceleyici
-    
-    ChainFragments = {},    -- Yakalanan kod parçaları (X, Y, Z)
-    TestedCombinations = {},-- Denediğimiz kodların hafızası
-    LastExtractedText = "",
-    TotalSubmitAttempts = 0
+getgenv().LeaTargetConfig = {
+    Engine1_Active = true, -- Ekran Yakalayıcı
+    Engine2_Active = true, -- Chat/Log Yakalayıcı
+    ChainFragments = {},
+    TestedCombinations = {},
+    LastExtracted = "",
+    TotalAttempts = 0
 }
 
-local Config = getgenv().LeaMegaConfig
+local Config = getgenv().LeaTargetConfig
 
--- [2. ADVANCED NOISE FILTER & CHARACTER EXTRACTOR]
--- Pet Base, Pet Alındı Bildirimleri ve Log Gürültülerini Eleme Listesi
-local NoiseDictionary = {
-    "SPYDERSAMMY", "@SPYDERSAMMY", "SAMMY", "BOUGHT A PET", "GOT A PET",
-    "PET BASE", "PET UNLOCKED", "HAS UNLOCKED", "SPAWNED", "REDEEM ANY DLC CODES",
-    "CODES FROM SAMMY HERE", "CODE HERE...", "CODES", "SUBMIT", "THE CODE IS",
-    "THE CODE", "NEW CODE", "SECRET CODE", "CHAT", "SYSTEM", "SERVER"
-}
-
-local function MegaCleanAndExtract(rawText)
+-- [1. SAF SAMMY KODU AYRIŞTIRICI & SIKI FİLTRE]
+local function ExtractSammyCode(rawText)
     if not rawText or type(rawText) ~= "string" or #rawText == 0 then return "" end
     
     local upperText = string.upper(rawText)
     
-    -- 1. AŞAMA: Bilinen tüm gürültü cümlelerini ve Pet Base mesajlarını temizle
-    for _, noise in ipairs(NoiseDictionary) do
-        upperText = string.gsub(upperText, noise, "")
+    -- Satın alma, pet base, fiyat, market gürültülerini KESİNLİKLE reddet
+    if string.find(upperText, "BUY") or string.find(upperText, "PURCHASE") or string.find(upperText, "PRICE") 
+       or string.find(upperText, "PET") or string.find(upperText, "BOUGHT") or string.find(upperText, "UNLOCKED") then
+        return ""
     end
     
-    -- Noktalama işaretlerini ve ek karakterleri kaldır
-    upperText = upperText:gsub(":", ""):gsub("!", ""):gsub("%[", ""):gsub("%]", ""):gsub("%(", ""):gsub("%)", "")
+    -- Sammy ve Sistem takılarını temizle
+    upperText = upperText:gsub("@SPYDERSAMMY", ""):gsub("SPYDERSAMMY", ""):gsub("SAMMY", "")
+    upperText = upperText:gsub("REDEEM", ""):gsub("CODES", ""):gsub("CODE", ""):gsub("SUBMIT", "")
     
-    -- 2. AŞAMA: Sadece İngilizce A-Z Harflerini ve 0-9 Sayıları Ayıkla
+    -- Sadece A-Z ve 0-9 karakterlerini al
     local cleanBuffer = {}
     for i = 1, #upperText do
         local char = string.sub(upperText, i, i)
@@ -57,261 +48,199 @@ local function MegaCleanAndExtract(rawText)
     return table.concat(cleanBuffer, "")
 end
 
--- [3. CODE INPUT & AUTOMATIC SUBMITTER ENGINE]
-local function FindGameCodeElements()
+-- [2. KULLANICININ KLAVYENİN AÇIK OLDUĞU HEDEF KUTUYU YAKALAMA]
+local function GetActiveKeyboardInput()
+    -- Sadece senin o an tıkladığın / klavyenin açık olduğu kutuyu hedefler
+    local focusedBox = UserInputService:GetFocusedTextBox()
+    if focusedBox then
+        return focusedBox
+    end
+    
+    -- Eğer klavye kapalıysa oyunun aktif açık olan Chat/Kod kutusunu kontrol et
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return nil, nil end
-    
-    local targetInput = nil
-    local submitButton = nil
-    
-    for _, desc in ipairs(playerGui:GetDescendants()) do
-        if desc:IsA("TextBox") and desc.Visible then
-            local fullName = string.lower(desc:GetFullName())
-            -- Chat input kutusu olmadığından emin ol
-            if not string.find(fullName, "chat") then
-                targetInput = desc
-            end
-        elseif desc:IsA("TextButton") and desc.Visible then
-            local btnText = string.upper(desc.Text)
-            local btnName = string.upper(desc.Name)
-            if btnText == "SUBMIT" or string.find(btnName, "SUBMIT") then
-                submitButton = desc
+    if playerGui then
+        for _, desc in ipairs(playerGui:GetDescendants()) do
+            if desc:IsA("TextBox") and desc.Visible then
+                local name = string.lower(desc:GetFullName())
+                -- Satın alma pencerelerini atla, sadece chat ve kod kutusunu kabul et
+                if not string.find(name, "shop") and not string.find(name, "buy") and not string.find(name, "store") then
+                    return desc
+                end
             end
         end
     end
     
-    return targetInput, submitButton
+    return nil
 end
 
-local function ExecuteCodeSubmission(codeToTry)
-    if #codeToTry == 0 or Config.TestedCombinations[codeToTry] then return end
+-- [3. YAZIYI DOĞRUDAN KLAVYENİN OLDUĞU YERE YAZMA VE TETİKLEME]
+local function DirectInputSubmit(code)
+    if #code == 0 or Config.TestedCombinations[code] then return end
     
-    local targetInput, submitBtn = FindGameCodeElements()
-    if not targetInput then return end
+    local activeInput = GetActiveKeyboardInput()
+    if not activeInput then return end -- Klavye veya odak yoksa hiçbir yere yazma
     
-    Config.TestedCombinations[codeToTry] = true
-    Config.TotalSubmitAttempts = Config.TotalSubmitAttempts + 1
+    Config.TestedCombinations[code] = true
+    Config.TotalAttempts = Config.TotalAttempts + 1
     
-    -- Kodu kutuya yaz
-    targetInput.Text = codeToTry
+    -- Kodu doğrudan klavyenin açık olduğu kutunun metnine bas
+    activeInput.Text = code
     
-    -- Otomatik Gönderme ve Yeşil Submit Butonuna Tıklama Tetikleyicisi
     task.spawn(function()
         pcall(function()
-            targetInput:CaptureFocus()
+            activeInput:CaptureFocus()
             task.wait(0.01)
             
             if typeof(firesignal) == "function" then
-                firesignal(targetInput.FocusLost, true)
+                firesignal(activeInput.FocusLost, true)
             else
-                targetInput:ReleaseFocus(true)
-            end
-            
-            if submitBtn then
-                task.wait(0.01)
-                if typeof(firesignal) == "function" then
-                    firesignal(submitBtn.MouseButton1Click)
-                    firesignal(submitBtn.Activated)
-                end
+                activeInput:ReleaseFocus(true)
             end
         end)
     end)
 end
 
--- Parçaları Kümülatif Olarak Birleştirme (X -> XY -> XYZ)
-local function RegisterFragmentAndRun(rawText)
-    local cleaned = MegaCleanAndExtract(rawText)
-    if #cleaned > 0 and cleaned ~= Config.LastExtractedText then
-        Config.LastExtractedText = cleaned
+-- Zincirlama Birleştirici (X -> XY -> XYZ)
+local function ProcessIncomingText(rawText)
+    local cleanCode = ExtractSammyCode(rawText)
+    if #cleanCode > 0 and cleanCode ~= Config.LastExtracted then
+        Config.LastExtracted = cleanCode
         
-        -- Daha önce eklenmemişse zincire ekle
-        local isAlreadyAdded = false
-        for _, frag in ipairs(Config.ChainFragments) do
-            if frag == cleaned then
-                isAlreadyAdded = true
-                break
-            end
+        local exists = false
+        for _, v in ipairs(Config.ChainFragments) do
+            if v == cleanCode then exists = true break end
         end
         
-        if not isAlreadyAdded then
-            table.insert(Config.ChainFragments, cleaned)
-            
-            -- X -> XY -> XYZ zincirini boşluksuz oluştur
-            local cumulativeCode = table.concat(Config.ChainFragments, "")
-            ExecuteCodeSubmission(cumulativeCode)
+        if not exists then
+            table.insert(Config.ChainFragments, cleanCode)
+            local combined = table.concat(Config.ChainFragments, "")
+            DirectInputSubmit(combined)
         end
     end
 end
 
--- [4. MOTOR 1: EKRAN VE WORLD UI TARAYICISI (SCREEN ENGINE)]
-local function InitScreenEngine()
+-- [4. MOTOR 1: EKRAN TARAYICI]
+local function StartScreenScanner()
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     
-    local function BindScreenElement(element)
-        if (element:IsA("TextLabel") or element:IsA("TextButton")) and element.Visible then
-            local fullName = string.lower(element:GetFullName())
-            
-            -- Chat ve Kod Penceresinin Kendi İçindeki Statik Metinlerini Hariç Tut
-            if not string.find(fullName, "chat") and not string.find(fullName, "codes") then
-                element:GetPropertyChangedSignal("Text"):Connect(function()
-                    if Config.Engine1_Screen then
-                        RegisterFragmentAndRun(element.Text)
-                    end
-                end)
-            end
+    local function BindScreenUI(elem)
+        if (elem:IsA("TextLabel") or elem:IsA("TextButton")) and elem.Visible then
+            elem:GetPropertyChangedSignal("Text"):Connect(function()
+                if Config.Engine1_Active then
+                    ProcessIncomingText(elem.Text)
+                end
+            end)
         end
     end
     
-    -- Mevcut tüm ekran elemanlarını bağla
-    for _, desc in ipairs(playerGui:GetDescendants()) do
-        BindScreenElement(desc)
-    end
-    
-    -- Dinamik eklenen ekran elemanlarını bağla
-    playerGui.DescendantAdded:Connect(function(desc)
-        BindScreenElement(desc)
-    end)
+    for _, desc in ipairs(playerGui:GetDescendants()) do BindScreenUI(desc) end
+    playerGui.DescendantAdded:Connect(BindScreenUI)
 end
 
--- [5. MOTOR 2: LOG, CHAT VE DETAYLI İNCELEYİCİ (LOG ENGINE)]
-local function InitLogEngine()
+-- [5. MOTOR 2: LOG & CHAT TARAYICI]
+local function StartLogScanner()
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     
-    local function BindLogElement(element)
-        if element:IsA("TextLabel") or element:IsA("TextButton") then
-            local fullName = string.lower(element:GetFullName())
-            
-            -- Chat veya Log alanına düşen metinleri tara
-            if string.find(fullName, "chat") or string.find(fullName, "log") or string.find(fullName, "message") then
-                element:GetPropertyChangedSignal("Text"):Connect(function()
-                    if Config.Engine2_Log then
-                        local raw = string.lower(element.Text)
-                        
-                        -- Pet Base veya Pet alma duyurusu içeriyorsa kesinlikle iptal et
-                        if string.find(raw, "bought") or string.find(raw, "pet base") or string.find(raw, "unlocked") then
-                            return
-                        end
-                        
-                        -- SpyderSammy veya Sammy ile ilgili mesaj düşmüşse çalıştır
-                        if string.find(raw, "spydersammy") or string.find(raw, "sammy") then
-                            RegisterFragmentAndRun(element.Text)
-                        end
-                    end
-                end)
-            end
+    local function BindLogUI(elem)
+        if elem:IsA("TextLabel") or elem:IsA("TextButton") then
+            elem:GetPropertyChangedSignal("Text"):Connect(function()
+                if Config.Engine2_Active then
+                    ProcessIncomingText(elem.Text)
+                end
+            end)
         end
     end
     
-    for _, desc in ipairs(playerGui:GetDescendants()) do
-        BindLogElement(desc)
-    end
-    
-    playerGui.DescendantAdded:Connect(function(desc)
-        BindLogElement(desc)
-    end)
+    for _, desc in ipairs(playerGui:GetDescendants()) do BindLogUI(desc) end
+    playerGui.DescendantAdded:Connect(BindLogUI)
 end
 
--- [6. ADVANCED DUAL ENGINE CONTROL PANEL (GUI)]
-local function BuildMegaControlPanel()
-    if CoreGui:FindFirstChild("LeaMegaMasterGui") then
-        CoreGui.LeaMegaMasterGui:Destroy()
-    end
+-- [6. KONTROL MENÜSÜ (GUI)]
+local function BuildTargetGui()
+    if CoreGui:FindFirstChild("LeaTargetMasterGui") then CoreGui.LeaTargetMasterGui:Destroy() end
     
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "LeaMegaMasterGui"
+    ScreenGui.Name = "LeaTargetMasterGui"
     ScreenGui.Parent = CoreGui
-    ScreenGui.ResetOnSpawn = false
     
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "MainFrame"
-    MainFrame.Parent = ScreenGui
-    MainFrame.Size = UDim2.new(0, 220, 0, 130)
-    MainFrame.Position = UDim2.new(0.02, 0, 0.12, 0)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    MainFrame.Active = true
-    MainFrame.Draggable = true
+    local Frame = Instance.new("Frame")
+    Frame.Parent = ScreenGui
+    Frame.Size = UDim2.new(0, 210, 0, 110)
+    Frame.Position = UDim2.new(0.02, 0, 0.15, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
+    Frame.Active = true
+    Frame.Draggable = true
     
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
-    Corner.Parent = MainFrame
-    
-    local Stroke = Instance.new("UIStroke")
-    Stroke.Color = Color3.fromRGB(0, 220, 130)
-    Stroke.Thickness = 1.2
-    Stroke.Parent = MainFrame
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
     
     local Title = Instance.new("TextLabel")
-    Title.Parent = MainFrame
+    Title.Parent = Frame
     Title.Size = UDim2.new(1, 0, 0, 25)
     Title.BackgroundTransparency = 1
-    Title.Text = "LEA MOD: MEGA FULL ENGINE"
+    Title.Text = "LEA MOD: KEYBOARD TARGET ENGINE"
     Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 10
+    Title.TextSize = 9
     Title.Font = Enum.Font.GothamBold
     
-    -- Buton 1: Motor 1 (Ekran Tarayıcı)
-    local BtnEngine1 = Instance.new("TextButton")
-    BtnEngine1.Parent = MainFrame
-    BtnEngine1.Size = UDim2.new(0.43, 0, 0, 32)
-    BtnEngine1.Position = UDim2.new(0.05, 0, 0.25, 0)
-    BtnEngine1.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-    BtnEngine1.Text = "M1: EKRAN\n[AÇIK]"
-    BtnEngine1.TextColor3 = Color3.fromRGB(255, 255, 255)
-    BtnEngine1.TextSize = 9
-    BtnEngine1.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", BtnEngine1).CornerRadius = UDim.new(0, 6)
+    -- Motor 1 Butonu
+    local Btn1 = Instance.new("TextButton")
+    Btn1.Parent = Frame
+    Btn1.Size = UDim2.new(0.43, 0, 0, 30)
+    Btn1.Position = UDim2.new(0.05, 0, 0.3, 0)
+    Btn1.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+    Btn1.Text = "M1: EKRAN\n[AÇIK]"
+    Btn1.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn1.TextSize = 8
+    Btn1.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", Btn1).CornerRadius = UDim.new(0, 5)
     
-    BtnEngine1.MouseButton1Click:Connect(function()
-        Config.Engine1_Screen = not Config.Engine1_Screen
-        BtnEngine1.Text = Config.Engine1_Screen and "M1: EKRAN\n[AÇIK]" or "M1: EKRAN\n[KAPALI]"
-        BtnEngine1.BackgroundColor3 = Config.Engine1_Screen and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(200, 40, 50)
+    Btn1.MouseButton1Click:Connect(function()
+        Config.Engine1_Active = not Config.Engine1_Active
+        Btn1.Text = Config.Engine1_Active and "M1: EKRAN\n[AÇIK]" or "M1: EKRAN\n[KAPALI]"
+        Btn1.BackgroundColor3 = Config.Engine1_Active and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(200, 40, 50)
     end)
     
-    -- Buton 2: Motor 2 (Log ve Chat İnceleyici)
-    local BtnEngine2 = Instance.new("TextButton")
-    BtnEngine2.Parent = MainFrame
-    BtnEngine2.Size = UDim2.new(0.43, 0, 0, 32)
-    BtnEngine2.Position = UDim2.new(0.52, 0, 0.25, 0)
-    BtnEngine2.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-    BtnEngine2.Text = "M2: LOG/CHAT\n[AÇIK]"
-    BtnEngine2.TextColor3 = Color3.fromRGB(255, 255, 255)
-    BtnEngine2.TextSize = 9
-    BtnEngine2.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", BtnEngine2).CornerRadius = UDim.new(0, 6)
+    -- Motor 2 Butonu
+    local Btn2 = Instance.new("TextButton")
+    Btn2.Parent = Frame
+    Btn2.Size = UDim2.new(0.43, 0, 0, 30)
+    Btn2.Position = UDim2.new(0.52, 0, 0.3, 0)
+    Btn2.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+    Btn2.Text = "M2: LOG/CHAT\n[AÇIK]"
+    Btn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn2.TextSize = 8
+    Btn2.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", Btn2).CornerRadius = UDim.new(0, 5)
     
-    BtnEngine2.MouseButton1Click:Connect(function()
-        Config.Engine2_Log = not Config.Engine2_Log
-        BtnEngine2.Text = Config.Engine2_Log and "M2: LOG/CHAT\n[AÇIK]" or "M2: LOG/CHAT\n[KAPALI]"
-        BtnEngine2.BackgroundColor3 = Config.Engine2_Log and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(200, 40, 50)
+    Btn2.MouseButton1Click:Connect(function()
+        Config.Engine2_Active = not Config.Engine2_Active
+        Btn2.Text = Config.Engine2_Active and "M2: LOG/CHAT\n[AÇIK]" or "M2: LOG/CHAT\n[KAPALI]"
+        Btn2.BackgroundColor3 = Config.Engine2_Active and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(200, 40, 50)
     end)
     
-    -- Bilgi Ekranı
-    local InfoLabel = Instance.new("TextLabel")
-    InfoLabel.Parent = MainFrame
-    InfoLabel.Size = UDim2.new(0.9, 0, 0, 38)
-    InfoLabel.Position = UDim2.new(0.05, 0, 0.62, 0)
-    InfoLabel.BackgroundTransparency = 1
-    InfoLabel.Text = "Son Parça: Bekleniyor...\nToplam Deneme: 0"
-    InfoLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
-    InfoLabel.TextSize = 9
-    InfoLabel.Font = Enum.Font.Code
-    InfoLabel.TextWrapped = true
+    local Status = Instance.new("TextLabel")
+    Status.Parent = Frame
+    Status.Size = UDim2.new(0.9, 0, 0, 30)
+    Status.Position = UDim2.new(0.05, 0, 0.65, 0)
+    Status.BackgroundTransparency = 1
+    Status.Text = "Durum: Taramalar Aktif\nDeneme: 0"
+    Status.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Status.TextSize = 9
+    Status.Font = Enum.Font.Code
     
     task.spawn(function()
         while task.wait(0.4) do
-            if InfoLabel.Parent then
-                local last = Config.LastExtractedText ~= "" and Config.LastExtractedText or "Bekleniyor"
-                InfoLabel.Text = "Son Parça: " .. last .. "\nDeneme: " .. Config.TotalSubmitAttempts .. " | Parça: " .. #Config.ChainFragments
+            if Status.Parent then
+                Status.Text = "Son Kod: " .. (Config.LastExtracted ~= "" and Config.LastExtracted or "Bekleniyor") .. "\nToplam Deneme: " .. Config.TotalAttempts
             end
         end
     end)
 end
 
--- [7. START ALL SYSTEMS]
+-- Başlat
 task.spawn(function()
-    pcall(BuildMegaControlPanel)
-    pcall(InitScreenEngine)
-    pcall(InitLogEngine)
-    print("LEA MOD: MEGA DUAL ENGINE SYSTEM READY.")
+    pcall(BuildTargetGui)
+    pcall(StartScreenScanner)
+    pcall(StartLogScanner)
+    print("LEA MOD: TARGET ENGINE READY.")
 end)

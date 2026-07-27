@@ -1,280 +1,315 @@
---[[
-    СКРИПТ: OCR-Based Real-Time Screen Reader + Auto Answer
-    ПЛАТФОРМА: Android (Lua + Termux + Tesseract OCR)
-    НАЗНАЧЕНИЕ: Считывает текст с экрана, анализирует символы,
-    предсказывает слово из словаря, вводит ответ до завершения ввода.
-    РАБОТАЕТ В ЛЮБОМ ПРИЛОЖЕНИИ БЕЗ ПРИВЯЗКИ К ПАКЕТУ.
---]]
+-- =====================================================================
+-- LEA MOD: ULTRA ADVANCED AI CODE INTEGRATION & COMBINATORIAL EXECUTION ENGINE
+-- Target Game: Steal a Brainrot
+-- Target Platform: Mobile (Infinix Note 30 Pro Optimized)
+-- Engine Version: 10.0 (Full Architecture, Zero Truncation)
+-- =====================================================================
 
--- ============================================================
--- БЛОК 1: КОНФИГУРАЦИЯ
--- ============================================================
-local config = {
-    screenshot_path = "/sdcard/screen.png",
-    cropped_path = "/sdcard/crop.png",
-    text_output = "/sdcard/ocr_output.txt",
-    dict_path = "/sdcard/words.txt",
-    tap_x = 540,       -- центр экрана X (1080/2)
-    tap_y = 1920,      -- низ экрана (поле ввода обычно снизу)
-    crop_x = 0,
-    crop_y = 1400,     -- обрезаем верх, оставляем низ с текстом
-    crop_w = 1080,
-    crop_h = 400,
-    scan_interval = 50, -- мс между сканированиями
+-- [1. GLOBAL SERVICES & STATE MANAGEMENT]
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Global kontrol ve bellek alanları
+getgenv().LeaEngine = {
+    Active = true,
+    DebugMode = true,
+    DetectedFragments = {},
+    TestedCombinations = {},
+    ExecutionQueue = {},
+    CurrentTargetInput = nil,
+    AutoScanInterval = 0.05,
+    LastExecutionTime = 0,
+    TotalAttempts = 0
 }
 
--- ============================================================
--- БЛОК 2: ВСТРОЕННЫЙ СЛОВАРЬ
--- ============================================================
-local builtin_words = {
-    -- турецкие слова по длине
-    "e","a","k","l","m","n","o","s","t","u","y",
-    "el","al","ka","la","ma","na","ol","sa","ta","ya",
-    "elm","alt","kal","lam","mal","olm","sal","tam","yap",
-    "elma","altı","kalk","lama","mala","olma","sala","tama","yapı",
-    "elmas","altın","kalkan","lambda","olmas","salak","tamam","yapım",
-    "elması","altını","kalkanı","olmazsa","salakça","tamamen",
-    -- английские слова
-    "a","b","c","d","e","f","g","h","i","j","k","l","m",
-    "n","o","p","q","r","s","t","u","v","w","x","y","z",
-    "ab","ad","am","an","as","at","be","by","do","go","he","hi",
-    "if","in","is","it","me","my","no","of","on","or","so","to",
-    "and","are","but","can","did","for","get","got","had","has",
-    "her","him","his","how","its","let","may","new","not","now",
-    "off","old","one","our","out","put","say","see","she","the",
-    "too","two","use","was","way","who","why","yes","you",
-    "have","here","just","know","like","look","make","more","much",
-    "must","name","need","only","over","same","some","such","take",
-    "than","that","them","then","they","this","very","well","what",
-    "when","will","with","your",
-    "about","after","again","being","could","every","first","found",
-    "great","house","large","might","never","other","place","right",
-    "since","small","still","their","there","these","thing","think",
-    "those","under","water","where","which","while","world","would",
-}
+local Engine = getgenv().LeaEngine
 
--- ============================================================
--- БЛОК 3: ЗАХВАТ ЭКРАНА + OCR
--- ============================================================
-local function capture_and_ocr()
-    -- делаем скриншот
-    os.execute("screencap -p " .. config.screenshot_path .. " 2>/dev/null")
-    
-    -- обрезаем только нижнюю часть где текст
-    local crop_cmd = string.format(
-        "convert %s -crop %dx%d+%d+%d %s 2>/dev/null",
-        config.screenshot_path,
-        config.crop_w, config.crop_h,
-        config.crop_x, config.crop_y,
-        config.cropped_path
-    )
-    os.execute(crop_cmd)
-    
-    -- OCR через Tesseract (язык: eng+tur)
-    local ocr_cmd = string.format(
-        "tesseract %s %s -l eng+tur --psm 6 2>/dev/null",
-        config.cropped_path,
-        config.text_output:gsub("%.txt$", "")
-    )
-    os.execute(ocr_cmd)
-    
-    -- читаем результат
-    local f = io.open(config.text_output, "r")
-    if not f then return "" end
-    local text = f:read("*a"):gsub("\n", " "):gsub("%s+", " "):lower()
-    f:close()
-    return text
-end
-
--- ============================================================
--- БЛОК 4: ПОИСК ПОСЛЕДНЕГО НЕЗАВЕРШЁННОГО СЛОВА
--- ============================================================
-local function find_incomplete_word(screen_text)
-    -- ищем последнее слово, которое выглядит как начало ввода
-    -- обычно оно в конце строки или после двоеточия/вопроса
-    local patterns = {
-        "([a-zığüşöç]+)$",                    -- последнее слово
-        ": ?([a-zığüşöç]+)$",                 -- после двоеточия
-        "? ?([a-zığüşöç]+)$",                 -- после вопроса
-        "\"([a-zığüşöç]+)\"$",                -- в кавычках
-        "'([a-zığüşöç]+)'$",                  -- в одинарных кавычках
+-- [2. AI PATTERN MATCHER & CHARACTER DICTIONARY]
+local AIDictionary = {
+    Alphabet = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"},
+    Numbers = {"0","1","2","3","4","5","6","7","8","9"},
+    NoisePhrases = {
+        "THE CODE IS", "THE CODE", "CODES", "CODE IS", "NEW CODE", 
+        "SAMMY SAYS", "SAMMY CODE", "SECRET CODE", "ENTER CODE", 
+        "USE CODE", "NEXT CODE", "TODAY CODE", "LIMITED CODE"
     }
+}
+
+-- Metinden gürültüleri ayıran ve saf karakter dizilimi çıkaran gelişmiş AI ayrıştırıcı
+local function AI_ParseText(rawInput)
+    if not rawInput or type(rawInput) ~= "string" or #rawInput == 0 then return "" end
     
-    for _, pat in ipairs(patterns) do
-        local word = screen_text:match(pat)
-        if word and #word > 0 then
-            return word
+    local cleanUpper = string.upper(rawInput)
+    
+    -- 1. Aşama: Bilinen tüm gürültü kalıplarını temizle
+    for _, noise in ipairs(AIDictionary.NoisePhrases) do
+        cleanUpper = string.gsub(cleanUpper, noise, "")
+    end
+    
+    -- 2. Aşama: Regex ile sadece A-Z ve 0-9 arasındaki karakterleri süz
+    local parsedBuffer = {}
+    for i = 1, #cleanUpper do
+        local char = string.sub(cleanUpper, i, i)
+        if string.match(char, "[A-Z0-9]") then
+            table.insert(parsedBuffer, char)
         end
     end
     
-    -- если ничего не нашли, берём последний кусок текста
-    local parts = {}
-    for part in screen_text:gmatch("%S+") do
-        parts[#parts + 1] = part
-    end
-    return parts[#parts] or ""
+    return table.concat(parsedBuffer, "")
 end
 
--- ============================================================
--- БЛОК 5: ЗАГРУЗКА ВНЕШНЕГО СЛОВАРЯ
--- ============================================================
-local function load_dictionary()
-    local words = {}
-    local seen = {}
+-- [3. COMBINATORIAL ENGINE & PERMUTATION GENERATOR]
+-- Parçaları birleştirip X, XY, XYZ ve alternatif varyasyon ağaçları üretir
+local function AI_GenerateCombinations(fragmentsTable)
+    if #fragmentsTable == 0 then return {} end
     
-    -- пробуем загрузить внешний файл
-    local f = io.open(config.dict_path, "r")
-    if f then
-        for line in f:lines() do
-            line = line:match("^%s*(.-)%s*$"):lower()
-            if line ~= "" and not seen[line] then
-                words[#words + 1] = line
-                seen[line] = true
+    local queue = {}
+    
+    -- Ana Lineer Akış (X -> XY -> XYZ -> XYZ1)
+    local linearCumulative = ""
+    for index = 1, #fragmentsTable do
+        linearCumulative = linearCumulative .. fragmentsTable[index]
+        table.insert(queue, linearCumulative)
+    end
+    
+    -- Ters Akış Varyasyonu (Son gelen parçaların öncelikli olması durumu)
+    if #fragmentsTable > 1 then
+        local reverseCumulative = ""
+        for index = #fragmentsTable, 1, -1 do
+            reverseCumulative = fragmentsTable[index] .. reverseCumulative
+            if not table.find(queue, reverseCumulative) then
+                table.insert(queue, reverseCumulative)
             end
         end
-        f:close()
     end
     
-    -- добавляем встроенные слова
-    for _, w in ipairs(builtin_words) do
-        if not seen[w] then
-            words[#words + 1] = w
-            seen[w] = true
+    return queue
+end
+
+-- [4. UI ADVANCED INTERACTION & INPUT FINDER ENGINE]
+local function DeepFindTextBox()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return nil end
+    
+    local bestCandidate = nil
+    
+    -- PlayerGui altındaki tüm arayüz ağacını tara
+    local function ScanTree(parent)
+        for _, child in ipairs(parent:GetChildren()) do
+            if child:IsA("TextBox") and child.Visible then
+                -- Ekranda görünür ve aktif olan ilk geçerli input alanını seç
+                bestCandidate = child
+                break
+            end
+            ScanTree(child)
         end
     end
     
-    -- сортировка по длине (длинные первее)
-    table.sort(words, function(a, b) return #a > #b end)
-    return words
+    ScanTree(playerGui)
+    return bestCandidate
 end
 
--- ============================================================
--- БЛОК 6: ПРЕДСКАЗАНИЕ СЛОВА
--- ============================================================
-local function predict_word(prefix, dictionary)
-    if not prefix or prefix == "" then return nil end
-    prefix = prefix:lower()
+-- Otomatik girdi simülasyonu ve tetikleme mekanizması
+local function AI_ExecuteInput(textToSubmit)
+    if not Engine.Active then return false end
     
-    -- точное совпадение префикса
-    for _, word in ipairs(dictionary) do
-        if #word >= #prefix and word:sub(1, #prefix) == prefix then
-            return word
-        end
-    end
+    local targetInput = DeepFindTextBox()
+    Engine.CurrentTargetInput = targetInput
     
-    -- частичное совпадение (слово содержит префикс)
-    for _, word in ipairs(dictionary) do
-        if word:find(prefix, 1, true) then
-            return word
-        end
-    end
+    if not targetInput then return false end
     
-    return nil
-end
-
--- ============================================================
--- БЛОК 7: ОТПРАВКА СЛОВА
--- ============================================================
-local function send_word(word)
-    -- метод 1: через буфер обмена (мгновенно)
-    os.execute("am broadcast -a clipper.set -e text '" .. word .. "' 2>/dev/null")
-    os.execute("sleep 0.02")
+    -- Klavye/TextBox durumunu kontrol et ve metni bas
+    targetInput.Text = textToSubmit
     
-    -- метод 2: через input text (по буквам, если буфер не сработал)
-    -- os.execute("input text '" .. word .. "'")
-    -- os.execute("sleep 0.05")
-    
-    -- отправка (Enter)
-    os.execute("input keyevent 66")
-    
-    print("[SENT] >>> " .. word)
-end
-
--- ============================================================
--- БЛОК 8: ГЛАВНЫЙ ЦИКЛ
--- ============================================================
-local function main()
-    local dictionary = load_dictionary()
-    local last_prefix = ""
-    local last_prediction = ""
-    local sent_words = {}
-    
-    print("====================================")
-    print("  OCR PREDICTOR v2.0 - AKTIF")
-    print("  Sozluk: " .. #dictionary .. " kelime")
-    print("====================================")
-    
-    -- тапаем по полю ввода для фокуса
-    os.execute("input tap " .. config.tap_x .. " " .. config.tap_y)
-    os.execute("sleep 0.1")
-    
-    while true do
-        local screen_text = capture_and_ocr()
-        local current_word = find_incomplete_word(screen_text)
+    -- Tetikleme Protokolü (FocusLost ve Signal Simülasyonu)
+    local success, _ = pcall(function()
+        targetInput:CaptureFocus()
+        task.wait(0.01)
         
-        if current_word and current_word ~= "" then
-            -- проверяем не отправляли ли уже
-            if sent_words[current_word] then
-                os.execute("sleep 0.05")
-                goto continue
+        if typeof(firesignal) == "function" then
+            firesignal(targetInput.FocusLost, true)
+        else
+            targetInput:ReleaseFocus(true)
+        end
+    end)
+    
+    Engine.TotalAttempts = Engine.TotalAttempts + 1
+    Engine.TestedCombinations[textToSubmit] = true
+    return success
+end
+
+-- [5. COMPACT MOBILE GUI ENGINE (OPTIMIZED FOR INFINIX NOTE 30 PRO)]
+local UI_Elements = {}
+
+local function BuildEngineUI()
+    if CoreGui:FindFirstChild("LeaModMasterGui") then
+        CoreGui.LeaModMasterGui:Destroy()
+    end
+    
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "LeaModMasterGui"
+    ScreenGui.Parent = CoreGui
+    ScreenGui.ResetOnSpawn = false
+    
+    -- Ana Frame
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = ScreenGui
+    MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    MainFrame.Position = UDim2.new(0.02, 0, 0.2, 0)
+    MainFrame.Size = UDim2.new(0, 240, 0, 180)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = MainFrame
+    
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromRGB(0, 170, 255)
+    Stroke.Thickness = 1.5
+    Stroke.Parent = MainFrame
+    
+    -- Başlık Barı
+    local Header = Instance.new("Frame")
+    Header.Parent = MainFrame
+    Header.Size = UDim2.new(1, 0, 0, 30)
+    Header.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+    
+    local HeaderCorner = Instance.new("UICorner")
+    HeaderCorner.CornerRadius = UDim.new(0, 10)
+    HeaderCorner.Parent = Header
+    
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Header
+    Title.Size = UDim2.new(1, -10, 1, 0)
+    Title.Position = UDim2.new(0, 10, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "LEA MOD - AI CODE ENGINE v10"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 11
+    Title.Font = Enum.Font.GothamBold
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- Canlı Bilgi Ekranı
+    local ConsoleFrame = Instance.new("Frame")
+    ConsoleFrame.Parent = MainFrame
+    ConsoleFrame.Position = UDim2.new(0.05, 0, 0.22, 0)
+    ConsoleFrame.Size = UDim2.new(0.9, 0, 0.5, 0)
+    ConsoleFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+    
+    local ConsoleCorner = Instance.new("UICorner")
+    ConsoleCorner.CornerRadius = UDim.new(0, 6)
+    ConsoleCorner.Parent = ConsoleFrame
+    
+    local StatusText = Instance.new("TextLabel")
+    StatusText.Name = "StatusText"
+    StatusText.Parent = ConsoleFrame
+    StatusText.Position = UDim2.new(0.05, 0, 0.05, 0)
+    StatusText.Size = UDim2.new(0.9, 0, 0.9, 0)
+    StatusText.BackgroundTransparency = 1
+    StatusText.Text = "Sistem Hazır.\nSammy Akışı Bekleniyor..."
+    StatusText.TextColor3 = Color3.fromRGB(0, 255, 150)
+    StatusText.TextSize = 10
+    StatusText.Font = Enum.Font.Code
+    StatusText.TextWrapped = true
+    StatusText.TextYAlignment = Enum.TextYAlignment.Top
+    StatusText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    UI_Elements.StatusText = StatusText
+    
+    -- Kontrol Butonu
+    local ActionBtn = Instance.new("TextButton")
+    ActionBtn.Parent = MainFrame
+    ActionBtn.Position = UDim2.new(0.05, 0, 0.77, 0)
+    ActionBtn.Size = UDim2.new(0.9, 0, 0, 32)
+    ActionBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+    ActionBtn.Text = "DURDUR"
+    ActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ActionBtn.TextSize = 11
+    ActionBtn.Font = Enum.Font.GothamBold
+    
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 6)
+    BtnCorner.Parent = ActionBtn
+    
+    ActionBtn.MouseButton1Click:Connect(function()
+        Engine.Active = not Engine.Active
+        if Engine.Active then
+            ActionBtn.Text = "DURDUR"
+            ActionBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+            StatusText.Text = "Sistem Aktif.\nAkış Dinleniyor..."
+            StatusText.TextColor3 = Color3.fromRGB(0, 255, 150)
+        else
+            ActionBtn.Text = "BAŞLAT"
+            ActionBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 90)
+            StatusText.Text = "Sistem Durduruldu."
+            StatusText.TextColor3 = Color3.fromRGB(255, 180, 0)
+        end
+    end)
+end
+
+-- [6. STREAM MONITOR & SAMMY DATA CAPTURE]
+local function ProcessIncomingData(rawString)
+    if not Engine.Active then return end
+    
+    local parsed = AI_ParseText(rawString)
+    if parsed == "" or #parsed == 0 then return end
+    
+    -- Eğer bu parça listenin en sonunda zaten varsa tekrar ekleme
+    if #Engine.DetectedFragments > 0 and Engine.DetectedFragments[#Engine.DetectedFragments] == parsed then
+        return
+    end
+    
+    -- Parçayı kaydet
+    table.insert(Engine.DetectedFragments, parsed)
+    
+    -- Yeni kombinasyon listesini üret
+    local comboList = AI_GenerateCombinations(Engine.DetectedFragments)
+    
+    -- Kombinasyonları anında dene
+    for _, combo in ipairs(comboList) do
+        if not Engine.TestedCombinations[combo] then
+            if UI_Elements.StatusText then
+                UI_Elements.StatusText.Text = "Son Parça: " .. parsed .. "\nDeneniyor: " .. combo .. "\nToplam Deneme: " .. Engine.TotalAttempts
             end
             
-            if current_word ~= last_prefix then
-                print("[OCR] Ekranda: '" .. current_word .. "'")
-                last_prefix = current_word
-                
-                local prediction = predict_word(current_word, dictionary)
-                
-                if prediction and prediction ~= last_prediction then
-                    print("[PREDICT] Tahmin: '" .. prediction .. "'")
-                    last_prediction = prediction
-                    
-                    -- мгновенная отправка
-                    send_word(prediction)
-                    sent_words[current_word] = true
-                    sent_words[prediction] = true
-                    
-                    -- сбрасываем чтобы ловить следующее слово
-                    last_prefix = ""
-                    last_prediction = ""
-                end
-            end
+            AI_ExecuteInput(combo)
+            task.wait(0.02) -- Mobil takılmayı önleyen ultra kısa gecikme
         end
-        
-        ::continue::
-        os.execute("sleep " .. (config.scan_interval / 1000))
     end
 end
 
--- ============================================================
--- ЗАПУСК
--- ============================================================
-local function check_deps()
-    -- проверка Tesseract
-    local f = io.popen("which tesseract 2>/dev/null")
-    local tesseract = f:read("*a"):gsub("\n", "")
-    f:close()
+-- Arayüzdeki tüm metin değişimlerini (TextLabel, TextButton) anlık izleyen tarayıcı
+local function StartStreamMonitoring()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     
-    -- проверка ImageMagick (convert)
-    local f2 = io.popen("which convert 2>/dev/null")
-    local convert = f2:read("*a"):gsub("\n", "")
-    f2:close()
+    local function ConnectLabel(obj)
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            obj:GetPropertyChangedSignal("Text"):Connect(function()
+                ProcessIncomingData(obj.Text)
+            end)
+        end
+    end
     
-    if tesseract == "" then
-        print("[ERROR] Tesseract OCR yuklu degil!")
-        print("[FIX] pkg install tesseract tesseract-data-eng tesseract-data-tur")
-        return false
+    -- Mevcut elemanları bağla
+    for _, descendant in ipairs(playerGui:GetDescendants()) do
+        ConnectLabel(descendant)
     end
-    if convert == "" then
-        print("[ERROR] ImageMagick yuklu degil!")
-        print("[FIX] pkg install imagemagick")
-        return false
-    end
-    return true
+    
+    -- Sonradan eklenen elemanları takip et
+    playerGui.DescendantAdded:Connect(function(descendant)
+        ConnectLabel(descendant)
+    end)
 end
 
-if check_deps() then
-    main()
-else
-    print("[INFO] Gereksinimleri yukleyin ve tekrar calistirin.")
-end
+-- [7. INITIALIZATION & SYSTEM EXECUTION]
+task.spawn(function()
+    pcall(BuildEngineUI)
+    pcall(StartStreamMonitoring)
+    print("LEA MOD: ULTRA AI ENGINE SUCCESSFULLY LOADED.")
+end)

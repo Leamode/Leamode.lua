@@ -1,19 +1,19 @@
 -- ============================================
--- STEAL BRAINROT DUEL SCRIPT (TAM ENTEGRE)
+-- PART 1: SERVİSLER, DEĞİŞKENLER, MENÜ, HEDEF SEÇME
 -- ============================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
-local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 local Camera = Workspace.CurrentCamera
 
 -- ============================================
--- ANA DEĞİŞKENLER
+-- ANA DEĞİŞKENLER (VARSAYILAN: KAPALI)
 -- ============================================
 local FlyActive = false
 local FlySpeed = 35
@@ -23,12 +23,168 @@ local CubeActive = false
 local GhostModeActive = false
 local TargetPlayer = nil
 local CubeList = {}
-local ConnectionList = {}
+local ScreenGui = nil
+local Buttons = {}
+
+-- ============================================
+-- ÇOK KÜÇÜK MOBİL MENÜ OLUŞTURMA (SAĞ ÜST KÖŞE)
+-- ============================================
+local function CreateMobileMenu()
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
+    
+    ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "BrainrotMenu_Mobile"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    
+    local ButtonSize = UDim2.new(0, 28, 0, 28)
+    local Spacing = 2
+    
+    local ButtonData = {
+        {Name = "Ghost", Text = "G", Color = Color3.fromRGB(255, 50, 50), Toggle = "GhostModeActive"},
+        {Name = "Fly", Text = "F", Color = Color3.fromRGB(50, 150, 255), Toggle = "FlyActive"},
+        {Name = "Bad", Text = "B", Color = Color3.fromRGB(255, 150, 50), Toggle = "AutoBadActive"},
+        {Name = "Medusa", Text = "M", Color = Color3.fromRGB(150, 50, 255), Toggle = "MedusaActive"},
+        {Name = "Cube", Text = "C", Color = Color3.fromRGB(50, 255, 150), Toggle = "CubeActive"},
+        {Name = "Down", Text = "↓", Color = Color3.fromRGB(200, 200, 50), Toggle = nil},
+        {Name = "TP", Text = "N", Color = Color3.fromRGB(255, 100, 200), Toggle = nil},
+        {Name = "Trg", Text = "🎯", Color = Color3.fromRGB(200, 50, 50), Toggle = nil},
+    }
+    
+    for i, Data in ipairs(ButtonData) do
+        local Button = Instance.new("TextButton")
+        Button.Name = Data.Name
+        Button.Size = ButtonSize
+        Button.Position = UDim2.new(1, -32, 0, 2 + (i - 1) * (28 + Spacing))
+        Button.AnchorPoint = Vector2.new(1, 0)
+        Button.BackgroundColor3 = Data.Color
+        Button.BackgroundTransparency = 0.3
+        Button.BorderSizePixel = 0
+        Button.Text = Data.Text
+        Button.TextSize = 10
+        Button.Font = Enum.Font.GothamBold
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.ZIndex = 10
+        Button.AutoButtonColor = false
+        
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 4)
+        Corner.Parent = Button
+        
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Color = Color3.fromRGB(255, 255, 255)
+        Stroke.Transparency = 0.7
+        Stroke.Thickness = 1
+        Stroke.Parent = Button
+        
+        Button.Parent = ScreenGui
+        
+        Button.MouseButton1Click:Connect(function()
+            if Data.Toggle then
+                if Data.Toggle == "GhostModeActive" then
+                    GhostModeActive = not GhostModeActive
+                    Button.BackgroundTransparency = GhostModeActive and 0 or 0.3
+                    if GhostModeActive then ActivateGhostMode() end
+                elseif Data.Toggle == "FlyActive" then
+                    FlyActive = not FlyActive
+                    Button.BackgroundTransparency = FlyActive and 0 or 0.3
+                    if not FlyActive then StopFly() end
+                elseif Data.Toggle == "AutoBadActive" then
+                    AutoBadActive = not AutoBadActive
+                    Button.BackgroundTransparency = AutoBadActive and 0 or 0.3
+                    if AutoBadActive then spawn(AutoBadLoop) else FlyActive = false StopFly() end
+                elseif Data.Toggle == "MedusaActive" then
+                    MedusaActive = not MedusaActive
+                    Button.BackgroundTransparency = MedusaActive and 0 or 0.3
+                    if MedusaActive then spawn(MedusaLoop) end
+                elseif Data.Toggle == "CubeActive" then
+                    CubeActive = not CubeActive
+                    Button.BackgroundTransparency = CubeActive and 0 or 0.3
+                    if CubeActive then spawn(CubeMovementLoop) end
+                end
+            else
+                if Data.Name == "Down" then InstantGround()
+                elseif Data.Name == "TP" then TeleportToTarget()
+                elseif Data.Name == "Trg" then SelectTargetMode() end
+            end
+        end)
+        
+        Buttons[Data.Name] = Button
+    end
+    
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Name = "Minimize"
+    MinimizeButton.Size = UDim2.new(0, 28, 0, 14)
+    MinimizeButton.Position = UDim2.new(1, -32, 0, 0)
+    MinimizeButton.AnchorPoint = Vector2.new(1, 0)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    MinimizeButton.BackgroundTransparency = 0.3
+    MinimizeButton.BorderSizePixel = 0
+    MinimizeButton.Text = "—"
+    MinimizeButton.TextSize = 8
+    MinimizeButton.Font = Enum.Font.GothamBold
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.ZIndex = 10
+    
+    local Corner2 = Instance.new("UICorner")
+    Corner2.CornerRadius = UDim.new(0, 4)
+    Corner2.Parent = MinimizeButton
+    
+    MinimizeButton.Parent = ScreenGui
+    
+    local ButtonsVisible = true
+    MinimizeButton.MouseButton1Click:Connect(function()
+        ButtonsVisible = not ButtonsVisible
+        for _, Btn in pairs(Buttons) do Btn.Visible = ButtonsVisible end
+        MinimizeButton.Text = ButtonsVisible and "—" or "+"
+    end)
+end
+
+-- ============================================
+-- HEDEF SEÇME MODU
+-- ============================================
+local function SelectTargetMode()
+    local Mouse = LocalPlayer:GetMouse()
+    StarterGui:SetCore("SendNotification", {
+        Title = "Hedef Seç",
+        Text = "Rakibe tıkla!",
+        Duration = 3,
+    })
+    
+    local Connection
+    Connection = Mouse.Button1Down:Connect(function()
+        local Target = Mouse.Target
+        if Target then
+            local Character = Target.Parent
+            if Character then
+                local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+                if Humanoid then
+                    TargetPlayer = Players:GetPlayerFromCharacter(Character)
+                    if TargetPlayer then
+                        StarterGui:SetCore("SendNotification", {
+                            Title = "Hedef",
+                            Text = TargetPlayer.Name,
+                            Duration = 2,
+                        })
+                    end
+                end
+            end
+        end
+        Connection:Disconnect()
+    end)
+end
+
+print("PART 1 Yüklendi - Part 2'yi çalıştırın")-- ============================================
+-- PART 2: TÜM SİSTEMLER, BYPASS, DÖNGÜLER
+-- ============================================
 
 -- ============================================
 -- GHOST MODE (ÖLÜ GÖZÜKÜP HİTBOX KORUMA)
 -- ============================================
-local function ActivateGhostMode()
+function ActivateGhostMode()
     GhostModeActive = true
     local Character = LocalPlayer.Character
     if not Character then return end
@@ -36,12 +192,10 @@ local function ActivateGhostMode()
     local RootPart = Character:FindFirstChild("HumanoidRootPart")
     if not Humanoid or not RootPart then return end
     
-    -- Анимация смерти сохраняется, но физическое тело остаётся активным
-    Humanoid.Health = 0 -- Отображение смерти
-    Humanoid.BreakJointsOnDeath = false -- Предотвращение разрушения соединений
-    RootPart.Anchored = false -- Сохранение подвижности хитбокса
+    Humanoid.BreakJointsOnDeath = false
+    Humanoid.Health = 0
+    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
     
-    -- Создание невидимого дубликата хитбокса для обхода обнаружения
     local GhostPart = Instance.new("Part")
     GhostPart.Name = "GhostHitbox"
     GhostPart.Size = Vector3.new(2, 2, 1)
@@ -49,42 +203,36 @@ local function ActivateGhostMode()
     GhostPart.CanCollide = true
     GhostPart.Anchored = false
     GhostPart.Parent = Character
-    GhostPart.CFrame = RootPart.CFrame
     
-    -- Привязка дубликата к корневой части
     local Weld = Instance.new("WeldConstraint")
     Weld.Part0 = GhostPart
     Weld.Part1 = RootPart
     Weld.Parent = GhostPart
     
-    -- Цикл поддержания состояния смерти
+    RootPart.Anchored = false
+    
     spawn(function()
         while GhostModeActive and Character and Character.Parent do
-            if Humanoid.Health > 0 then
-                Humanoid.Health = 0
-            end
-            Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            if Humanoid and Humanoid.Health > 0 then Humanoid.Health = 0 end
+            if Humanoid then Humanoid:ChangeState(Enum.HumanoidStateType.Physics) end
             RunService.Heartbeat:Wait()
         end
     end)
 end
 
 -- ============================================
--- NEW BUTTON (IŞINLANMA SALDIRISI - 34 HIZ)
+-- NEW BUTTON (IŞINLANMA - 34 HIZ)
 -- ============================================
-local function TeleportToTarget()
+function TeleportToTarget()
     local Character = LocalPlayer.Character
     if not Character then return end
     local RootPart = Character:FindFirstChild("HumanoidRootPart")
     if not RootPart then return end
     
     if TargetPlayer and TargetPlayer.Character then
-        local TargetRoot = TargetPlayer.Character:FindFirstChild("HumanoidRootPart")
         local TargetHead = TargetPlayer.Character:FindFirstChild("Head")
-        if TargetRoot and TargetHead then
-            -- Мгновенное перемещение к голове цели со скоростью 34 (в 2 раза быстрее ходьбы)
-            local TeleportCFrame = TargetHead.CFrame * CFrame.new(0, 0, -2)
-            RootPart.CFrame = TeleportCFrame
+        if TargetHead then
+            RootPart.CFrame = TargetHead.CFrame * CFrame.new(0, 0, -2)
             RootPart.AssemblyLinearVelocity = (TargetHead.Position - RootPart.Position).Unit * 34
         end
     end
@@ -109,14 +257,20 @@ local function CreateCube()
     Cube.Parent = Workspace
     table.insert(CubeList, Cube)
     
-    -- Удаление куба при неподвижности игрока
     spawn(function()
         local LastPosition = RootPart.Position
+        local StillCount = 0
         while Cube and Cube.Parent do
             if (RootPart.Position - LastPosition).Magnitude < 0.1 then
-                Cube:Destroy()
-                table.remove(CubeList, table.find(CubeList, Cube))
-                break
+                StillCount = StillCount + 1
+                if StillCount > 5 then
+                    Cube:Destroy()
+                    local idx = table.find(CubeList, Cube)
+                    if idx then table.remove(CubeList, idx) end
+                    break
+                end
+            else
+                StillCount = 0
             end
             LastPosition = RootPart.Position
             RunService.Heartbeat:Wait()
@@ -124,46 +278,51 @@ local function CreateCube()
     end)
 end
 
-local function CubeMovementLoop()
+function CubeMovementLoop()
     while CubeActive do
         local Character = LocalPlayer.Character
         if Character then
             local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-            if Humanoid and Humanoid.MoveDirection.Magnitude > 0 then
-                CreateCube()
-            elseif Humanoid and Humanoid.Jump then
-                CreateCube()
+            local RootPart = Character:FindFirstChild("HumanoidRootPart")
+            if RootPart then
+                if (Humanoid and Humanoid.MoveDirection.Magnitude > 0) or 
+                   (Humanoid and Humanoid.Jump) or
+                   RootPart.AssemblyLinearVelocity.Y > 2 then
+                    CreateCube()
+                end
             end
         end
-        wait(0.1)
+        task.wait(0.05)
     end
 end
 
 -- ============================================
--- YERE İN (ANINDA YERE İNİŞ)
+-- YERE İN (ANINDA)
 -- ============================================
-local function InstantGround()
+function InstantGround()
     local Character = LocalPlayer.Character
     if not Character then return end
     local RootPart = Character:FindFirstChild("HumanoidRootPart")
     if not RootPart then return end
     
-    -- Проверка нахождения в воздухе
     local RaycastParams = RaycastParams.new()
     RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     RaycastParams.FilterDescendantsInstances = {Character}
     
     local RayResult = Workspace:Raycast(RootPart.Position, Vector3.new(0, -500, 0), RaycastParams)
     if RayResult then
-        RootPart.CFrame = CFrame.new(RootPart.Position.X, RayResult.Position.Y + 3, RootPart.Position.Z)
+        local TargetPos = RayResult.Position + Vector3.new(0, 3, 0)
+        local Tween = TweenService:Create(RootPart, TweenInfo.new(0.05, Enum.EasingStyle.Quad), {CFrame = CFrame.new(TargetPos)})
+        Tween:Play()
+        Tween.Completed:Wait()
         RootPart.AssemblyLinearVelocity = Vector3.zero
     end
 end
 
 -- ============================================
--- FLY SYSTEM (SÜZÜLME / UÇMA)
+-- FLY SYSTEM
 -- ============================================
-local function StopFly()
+function StopFly()
     FlyActive = false
     local Character = LocalPlayer.Character
     if Character then
@@ -173,13 +332,11 @@ local function StopFly()
             Humanoid.PlatformStand = false
             Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
-        if RootPart then
-            RootPart.AssemblyLinearVelocity = Vector3.zero
-        end
+        if RootPart then RootPart.AssemblyLinearVelocity = Vector3.zero end
     end
 end
 
-local function UpdateFly()
+function UpdateFly()
     local Character = LocalPlayer.Character
     if not Character then return end
     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
@@ -201,18 +358,17 @@ local function UpdateFly()
 end
 
 -- ============================================
--- AUTO BAD (OTOMATİK BAD ALIP TAKİP VE VURMA)
+-- AUTO BAD (UÇARAK TAKİP VE SÜREKLİ VURMA)
 -- ============================================
-local function AutoBadLoop()
+function AutoBadLoop()
     while AutoBadActive do
         local Character = LocalPlayer.Character
-        if not Character then wait(0.1) continue end
+        if not Character then task.wait(0.1) continue end
         
-        -- Автоматическое получение оружия "Bad"
         local Backpack = LocalPlayer.Backpack
         local BadTool = Backpack:FindFirstChild("Bad") or Character:FindFirstChild("Bad")
+        
         if not BadTool then
-            -- Попытка найти Bad в инвентаре
             for _, Tool in ipairs(Backpack:GetChildren()) do
                 if Tool:IsA("Tool") and Tool.Name == "Bad" then
                     BadTool = Tool
@@ -221,11 +377,11 @@ local function AutoBadLoop()
             end
         end
         
-        if BadTool and not BadTool.Parent:FindFirstChildOfClass("Humanoid") then
+        if BadTool and BadTool.Parent ~= Character then
             BadTool.Parent = Character
+            task.wait(0.1)
         end
         
-        -- Активация полёта для преследования цели
         FlyActive = true
         
         if TargetPlayer and TargetPlayer.Character then
@@ -235,15 +391,18 @@ local function AutoBadLoop()
             if TargetRoot and TargetHumanoid and TargetHumanoid.Health > 0 then
                 local RootPart = Character:FindFirstChild("HumanoidRootPart")
                 if RootPart then
-                    -- Постоянное направление к цели
                     local Direction = (TargetRoot.Position - RootPart.Position).Unit
                     RootPart.AssemblyLinearVelocity = Direction * FlySpeed
                     
-                    -- Автоматическая атака при сближении
                     if (TargetRoot.Position - RootPart.Position).Magnitude < 5 then
                         if BadTool and BadTool:FindFirstChild("Handle") then
-                            firetouchinterest(BadTool.Handle, TargetRoot, 0)
-                            firetouchinterest(BadTool.Handle, TargetRoot, 1)
+                            for _ = 1, 5 do
+                                pcall(function()
+                                    firetouchinterest(BadTool.Handle, TargetRoot, 0)
+                                    firetouchinterest(BadTool.Handle, TargetRoot, 1)
+                                end)
+                                task.wait(0.05)
+                            end
                         end
                     end
                 end
@@ -252,25 +411,25 @@ local function AutoBadLoop()
         
         RunService.Heartbeat:Wait()
     end
+    FlyActive = false
+    StopFly()
 end
 
 -- ============================================
--- MEDUSA MODU (1 METRE YAKLAŞINCA OTOMATİK)
+-- MEDUSA MODU (1 METRE OTOMATİK)
 -- ============================================
-local function MedusaLoop()
+function MedusaLoop()
     while MedusaActive do
         local Character = LocalPlayer.Character
-        if not Character then wait(0.1) continue end
+        if not Character then task.wait(0.1) continue end
         
         local RootPart = Character:FindFirstChild("HumanoidRootPart")
-        if not RootPart then wait(0.1) continue end
+        if not RootPart then task.wait(0.1) continue end
         
-        -- Проверка всех игроков в радиусе 1 метра
         for _, Player in ipairs(Players:GetPlayers()) do
             if Player ~= LocalPlayer and Player.Character then
                 local TargetRoot = Player.Character:FindFirstChild("HumanoidRootPart")
                 if TargetRoot and (TargetRoot.Position - RootPart.Position).Magnitude <= 1 then
-                    -- Автоматическое получение Medusa
                     local Backpack = LocalPlayer.Backpack
                     local MedusaTool = Backpack:FindFirstChild("Medusa") or Character:FindFirstChild("Medusa")
                     
@@ -285,13 +444,14 @@ local function MedusaLoop()
                     
                     if MedusaTool then
                         MedusaTool.Parent = Character
-                        wait(0.05)
-                        -- Активация способности Medusa
+                        task.wait(0.05)
                         if MedusaTool:FindFirstChild("Handle") then
-                            firetouchinterest(MedusaTool.Handle, TargetRoot, 0)
-                            firetouchinterest(MedusaTool.Handle, TargetRoot, 1)
-                            wait(0.1)
-                            MedusaTool:Activate()
+                            pcall(function()
+                                firetouchinterest(MedusaTool.Handle, TargetRoot, 0)
+                                firetouchinterest(MedusaTool.Handle, TargetRoot, 1)
+                            end)
+                            task.wait(0.05)
+                            pcall(function() MedusaTool:Activate() end)
                         end
                     end
                 end
@@ -303,129 +463,73 @@ local function MedusaLoop()
 end
 
 -- ============================================
--- ANTICHEAT BYPASS (HATA VERDİRME SİSTEMİ)
+-- ANTICHEAT BYPASS (SESSİZ)
 -- ============================================
 local function AnticheatBypass()
-    -- Перегрузка детектора античита путём спама легитимными пакетами
-    spawn(function()
-        while true do
-            pcall(function()
-                -- Отправка поддельных данных о положении
-                local Character = LocalPlayer.Character
-                if Character and Character:FindFirstChild("HumanoidRootPart") then
-                    local RootPart = Character:FindFirstChild("HumanoidRootPart")
-                    -- Искусственное создание ошибки валидации позиции
-                    for i = 1, 50 do
-                        RootPart.Velocity = Vector3.new(math.random(-1000, 1000), math.random(-1000, 1000), math.random(-1000, 1000))
-                        RunService.Heartbeat:Wait()
-                    end
-                end
-            end)
-            wait(0.5)
-        end
-    end)
-    
-    -- Перехват удаления персонажа сервером
     LocalPlayer.CharacterAdded:Connect(function(Character)
         local Humanoid = Character:WaitForChild("Humanoid")
+        
         Humanoid.Died:Connect(function()
-            -- Предотвращение респавна
-            wait(0.1)
             if GhostModeActive then
+                task.wait(0.05)
                 ActivateGhostMode()
             end
         end)
+        
+        Humanoid.StateChanged:Connect(function(OldState, NewState)
+            if NewState == Enum.HumanoidStateType.Dead then
+                if GhostModeActive then
+                    task.wait(0.05)
+                    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+                end
+            end
+        end)
+    end)
+    
+    spawn(function()
+        while true do
+            pcall(function()
+                local Character = LocalPlayer.Character
+                if Character then
+                    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+                    if Humanoid then
+                        Humanoid:Move(Vector3.new(0.001, 0, 0.001), false)
+                        task.wait(0.1)
+                        Humanoid:Move(Vector3.new(-0.001, 0, -0.001), false)
+                    end
+                end
+            end)
+            task.wait(30)
+        end
     end)
 end
 
 -- ============================================
--- KONTROL TUŞLARI
+-- BAŞLATMA
 -- ============================================
-UserInputService.InputBegan:Connect(function(Input, Processed)
-    if Processed then return end
-    
-    -- Yere İn: X tuşu
-    if Input.KeyCode == Enum.KeyCode.X then
-        InstantGround()
-    end
-    
-    -- Ghost Mode: G tuşu
-    if Input.KeyCode == Enum.KeyCode.G then
-        GhostModeActive = not GhostModeActive
-        if GhostModeActive then
-            ActivateGhostMode()
-        end
-    end
-    
-    -- New Button: N tuşu (ışınlanma)
-    if Input.KeyCode == Enum.KeyCode.N then
-        TeleportToTarget()
-    end
-    
-    -- Fly Toggle: F tuşu
-    if Input.KeyCode == Enum.KeyCode.F then
-        FlyActive = not FlyActive
-        if not FlyActive then
-            StopFly()
-        end
-    end
-    
-    -- Cube System: C tuşu
-    if Input.KeyCode == Enum.KeyCode.C then
-        CubeActive = not CubeActive
-        if CubeActive then
-            CubeMovementLoop()
-        end
-    end
-    
-    -- Auto Bad: B tuşu
-    if Input.KeyCode == Enum.KeyCode.B then
-        AutoBadActive = not AutoBadActive
-        if AutoBadActive then
-            AutoBadLoop()
-        else
-            FlyActive = false
-            StopFly()
-        end
-    end
-    
-    -- Medusa Mode: M tuşu
-    if Input.KeyCode == Enum.KeyCode.M then
-        MedusaActive = not MedusaActive
-        if MedusaActive then
-            MedusaLoop()
-        end
-    end
-    
-    -- Hedef seçimi: Mouse sol tık
-    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local Target = Mouse.Target
-        if Target then
-            local TargetCharacter = Target.Parent
-            if TargetCharacter and TargetCharacter:FindFirstChildOfClass("Humanoid") then
-                TargetPlayer = Players:GetPlayerFromCharacter(TargetCharacter)
-            end
-        end
-    end
-end)
-
--- ============================================
--- OTOMATİK BAŞLATMA VE DÖNGÜLER
--- ============================================
+FlyActive = false
+CreateMobileMenu()
 AnticheatBypass()
-
--- Fly güncelleme döngüsü
+  _
 RunService.Heartbeat:Connect(function()
-    if FlyActive then
-        UpdateFly()
+    if FlyActive then UpdateFly() end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    CreateMobileMenu()
+    if GhostModeActive then
+        task.wait(0.1)
+        ActivateGhostMode()
     end
 end)
 
--- VirtualUser bağlantısı (anti-AFK)
 LocalPlayer.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
-    wait(1)
-    VirtualUser:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftShift, false, game)
+    end)
 end)
 
-print("Steal Brainrot Duel Script Yüklendi - LeftEr4Dead")
+print("PART 2 Yüklendi - Brainrot Duel v2.0 Tamamlandı | Fly: KAPALI")1

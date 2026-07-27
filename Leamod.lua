@@ -1,537 +1,329 @@
 --[[
-    LEA TOOLS v2 - Universal Player Scanner & Private Server Joiner
-    Tüm oyunlarda çalışır. Oyuncu taraması + Private server bypass.
-    Permission hatası alınırsa otomatik bypass dener.
-    Kullanım: KRNL / Synapse X / Script-Ware / Fluxus
+    STEAL A BRIANROT - ULTIMATE ANTI RESET v3.0
+    Otomatik baslar, menu yok, sessiz calisir.
+    7 katmanli koruma + full bypass.
+    Hicbir resetleme yontemi karakteri sifirlayamaz.
 --]]
 
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local PlaceId = game.PlaceId
-local JobId = game.JobId
+local CoreGui = game:GetService("CoreGui")
 
--- // GLOBAL VERI DEPOSU
-local ScannedPlayers = {}
-local FoundServers = {}
-local ScanRunning = false
-local CurrentScanPage = 1
-
--- // SCREEN GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LEA_UNIVERSAL_SCANNER"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-if syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-end
-
--- // ANA PENCERE
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 500, 0, 460)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -230)
-MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-
-local UICorner = Instance.new("UICorner", MainFrame)
-UICorner.CornerRadius = UDim.new(0, 8)
-
--- UST BAR
-local TopBar = Instance.new("Frame", MainFrame)
-TopBar.Size = UDim2.new(1, 0, 0, 34)
-TopBar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-TopBar.BorderSizePixel = 0
-
-local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(1, -50, 1, 0)
-Title.Position = UDim2.new(0, 12, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "LEA TOOLS v2 - Universal Scanner"
-Title.TextColor3 = Color3.fromRGB(0, 255, 150)
-Title.Font = Enum.Font.Code
-Title.TextSize = 13
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local CloseBtn = Instance.new("TextButton", TopBar)
-CloseBtn.Size = UDim2.new(0, 28, 0, 28)
-CloseBtn.Position = UDim2.new(1, -32, 0, 3)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.Code
-CloseBtn.TextSize = 13
-CloseBtn.BorderSizePixel = 0
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
--- INPUT BOLUMU
-local InputSection = Instance.new("Frame", MainFrame)
-InputSection.Size = UDim2.new(1, 0, 0, 120)
-InputSection.Position = UDim2.new(0, 0, 0, 40)
-InputSection.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
-InputSection.BorderSizePixel = 0
-
-local InputLabel = Instance.new("TextLabel", InputSection)
-InputLabel.Size = UDim2.new(1, 0, 0, 20)
-InputLabel.Position = UDim2.new(0, 12, 0, 8)
-InputLabel.BackgroundTransparency = 1
-InputLabel.Text = "🎯 OYUNCU ISMI VEYA USERID GIRIN:"
-InputLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-InputLabel.Font = Enum.Font.Code
-InputLabel.TextSize = 11
-InputLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local UsernameInput = Instance.new("TextBox", InputSection)
-UsernameInput.Size = UDim2.new(1, -24, 0, 30)
-UsernameInput.Position = UDim2.new(0, 12, 0, 32)
-UsernameInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-UsernameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-UsernameInput.Font = Enum.Font.Code
-UsernameInput.TextSize = 12
-UsernameInput.PlaceholderText = "Kullanici adi veya UserID..."
-UsernameInput.BorderSizePixel = 0
-
--- BUTON SATIRI 1
-local BtnRow1 = Instance.new("Frame", InputSection)
-BtnRow1.Size = UDim2.new(1, -24, 0, 30)
-BtnRow1.Position = UDim2.new(0, 12, 0, 68)
-BtnRow1.BackgroundTransparency = 1
-BtnRow1.BorderSizePixel = 0
-
-local TeleportBtn = Instance.new("TextButton", BtnRow1)
-TeleportBtn.Size = UDim2.new(0.32, 0, 1, 0)
-TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 220)
-TeleportBtn.Text = "🎯 TELEPORT"
-TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleportBtn.Font = Enum.Font.Code
-TeleportBtn.TextSize = 10
-TeleportBtn.BorderSizePixel = 0
-
-local ScanBtn = Instance.new("TextButton", BtnRow1)
-ScanBtn.Size = UDim2.new(0.32, 0, 1, 0)
-ScanBtn.Position = UDim2.new(0.34, 0, 0, 0)
-ScanBtn.BackgroundColor3 = Color3.fromRGB(180, 120, 0)
-ScanBtn.Text = "🔍 SERVER TARA"
-ScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ScanBtn.Font = Enum.Font.Code
-ScanBtn.TextSize = 10
-ScanBtn.BorderSizePixel = 0
-
-local ScanAllBtn = Instance.new("TextButton", BtnRow1)
-ScanAllBtn.Size = UDim2.new(0.32, 0, 1, 0)
-ScanAllBtn.Position = UDim2.new(0.68, 0, 0, 0)
-ScanAllBtn.BackgroundColor3 = Color3.fromRGB(160, 0, 200)
-ScanAllBtn.Text = "🌐 TUM SUNUCULARI TARA"
-ScanAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ScanAllBtn.Font = Enum.Font.Code
-ScanAllBtn.TextSize = 8
-ScanAllBtn.BorderSizePixel = 0
-
--- DURUM LABEL
-local StatusLabel = Instance.new("TextLabel", InputSection)
-StatusLabel.Size = UDim2.new(1, -24, 0, 16)
-StatusLabel.Position = UDim2.new(0, 12, 0, 100)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Hazir. Isim girip tarama baslatabilirsiniz."
-StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-StatusLabel.Font = Enum.Font.Code
-StatusLabel.TextSize = 9
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- SERVER LISTESI
-local ServerListFrame = Instance.new("ScrollingFrame", MainFrame)
-ServerListFrame.Size = UDim2.new(1, 0, 1, -170)
-ServerListFrame.Position = UDim2.new(0, 0, 0, 170)
-ServerListFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-ServerListFrame.BorderSizePixel = 0
-ServerListFrame.ScrollBarThickness = 5
-ServerListFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 150)
-ServerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-local UIListLayout = Instance.new("UIListLayout", ServerListFrame)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 3)
-
-local ServerCount = Instance.new("TextLabel", ServerListFrame)
-ServerCount.Size = UDim2.new(1, 0, 0, 20)
-ServerCount.BackgroundTransparency = 1
-ServerCount.Text = "Bulunan server: 0"
-ServerCount.TextColor3 = Color3.fromRGB(200, 200, 200)
-ServerCount.Font = Enum.Font.Code
-ServerCount.TextSize = 10
-ServerCount.TextXAlignment = Enum.TextXAlignment.Center
-
--- // FONKSIYONLAR
-
-local function clearServerList()
-    for _, child in ipairs(ServerListFrame:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
-    ServerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    ServerCount.Text = "Bulunan server: 0"
-end
-
-local function addServerToList(serverData)
-    local ServerFrame = Instance.new("Frame", ServerListFrame)
-    ServerFrame.Size = UDim2.new(1, -6, 0, 50)
-    ServerFrame.Position = UDim2.new(0, 3, 0, 0)
-    ServerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    ServerFrame.BorderSizePixel = 0
-    ServerFrame.LayoutOrder = serverData.index or #FoundServers + 1
-
-    local ServerNameLabel = Instance.new("TextLabel", ServerFrame)
-    ServerNameLabel.Size = UDim2.new(0.6, 0, 0, 16)
-    ServerNameLabel.Position = UDim2.new(0, 6, 0, 4)
-    ServerNameLabel.BackgroundTransparency = 1
-    ServerNameLabel.Text = serverData.name or "Isimsiz Sunucu"
-    ServerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ServerNameLabel.Font = Enum.Font.Code
-    ServerNameLabel.TextSize = 9
-    ServerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local ServerOwnerLabel = Instance.new("TextLabel", ServerFrame)
-    ServerOwnerLabel.Size = UDim2.new(0.6, 0, 0, 14)
-    ServerOwnerLabel.Position = UDim2.new(0, 6, 0, 20)
-    ServerOwnerLabel.BackgroundTransparency = 1
-    ServerOwnerLabel.Text = "Sahip: " .. (serverData.ownerName or "Bilinmiyor")
-    ServerOwnerLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    ServerOwnerLabel.Font = Enum.Font.Code
-    ServerOwnerLabel.TextSize = 8
-    ServerOwnerLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local ServerIdLabel = Instance.new("TextLabel", ServerFrame)
-    ServerIdLabel.Size = UDim2.new(0.6, 0, 0, 14)
-    ServerIdLabel.Position = UDim2.new(0, 6, 0, 34)
-    ServerIdLabel.BackgroundTransparency = 1
-    ServerIdLabel.Text = "ID: " .. (serverData.id or "???")
-    ServerIdLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
-    ServerIdLabel.Font = Enum.Font.Code
-    ServerIdLabel.TextSize = 8
-    ServerIdLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local JoinButton = Instance.new("TextButton", ServerFrame)
-    JoinButton.Size = UDim2.new(0.35, 0, 0, 26)
-    JoinButton.Position = UDim2.new(0.63, 0, 0, 12)
-    JoinButton.BackgroundColor3 = Color3.fromRGB(0, 200, 80)
-    JoinButton.Text = "KATIL"
-    JoinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    JoinButton.Font = Enum.Font.Code
-    JoinButton.TextSize = 10
-    JoinButton.BorderSizePixel = 0
-
-    local serverId = serverData.id
-    local serverLink = serverData.link
-
-    JoinButton.MouseButton1Click:Connect(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "LEA Scanner",
-            Text = "Private servera katiliyor: " .. serverId,
-            Duration = 3
-        })
-
-        -- BIRINCIL YONTEM: TeleportToPrivateServer
-        local success, err = pcall(function()
-            TeleportService:TeleportToPrivateServer(PlaceId, serverId)
+-- // KORUMA KATMANI 1: Karakter koruma kilidi
+local function lockCharacter(character)
+    if not character then return end
+    
+    -- Humanoid korumasi
+    local hum = character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.BreakJointsOnDeath = false
+        hum.RequiresNeck = false
+        hum.AutoRotate = false
+        
+        -- Olum engelleme
+        hum.Died:Connect(function()
+            hum.BreakJointsOnDeath = false
+            task.wait(0.01)
+            -- Karakteri zorla geri yukle
+            if character.Parent ~= workspace then
+                character.Parent = workspace
+            end
         end)
-
-        -- IKINCI YONTEM: TeleportToPlaceInstance (Link ile bypass)
-        if not success then
-            pcall(function()
-                if serverLink and serverLink ~= "" then
-                    TeleportService:TeleportToPlaceInstance(PlaceId, serverLink)
-                else
-                    TeleportService:TeleportToPlaceInstance(PlaceId, serverId)
+        
+        -- Health sifirlanmasini engelle
+        hum:GetPropertyChangedSignal("Health"):Connect(function()
+            if hum.Health <= 0 then
+                hum.Health = hum.MaxHealth
+            end
+        end)
+        
+        -- WalkSpeed/ JumpPower resetleme engelle
+        hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+            if hum.WalkSpeed < 16 then
+                hum.WalkSpeed = 16
+            end
+        end)
+        hum:GetPropertyChangedSignal("JumpPower"):Connect(function()
+            if hum.JumpPower < 50 then
+                hum.JumpPower = 50
+            end
+        end)
+    end
+    
+    -- RootPart korumasi
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        rootPart:GetPropertyChangedSignal("Anchored"):Connect(function()
+            rootPart.Anchored = false
+        end)
+        rootPart:GetPropertyChangedSignal("CanCollide"):Connect(function()
+            rootPart.CanCollide = true
+        end)
+    end
+    
+    -- Tum parcalari koru
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part:GetPropertyChangedSignal("Anchored"):Connect(function()
+                part.Anchored = false
+            end)
+            part:GetPropertyChangedSignal("CanCollide"):Connect(function()
+                part.CanCollide = true
+            end)
+            part:GetPropertyChangedSignal("Transparency"):Connect(function()
+                if part.Transparency > 0.5 then
+                    part.Transparency = 0
                 end
             end)
-        end
-
-        -- UCUNCU YONTEM: Direkt link uzerinden katilma (HTTP bypass)
-        if not success then
-            pcall(function()
-                local joinUrl = "https://www.roblox.com/games/" .. PlaceId .. "?privateServerLinkCode=" .. serverId
-                game:HttpGet(joinUrl)
-                wait(1)
-                TeleportService:TeleportToPrivateServer(PlaceId, serverId)
+            part:GetPropertyChangedSignal("Locked"):Connect(function()
+                part.Locked = false
             end)
         end
-    end)
-
-    FoundServers[#FoundServers + 1] = serverData
-    ServerCount.Text = "Bulunan server: " .. #FoundServers
-    ServerListFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+    end
 end
 
--- // UNIVERSAL PLAYER TARAMA (Tum oyun genelinde)
-local function scanAllServersForPlayer(userId, username)
-    clearServerList()
-    FoundServers = {}
-    StatusLabel.Text = "Tum serverlar taranıyor... Bu islem biraz surebilir."
-
-    local cursor = ""
-    local scannedCount = 0
-    local maxScans = 50
-    local foundServersTemp = {}
-
-    for i = 1, maxScans do
-        local success, data = pcall(function()
-            local url = "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&cursor=" .. cursor
-            return HttpService:JSONDecode(game:HttpGet(url))
-        end)
-
-        if not success or not data or not data.data then
-            break
-        end
-
-        for _, server in ipairs(data.data) do
-            scannedCount = scannedCount + 1
-            -- Her serverda oyuncu ID'sini kontrol et
-            if server.playerTokens and #server.playerTokens > 0 then
-                for _, token in ipairs(server.playerTokens) do
-                    -- Token icinden userId cikarma (basitlestirilmis)
-                    if string.find(token, tostring(userId)) then
-                        if server.id ~= JobId then
-                            table.insert(foundServersTemp, {
-                                id = server.id,
-                                name = "Server: " .. server.id,
-                                ownerName = username,
-                                link = server.id
-                            })
-                            break
-                        end
-                    end
-                end
-            end
-        end
-
-        if data.nextPageCursor then
-            cursor = data.nextPageCursor
-        else
-            break
-        end
-
-        wait(0.2)
+-- // KORUMA KATMANI 2: Karakter yukleme/zorla tutma
+local function forceCharacter()
+    local char = LocalPlayer.Character
+    if not char or not char.Parent then
+        -- Karakter yoksa yeniden yukle
+        LocalPlayer.CharacterAdded:Wait()
+        char = LocalPlayer.Character
     end
-
-    -- Eger public serverlarda bulunamazsa private serverlari tara
-    if #foundServersTemp == 0 then
-        StatusLabel.Text = "Public serverda bulunamadi. Private serverlar taranıyor..."
-
-        local success, privateData = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(
-                "https://games.roblox.com/v1/games/" .. PlaceId .. "/private-servers?userId=" .. userId .. "&sortOrder=Desc&limit=100"
-            ))
-        end)
-
-        if success and privateData and privateData.data then
-            for _, server in ipairs(privateData.data) do
-                if server.vipServerId then
-                    table.insert(foundServersTemp, {
-                        id = server.vipServerId,
-                        name = server.name or "Private Server",
-                        ownerName = server.owner and server.owner.username or username,
-                        link = server.vipServerId
-                    })
-                end
-            end
-        end
-    end
-
-    -- Bypass: Permission hatasi alinirsa direkt link denemesi
-    if #foundServersTemp == 0 then
-        StatusLabel.Text = "Permission hatasi! Bypass deneniyor..."
-
-        -- Alternatif API endpointleri ile dene
-        local alternativeEndpoints = {
-            "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/VIP?userId=" .. userId,
-            "https://games.roblox.com/v1/games/" .. PlaceId .. "/private-servers?creatorId=" .. userId,
-            "https://games.roblox.com/v2/games/" .. PlaceId .. "/private-servers?userId=" .. userId,
-        }
-
-        for _, endpoint in ipairs(alternativeEndpoints) do
-            local altSuccess, altData = pcall(function()
-                return HttpService:JSONDecode(game:HttpGet(endpoint))
-            end)
-
-            if altSuccess and altData and altData.data then
-                for _, server in ipairs(altData.data) do
-                    local serverId = server.vipServerId or server.id
-                    if serverId then
-                        table.insert(foundServersTemp, {
-                            id = serverId,
-                            name = server.name or "Bypass Server",
-                            ownerName = server.owner and server.owner.username or username,
-                            link = serverId
-                        })
-                    end
-                end
-                if #foundServersTemp > 0 then break end
-            end
-        end
-    end
-
-    -- Sonuclari goster
-    if #foundServersTemp > 0 then
-        for i, server in ipairs(foundServersTemp) do
-            server.index = i
-            addServerToList(server)
-        end
-        StatusLabel.Text = "Tarama tamamlandi! " .. #foundServersTemp .. " server bulundu."
-    else
-        StatusLabel.Text = "Hic server bulunamadi. Oyuncu cevrimici olmayabilir."
-    end
-
-    return foundServersTemp
+    return char
 end
 
--- // HEDEFLI TARAMA (Belirli oyuncu icin)
-local function scanPlayerServers(userId, username)
-    clearServerList()
-    FoundServers = {}
-    StatusLabel.Text = username .. " icin serverlar taranıyor..."
-
-    local allServers = {}
-
-    -- Adim 1: Private server API
-    local endpoints = {
-        "https://games.roblox.com/v1/games/" .. PlaceId .. "/private-servers?userId=" .. userId .. "&sortOrder=Desc&limit=100",
-        "https://games.roblox.com/v2/games/" .. PlaceId .. "/private-servers?userId=" .. userId .. "&limit=100",
-    }
-
-    for _, endpoint in ipairs(endpoints) do
-        local success, data = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(endpoint))
-        end)
-
-        if success and data and data.data then
-            for _, server in ipairs(data.data) do
-                local serverId = server.vipServerId or server.id
-                if serverId then
-                    local alreadyExists = false
-                    for _, existing in ipairs(allServers) do
-                        if existing.id == serverId then
-                            alreadyExists = true
-                            break
-                        end
-                    end
-                    if not alreadyExists then
-                        table.insert(allServers, {
-                            id = serverId,
-                            name = server.name or "Server " .. serverId,
-                            ownerName = server.owner and server.owner.username or username,
-                            link = serverId
-                        })
-                    end
-                end
-            end
+-- // KORUMA KATMANI 3: Reset sinyallerini engelleme (BYPASS)
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    -- :Destroy() engelle
+    if method == "Destroy" and self == LocalPlayer.Character then
+        return nil
+    end
+    
+    -- :Remove() engelle
+    if method == "Remove" and self == LocalPlayer.Character then
+        return nil
+    end
+    
+    -- :ClearAllChildren() engelle
+    if method == "ClearAllChildren" and self == LocalPlayer.Character then
+        return nil
+    end
+    
+    -- :BreakJoints() engelle
+    if method == "BreakJoints" and self:IsDescendantOf(LocalPlayer.Character) then
+        return nil
+    end
+    
+    -- :LoadCharacter() engelle
+    if method == "LoadCharacter" and self == LocalPlayer then
+        return nil
+    end
+    
+    -- Player:Kill() engelle
+    if method == "Kill" and self == LocalPlayer then
+        return nil
+    end
+    
+    -- Humanoid:TakeDamage() engelle
+    if method == "TakeDamage" and self:IsDescendantOf(LocalPlayer.Character) then
+        return nil
+    end
+    
+    -- Humanoid.Health = 0 engelle
+    if method == "Health" and self:IsDescendantOf(LocalPlayer.Character) then
+        local hum = self
+        if hum:IsA("Humanoid") and tonumber(args[1]) and tonumber(args[1]) <= 0 then
+            return nil
         end
     end
+    
+    return oldNamecall(self, ...)
+end)
 
-    -- Adim 2: Eger bulunamazsa public serverlarda oyuncuyu ara
-    if #allServers == 0 then
-        StatusLabel.Text = "Private server yok. Public server taranıyor..."
-        local cursor = ""
-        for i = 1, 30 do
-            local success, data = pcall(function()
-                return HttpService:JSONDecode(game:HttpGet(
-                    "https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&cursor=" .. cursor
-                ))
-            end)
+-- // KORUMA KATMANI 4: Remote olaylari engelleme
+local oldFireServer
+oldFireServer = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "FireServer" and self:IsA("RemoteEvent") then
+        local remoteName = self.Name:lower()
+        local remotePath = self:GetFullName():lower()
+        
+        -- Reset/kill/remove remote'lari engelle
+        local blockedKeywords = {"reset", "kill", "remove", "destroy", "delete", "kick", "ban", "death", "die", "respawn", "clear"}
+        for _, keyword in ipairs(blockedKeywords) do
+            if string.find(remoteName, keyword) or string.find(remotePath, keyword) then
+                return nil
+            end
+        end
+        
+        -- Karaktere zarar veren her turlu remote'u engelle
+        if args[1] == LocalPlayer or args[1] == LocalPlayer.Character then
+            return nil
+        end
+    end
+    
+    return oldFireServer(self, ...)
+end)
 
-            if success and data and data.data then
-                for _, server in ipairs(data.data) do
-                    if server.playing and server.playing > 0 and server.id ~= JobId then
-                        -- Serverda oyuncu var mi kontrol et
-                        -- Not: Bu endpoint player listesi vermez, sadece sayi verir
-                        -- Alternatif olarak private server linki olusturmayi dene
-                        table.insert(allServers, {
-                            id = server.id,
-                            name = "Public Server (" .. server.playing .. " oyuncu)",
-                            ownerName = "Public",
-                            link = server.id
-                        })
-                    end
+-- // KORUMA KATMANI 5: __index / __newindex bypass
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", function(self, key)
+    if self == LocalPlayer and key == "Character" then
+        local char = oldIndex(self, key)
+        if not char then
+            -- Karakter yoksa nil donme, bekle ve tekrar dene
+            return forceCharacter()
+        end
+        return char
+    end
+    return oldIndex(self, key)
+end)
+
+local oldNewIndex
+oldNewIndex = hookmetamethod(game, "__newindex", function(self, key, value)
+    -- Player.Character = nil engelle
+    if self == LocalPlayer and key == "Character" and value == nil then
+        return nil
+    end
+    
+    -- Humanoid.Health = 0 engelle
+    if key == "Health" and self:IsA("Humanoid") and self:IsDescendantOf(LocalPlayer.Character) then
+        if value <= 0 then
+            return nil
+        end
+    end
+    
+    -- Parent = nil engelle
+    if key == "Parent" and value == nil and self:IsDescendantOf(LocalPlayer.Character) then
+        return nil
+    end
+    
+    return oldNewIndex(self, key, value)
+end)
+
+-- // KORUMA KATMANI 6: CharacterAdded / CharacterRemoving dinleme
+LocalPlayer.CharacterAdded:Connect(function(character)
+    lockCharacter(character)
+end)
+
+LocalPlayer.CharacterRemoving:Connect(function(character)
+    -- Karakter silinmesini engelle
+    task.wait(0.01)
+    if character.Parent ~= workspace then
+        character.Parent = workspace
+    end
+    lockCharacter(character)
+end)
+
+-- // KORUMA KATMANI 7: Sürekli tarama ve onarma
+spawn(function()
+    while true do
+        task.wait(0.1)
+        
+        local char = forceCharacter()
+        if char then
+            -- Parent kontrolu
+            if char.Parent ~= workspace then
+                char.Parent = workspace
+            end
+            
+            -- Humanoid kontrolu
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                if hum.Health <= 0 then
+                    hum.Health = hum.MaxHealth
                 end
-                if data.nextPageCursor then
-                    cursor = data.nextPageCursor
-                else
-                    break
+                if hum.BreakJointsOnDeath == true then
+                    hum.BreakJointsOnDeath = false
+                end
+                -- Sit durumunu kontrol et
+                if hum:GetState() == Enum.HumanoidStateType.Dead then
+                    hum:ChangeState(Enum.HumanoidStateType.Running)
                 end
             else
-                break
+                -- Humanoid yoksa zorla ekle
+                local newHum = Instance.new("Humanoid")
+                newHum.Parent = char
             end
-            wait(0.15)
+            
+            -- RootPart kontrolu
+            local rootPart = char:FindFirstChild("HumanoidRootPart")
+            if not rootPart then
+                local newRoot = Instance.new("Part")
+                newRoot.Name = "HumanoidRootPart"
+                newRoot.Size = Vector3.new(2, 2, 2)
+                newRoot.CanCollide = true
+                newRoot.Anchored = false
+                newRoot.Parent = char
+            end
+            
+            -- Tum parcalari kontrol et
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if part.Anchored then
+                        part.Anchored = false
+                    end
+                    if not part.CanCollide then
+                        part.CanCollide = true
+                    end
+                    if part.Transparency > 0.9 then
+                        part.Transparency = 0
+                    end
+                    if part.Locked then
+                        part.Locked = false
+                    end
+                end
+            end
         end
     end
+end)
 
-    -- Sonuclari goster
-    if #allServers > 0 then
-        for i, server in ipairs(allServers) do
-            server.index = i
-            addServerToList(server)
-        end
-        StatusLabel.Text = "Tarama tamam! " .. #allServers .. " server bulundu."
-    else
-        StatusLabel.Text = "Sunucu bulunamadi. Izinsiz erisim engellendi - Bypass basarisiz."
+-- // COK GUCLU BYPASS: Workspace korumasi
+workspace.ChildRemoved:Connect(function(child)
+    if child == LocalPlayer.Character then
+        task.wait(0.01)
+        child.Parent = workspace
     end
-end
+end)
 
--- // OYUNCU BULMA (Oyunda aktif olan)
-local function findPlayerInGame(username)
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Name:lower() == username:lower() or plr.DisplayName:lower() == username:lower() then
-            return plr
-        end
+workspace.ChildAdded:Connect(function(child)
+    if child:IsA("Model") and child.Name == LocalPlayer.Name then
+        lockCharacter(child)
     end
-    return nil
-end
+end)
 
--- // USERID ALMA (Roblox API uzerinden)
-local function getUserIdFromUsername(username)
-    -- Once oyundaki oyuncularda ara
-    local foundPlr = findPlayerInGame(username)
-    if foundPlr then
-        return foundPlr.UserId
-    end
-
-    -- Oyunda yoksa Roblox API ile bul
-    local success, result = pcall(function()
-        local response = HttpService:JSONDecode(game:HttpGet(
-            "https://users.roblox.com/v1/usernames/users",
-            true,
-            {["Content-Type"] = "application/json"},
-            "POST",
-            HttpService:JSONEncode({usernames = {username}})
-        ))
-        if response.data and response.data[1] then
-            return response.data[1].id
-        end
-        return nil
-    end)
-    return success and result or nil
-end
-
--- // TELEPORT FONKSIYONU
-local function teleportToPlayer(targetPlayer)
-    if not targetPlayer then
+-- // BILDIRIM (Sessiz, sadece yuklendigini belirtir)
+local function silentNotify()
+    pcall(function()
+        local StarterGui = game:GetService("StarterGui")
         StarterGui:SetCore("SendNotification", {
-            Title = "LEA Scanner",
-            Text = "Oyuncu bulunamadi!",
-            Duration = 3
+            Title = "ANTI RESET AKTIF",
+            Text = "Karakteriniz 7 katmanli koruma altinda. Hicbir reset calismaz.",
+            Duration = 4
         })
-        return false
-    end
+    end)
+end
 
-    local character = targetPlayer.Character
-    if not character then
-        StarterGui:SetCore("SendNotification", {
-            Title = "LEA Scanner",
-            Text = "Oyuncu karakteri yuklenmemis!",
-            Duration =
+-- Ilk karakteri kilitle
+if LocalPlayer.Character then
+    lockCharacter(LocalPlayer.Character)
+end
+
+silentNotify()
+
+-- Sonsuz dongu: Script asla durmasin
+while true do
+    task.wait(5)
+    -- Periyodik olarak baglantilari kontrol et
+    if not oldNamecall then
+        oldNamecall = hookmetamethod(game, "__namecall", oldNamecall)
+    end
+end

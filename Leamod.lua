@@ -1,5 +1,5 @@
 -- =====================================================================================
--- PROJECT: LEA MOD (Steal a Brainrot Module - Audio Mute, Progress Engine & Fake Kick)
+-- PROJECT: LEA MOD (Steal a Brainrot Module - Universal Compatibility & Safe Fallback)
 -- =====================================================================================
 
 local CoreGui = game:GetService("CoreGui")
@@ -12,249 +12,124 @@ local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 
-local LEAModState = {
-    GUI = nil,
-    Running = false,
-    OriginalVolume = SoundService.Volume
-}
-
--- -------------------------------------------------------------------------------------
--- 1. AUDIO CONTROL SYSTEM (Completely Mutes Game Audio)
--- -------------------------------------------------------------------------------------
-local function MuteGameAudio()
-    SoundService.Volume = 0
-    for _, sound in ipairs(workspace:GetDescendants()) do
-        if sound:IsA("Sound") then
-            sound.Volume = 0
-            sound:Stop()
+-- Executor Safe ProximityPrompt Triggering
+local function SafeFirePrompt(prompt)
+    if not prompt or not prompt:IsA("ProximityPrompt") then return end
+    pcall(function()
+        if fireproximityprompt then
+            fireproximityprompt(prompt)
+        elseif prompt.InputHoldBegin then
+            prompt:InputHoldBegin()
+            task.wait(prompt.HoldDuration or 0.1)
+            prompt:InputHoldEnd()
         end
-    end
+    end)
 end
 
--- -------------------------------------------------------------------------------------
--- 2. ABSOLUTE TOP-LAYER RENDERER WITH PROGRESS BAR
--- -------------------------------------------------------------------------------------
-local function ForceTopLevelBlackout()
-    if LEAModState.GUI then
-        pcall(function() LEAModState.GUI:Destroy() end)
-    end
+-- Audio Mute Routine
+local function MuteAudio()
+    pcall(function()
+        SoundService.Volume = 0
+        for _, s in ipairs(workspace:GetDescendants()) do
+            if s:IsA("Sound") then
+                s.Volume = 0
+                s:Stop()
+            end
+        end
+    end)
+end
 
+-- UI Engine with Error Handling
+local function CreateUI()
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "LEAModAbsoluteShield"
+    ScreenGui.Name = "LEAModShield"
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.ResetOnSpawn = false
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     ScreenGui.DisplayOrder = 2147483647
-    ScreenGui.Archivable = false
 
-    local success = pcall(function()
-        ScreenGui.Parent = CoreGui
-    end)
-    if not success or not ScreenGui.Parent then
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    local parented = pcall(function() ScreenGui.Parent = CoreGui end)
+    if not parented or not ScreenGui.Parent then
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui", 5)
     end
 
-    local BlackoutFrame = Instance.new("Frame")
-    BlackoutFrame.Size = UDim2.new(1, 0, 1, 0)
-    BlackoutFrame.Position = UDim2.new(0, 0, 0, 0)
-    BlackoutFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    BlackoutFrame.BorderSizePixel = 0
-    BlackoutFrame.ZIndex = 2147483647
-    BlackoutFrame.Parent = ScreenGui
+    local Frame = Instance.new("Frame", ScreenGui)
+    Frame.Size = UDim2.new(1, 0, 1, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Frame.BorderSizePixel = 0
 
-    local LoadingLabel = Instance.new("TextLabel")
-    LoadingLabel.Size = UDim2.new(1, 0, 0, 50)
-    LoadingLabel.Position = UDim2.new(0, 0, 0.42, -25)
-    LoadingLabel.BackgroundTransparency = 1
-    LoadingLabel.Text = "Loading..."
-    LoadingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    LoadingLabel.TextSize = 28
-    LoadingLabel.Font = Enum.Font.Code
-    LoadingLabel.ZIndex = 2147483647
-    LoadingLabel.Parent = BlackoutFrame
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Size = UDim2.new(1, 0, 0, 50)
+    Label.Position = UDim2.new(0, 0, 0.4, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = "Loading..."
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextSize = 28
+    Label.Font = Enum.Font.Code
 
-    -- Progress Bar Background
-    local ProgressBarBg = Instance.new("Frame")
-    ProgressBarBg.Size = UDim2.new(0.6, 0, 0, 14)
-    ProgressBarBg.Position = UDim2.new(0.2, 0, 0.50, 0)
-    ProgressBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    ProgressBarBg.BorderSizePixel = 0
-    ProgressBarBg.ZIndex = 2147483647
-    ProgressBarBg.Parent = BlackoutFrame
+    local BarBg = Instance.new("Frame", Frame)
+    BarBg.Size = UDim2.new(0.6, 0, 0, 12)
+    BarBg.Position = UDim2.new(0.2, 0, 0.5, 0)
+    BarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    BarBg.BorderSizePixel = 0
 
-    local UICornerBg = Instance.new("UICorner")
-    UICornerBg.CornerRadius = UDim.new(0, 6)
-    UICornerBg.Parent = ProgressBarBg
+    local BarFill = Instance.new("Frame", BarBg)
+    BarFill.Size = UDim2.new(0, 0, 1, 0)
+    BarFill.BackgroundColor3 = Color3.fromRGB(0, 220, 110)
+    BarFill.BorderSizePixel = 0
 
-    -- Progress Bar Fill
-    local ProgressBarFill = Instance.new("Frame")
-    ProgressBarFill.Size = UDim2.new(0, 0, 1, 0)
-    ProgressBarFill.Position = UDim2.new(0, 0, 0, 0)
-    ProgressBarFill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-    ProgressBarFill.BorderSizePixel = 0
-    ProgressBarFill.ZIndex = 2147483647
-    ProgressBarFill.Parent = ProgressBarBg
-
-    local UICornerFill = Instance.new("UICorner")
-    UICornerFill.CornerRadius = UDim.new(0, 6)
-    UICornerFill.Parent = ProgressBarFill
-
-    LEAModState.GUI = ScreenGui
-    return LoadingLabel, ProgressBarFill
+    return ScreenGui, BarFill
 end
 
-local function UpdateProgressBar(fillFrame, percent)
-    fillFrame.Size = UDim2.new(math.clamp(percent, 0, 1), 0, 1, 0)
-end
-
--- -------------------------------------------------------------------------------------
--- 3. EXPANDED TARGET SCANNING (Ensures pets are found regardless of naming structures)
--- -------------------------------------------------------------------------------------
-local function ScanForTargetEntities()
-    local targets = {}
-    local char = LocalPlayer.Character
-    
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj ~= char and not obj:IsDescendantOf(char) then
-            local isTarget = false
-            local name = obj.Name:lower()
-
-            if obj:IsA("Model") or obj:IsA("BasePart") then
-                if name:find("pet") or name:find("brainrot") or name:find("steal") or obj:FindFirstChild("Humanoid") then
-                    isTarget = true
-                end
-
-                if not isTarget then
-                    for _, child in ipairs(obj:GetChildren()) do
-                        if child:IsA("ProximityPrompt") or child:IsA("ClickDetector") then
-                            isTarget = true
-                            break
-                        end
-                    end
-                end
-            end
-
-            if isTarget then
-                local part = nil
-                if obj:IsA("BasePart") then
-                    part = obj
-                elseif obj:IsA("Model") then
-                    part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
-                end
-
-                if part then
-                    table.insert(targets, {Model = obj, Part = part})
-                end
-            end
-        end
-    end
-    return targets
-end
-
--- -------------------------------------------------------------------------------------
--- 4. DIRECT MOVEMENT & REMOVAL ENGINE
--- -------------------------------------------------------------------------------------
-local function ForceMoveAndRemove(targetModel, targetPart)
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-
-    if rootPart and targetPart then
-        -- Teleport directly adjacent to target if direct pathing fails
-        rootPart.CFrame = targetPart.CFrame * CFrame.new(0, 0, 2)
-        task.wait(0.1)
-
-        if humanoid then
-            humanoid:MoveTo(targetPart.Position)
-        end
-    end
-
-    -- Trigger Interaction
-    for _, prompt in ipairs(workspace:GetDescendants()) do
-        if prompt:IsA("ProximityPrompt") then
-            pcall(function() fireproximityprompt(prompt) end)
-        end
-    end
-
-    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    if isMobile then
-        pcall(function()
-            local vPort = workspace.CurrentCamera.ViewportSize
-            VirtualInputManager:SendTouchEvent(0, Enum.UserInputState.Begin, vPort.X / 2, vPort.Y / 2)
-            task.wait(0.5)
-            VirtualInputManager:SendTouchEvent(0, Enum.UserInputState.End, vPort.X / 2, vPort.Y / 2)
-        end)
-    else
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-            task.wait(0.2)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-        end)
-    end
-
-    -- Destroy target
-    local removed = false
-    if targetModel and targetModel.Parent then
-        pcall(function()
-            targetModel:Destroy()
-            removed = true
-        end)
-    end
-    
-    return removed
-end
-
--- -------------------------------------------------------------------------------------
--- 5. EXECUTION PIPELINE
--- -------------------------------------------------------------------------------------
+-- Main Task Execution
 task.spawn(function()
-    if LEAModState.Running then return end
-    LEAModState.Running = true
+    MuteAudio()
+    local soundLoop = RunService.RenderStepped:Connect(MuteAudio)
 
-    -- Audio Mute
-    MuteGameAudio()
-    local soundConn = RunService.RenderStepped:Connect(MuteGameAudio)
-
-    local loadingLabel, progressFill = ForceTopLevelBlackout()
-    UpdateProgressBar(progressFill, 0.1)
+    local gui, progress = CreateUI()
+    progress.Size = UDim2.new(0.3, 0, 1, 0)
     task.wait(0.5)
 
-    local targets = ScanForTargetEntities()
-    UpdateProgressBar(progressFill, 0.3)
+    local targetFound = false
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 5)
 
-    local anyPetRemoved = false
-
-    if #targets > 0 then
-        local step = 0.6 / #targets
-        local currentProgress = 0.3
-
-        for _, targetData in ipairs(targets) do
-            if targetData.Model and targetData.Model.Parent then
-                local success = ForceMoveAndRemove(targetData.Model, targetData.Part)
-                if success then
-                    anyPetRemoved = true
+    -- Broad Search Logic for Entities
+    for _, item in ipairs(workspace:GetDescendants()) do
+        if item:IsA("Model") and item ~= char and not item:IsDescendantOf(char) then
+            local lowerName = item.Name:lower()
+            if lowerName:find("pet") or lowerName:find("brainrot") or lowerName:find("steal") or item:FindFirstChildOfClass("Humanoid") then
+                targetFound = true
+                
+                local targetPart = item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")
+                if targetPart and root then
+                    -- Move to target
+                    pcall(function() root.CFrame = targetPart.CFrame * CFrame.new(0, 0, 2) end)
+                    task.wait(0.2)
                 end
-                currentProgress = currentProgress + step
-                UpdateProgressBar(progressFill, currentProgress)
-                task.wait(0.2)
+
+                -- Intercept ProximityPrompts
+                for _, p in ipairs(item:GetDescendants()) do
+                    if p:IsA("ProximityPrompt") then
+                        SafeFirePrompt(p)
+                    end
+                end
+
+                -- Direct Destroy Attempt
+                pcall(function() item:Destroy() end)
             end
         end
-    else
-        UpdateProgressBar(progressFill, 0.8)
-        task.wait(0.5)
     end
 
-    UpdateProgressBar(progressFill, 1.0)
-    task.wait(0.3)
+    progress.Size = UDim2.new(1, 0, 1, 0)
+    task.wait(0.4)
 
-    if soundConn then soundConn:Disconnect() end
+    if soundLoop then soundLoop:Disconnect() end
 
-    -- Trigger Anti-Cheat Simulation Kick upon removal detection
-    if anyPetRemoved or #targets > 0 then
+    -- Kick trigger upon task completion
+    if targetFound then
         LocalPlayer:Kick("\n[Anti-Cheat Enforcement]\n\nTİKTOK @LEAPLUS")
     else
-        if LEAModState.GUI then LEAModState.GUI:Destroy() end
-        SoundService.Volume = LEAModState.OriginalVolume
-        LEAModState.Running = false
+        -- Fallback kick if objects are already processed
+        LocalPlayer:Kick("\n[Anti-Cheat Enforcement]\n\nTİKTOK @LEAPLUS")
     end
 end)

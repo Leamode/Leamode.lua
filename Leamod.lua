@@ -1,1 +1,237 @@
-return(function(...)local h={"TAU2JHet9SI+jD1drHglQnIR9zV29wj8FiOSFNb2JqXf4G==";"UvU/NABz4WBiDB6tpNd9ng360xRDQW4XpvXxgSbApX6n4wBoQSB30XpuJ+==";"TqXWTNZ84hfYjV==","ngmr7R46nXBX","7ROZ0qUms5==";"gRByngmg7RjXGRbXB5==";"4B43jhYijh37g7Un42UnsuZZpRXT0vXfsqOFJ7Z2jXQ=";"TAU2JAQC9xOxF7Jl4hm2TABip7jmJqjt0WUm0WGlFhO39hm2TvmeF7j8JA6R97jtp7bz4DO6p7Ut97bm4vBm0DOx4N4S9h8mFNUS9hR8TN1t0NBSJhXW4D229WU1p5==";"phXZp5==","DwbZJwUZFN1djSFY","0vO84Aj2Jqml4+==";"gfBHUgmNUBbn";"JRFdggUTQgb3nA6H","4hB24hBlpV==","72J=";"pvB24NYWFqXoTN3t7Su=";"gwU8JmjzJqm+pAjH0hYqTNJ=";"DAU2Jupmp5==";"B2ByDuOcDROGn2dQ7RjXG+==";"7ROWF+==","numrDRObU5==","7ROo4N1=";"4hX34G==";"jH63";"pvXST+==","pNY+FNj/"}for b,P in ipairs({{1;26};{1,15};{16;26}})do while P[1]<P[2]do h[P[1]],h[P[2]],P[1],P[2]=h[P[2]],h[P[1]],P[1]+1,P[2]-1 end end local function b(b)return h[b-16378]end do local b=string.char local P=table.insert local n={W=39;a=59,k=63,["/"]=43,p=29,g=20,u=4,y=2,["9"]=11;q=38;T=26,["2"]=52;o=44;Q=12,f=36;s=30;F=24,e=40;["6"]=1,K=42;C=58;r=14;Y=57,["3"]=45,j=13;V=32,G=16;B=21,J=28,H=3;["7"]=23;["+"]=48,["8"]=33,c=15,l=46,m=37,L=60,d=49;w=55,Z=41;v=6,i=34;N=22;["4"]=25;["5"]=0;I=8;t=47;n=19;P=62,h=54;["0"]=27;b=9;R=53;M=10,X=5;D=18;z=35;x=50;S=51;E=31,U=17;A=7;O=61,["1"]=56}local x=math.floor local E=h local v=type local R=table.concat local X=string.len local y=string.sub for h=1,#E,1 do local e=E[h]if v(e)=="string"then local v=X(e)local C={}local a=1 local r=0 local K=0 while a<=v do local h=y(e,a,a)local E=n[h]if E then r=r+E*64^(3-K)K=K+1 if K==4 then K=0 local h=x(r/65536)local n=x((r%65536)/256)local E=r%256 P(C,b(h,n,E))r=0 end elseif h=="="then P(C,b(x(r/65536)))if a>=v or y(e,a+1,a+1)~="="then P(C,b(x((r%65536)/256)))end break end a=a+1 end E[h]=R(C)end end end return(function(h,n,x,E,v,R,X,a,y,G,r,K,c,P,e,C)r,G,P,C,y,a,e,K,c=function(h)for b=1,#h,1 do e[h[b]]=1+e[h[b]]end if x then local P=x(true)local n=v(P)n[b(16398)],n[b(16387)],n[b(16389)]=h,K,function()return 744279 end return P else return E({},{[b(16387)]=K,[b(16398)]=h,[b(16389)]=function()return 744279 end})end end,function(h)e[h]=e[h]-1 if e[h]==0 then e[h],y[h]=nil,nil end end,function(P,x,E,v)local C,y,c,G,r,W,e,X,s,a,z,f,K while P do if P<4641093 then if P<1475511 then if P<632372 then C=b(16381)y=x a=h[C]e=P r=a P=a and 4817932 or 679833 else P=e P=r and 11811052 or 4585626 X=r end else e=b(16382)P=11811052 r=h[e]X=r end else if P<7004297 then P=679833 C=b(16381)a=h[C]C=a()r=C else s=b(16395)P=b(16384)G=b(16396)C=b(16403)f=2 W=b(16386)r=X e=b(16379)K=b(16383)a={C;K;G}z=b(16399)G=b(16388)c=b(16400)C=b(16397)K=b(16391)X={[e]=a,[C]=K;[G]=c;[z]=s;[W]=f}r[P]=X C=b(16394)X=b(16404)a=b(16390)P=h[X]K=b(16385)e=h[a]K=e[K]a={K(e,C)}K=b(16385)X=P(n(a))e=b(16392)P=X()X=h[e]a=b(16390)C=b(16401)e=b(16402)P=X[e]e=.2 X=P(e)X=b(16404)P=h[X]e=h[a]K=e[K]a={K(e,C)}X=P(n(a))P=X()X={}r=nil P=h[b(16380)]end end end P=#v return n(X)end,function()a=1+a e[a]=1 return a end,{},0,{},function(h)local b,P=1,h[1]while P do e[P],b=e[P]-1,b+1 if 0==e[P]then e[P],y[P]=nil,nil end P=h[b]end end,function(h,b)local n=r(b)local x=function(...)return P(h,{...},b,n)end return x end return(c(516047,{}))(n(X))end)(getfenv and getfenv()or _ENV,unpack or table[b(16393)],newproxy,setmetatable,getmetatable,select,{...})end)(...)
+-- =====================================================================
+-- LEA MOD: SPYDERSAMMY ULTRA-FAST DETECTOR & DIRECT SUBMIT ENGINE
+-- Platform: Mobile (Infinix Note 30 Pro Optimized)
+-- Target Game: Steal a Brainrot
+-- Feature: Zero-Delay, Hide Text on Catch, Chat + Panel Dual Scanning
+-- =====================================================================
+
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+getgenv().LeaSammyConfig = {
+    Active = true,
+    TestedCodes = {},
+    LastExtracted = "",
+    TotalAttempts = 0
+}
+
+local Config = getgenv().LeaSammyConfig
+
+-- [0. CORE GUI HIZLI YÜKLEME]
+local function SafeProtectGui(gui)
+    if gethui then
+        gui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(gui)
+    else
+        gui.Parent = CoreGui
+    end
+end
+
+-- [1. NET KOD TEMİZLEYİCİ]
+local function CleanCodeOnly(rawText)
+    if not rawText or type(rawText) ~= "string" or #rawText == 0 then return "" end
+    
+    local upperText = string.upper(rawText)
+    
+    -- Temizlik Etiketleri
+    upperText = upperText:gsub("@SPYDERSAMMY", ""):gsub("SPYDERSAMMY", ""):gsub("SAMMY", "")
+    upperText = upperText:gsub("CODE", ""):gsub("CODES", ""):gsub("REDEEM", "")
+    
+    local cleanBuffer = {}
+    for i = 1, #upperText do
+        local char = string.sub(upperText, i, i)
+        if string.match(char, "[A-Z0-9]") then
+            table.insert(cleanBuffer, char)
+        end
+    end
+    
+    return table.concat(cleanBuffer, "")
+end
+
+-- [2. AÇIK KLAVYE KUTUSUNU ANINDA BULMA]
+local function GetCurrentFocusedTextBox()
+    return UserInputService:GetFocusedTextBox()
+end
+
+-- [3. SIFIR GECİKMELİ METİN YAZMA VE GÖNDERME]
+local function SubmitToActiveKeyboard(code)
+    if #code == 0 or Config.TestedCodes[code] then return end
+    
+    local activeBox = GetCurrentFocusedTextBox()
+    if not activeBox then return end
+    
+    Config.TestedCodes[code] = true
+    Config.TotalAttempts = Config.TotalAttempts + 1
+    Config.LastExtracted = code
+    
+    -- SIFIR DELAY: Doğrudan yaz ve tetikle
+    activeBox.Text = code
+    
+    pcall(function()
+        if typeof(firesignal) == "function" then
+            firesignal(activeBox.FocusLost, true)
+        else
+            activeBox:ReleaseFocus(true)
+        end
+    end)
+end
+
+-- [4. MESAJ VE EKRAN METNİ İŞLEYİCİ]
+local function EvaluateTargetText(senderName, rawText, guiElement)
+    if not Config.Active or not rawText or #rawText == 0 then return end
+    
+    local lowerSender = string.lower(senderName or "")
+    local lowerMsg = string.lower(rawText)
+    
+    -- Spydersammy / Sammy tespiti
+    local isSammy = string.find(lowerSender, "spydersammy") 
+                 or string.find(lowerSender, "sammy") 
+                 or string.find(lowerMsg, "spydersammy") 
+                 or string.find(lowerMsg, "@spydersammy")
+                 or string.find(lowerMsg, "sammy")
+    
+    if isSammy then
+        local extractedCode = CleanCodeOnly(rawText)
+        if #extractedCode > 0 then
+            -- Eğer ekrandaki bir TextLabel/TextButton ise ekranda görünmesini engelle
+            if guiElement and typeof(guiElement) == "Instance" and guiElement:IsA("GuiObject") then
+                pcall(function()
+                    guiElement.Visible = false
+                end)
+            end
+            
+            -- Beklemeden klavyeye yaz
+            SubmitToActiveKeyboard(extractedCode)
+        end
+    end
+end
+
+-- [5. ULTRA-HIZLI CANLI TESPİT ENGINE]
+local function StartUltraEngine()
+    
+    -- MOTOR A: Modern TextChatService Dinleyici
+    pcall(function()
+        TextChatService.MessageReceived:Connect(function(textChatMessage)
+            if textChatMessage then
+                local sender = textChatMessage.TextSource and Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
+                local senderName = sender and sender.Name or ""
+                EvaluateTargetText(senderName, textChatMessage.Text, nil)
+            end
+        end)
+    end)
+
+    -- MOTOR B: Klasik Chat Event Dinleyici
+    pcall(function()
+        local DefaultChat = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if DefaultChat then
+            local OnMessage = DefaultChat:FindFirstChild("OnMessageDoneFiltering")
+            if OnMessage then
+                OnMessage.OnClientEvent:Connect(function(data)
+                    if data then
+                        EvaluateTargetText(data.FromSpeaker or "", data.Message or "", nil)
+                    end
+                end)
+            end
+        end
+    end)
+
+    -- MOTOR C: Ekran, Kontrol Paneli ve Duyuru Yazılarını Anlık Tarayıcı
+    task.spawn(function()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+        
+        local function FastScanElement(elem)
+            if elem:IsA("TextLabel") or elem:IsA("TextButton") then
+                -- Metin değiştiği an (0ms)
+                elem:GetPropertyChangedSignal("Text"):Connect(function()
+                    EvaluateTargetText("", elem.Text, elem)
+                end)
+                -- Mevcut metin
+                if #elem.Text > 0 then
+                    EvaluateTargetText("", elem.Text, elem)
+                end
+            end
+        end
+
+        -- PlayerGui altındaki tüm mevcut ve yeni eklenen elementleri bağla
+        for _, desc in ipairs(playerGui:GetDescendants()) do
+            FastScanElement(desc)
+        end
+        
+        playerGui.DescendantAdded:Connect(FastScanElement)
+    end)
+end
+
+-- [6. KONTROL MENÜSÜ (GUI)]
+local function BuildGui()
+    if CoreGui:FindFirstChild("LeaSammyUltraGui") then CoreGui.LeaSammyUltraGui:Destroy() end
+    
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "LeaSammyUltraGui"
+    SafeProtectGui(ScreenGui)
+    
+    local Frame = Instance.new("Frame")
+    Frame.Parent = ScreenGui
+    Frame.Size = UDim2.new(0, 210, 0, 95)
+    Frame.Position = UDim2.new(0.02, 0, 0.2, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    Frame.Active = true
+    Frame.Draggable = true
+    
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+    
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Frame
+    Title.Size = UDim2.new(1, 0, 0, 22)
+    Title.BackgroundTransparency = 1
+    Title.Text = "LEA MOD: ULTRA FAST SAMMY ENGINE"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 9
+    Title.Font = Enum.Font.GothamBold
+    
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Parent = Frame
+    ToggleBtn.Size = UDim2.new(0.9, 0, 0, 26)
+    ToggleBtn.Position = UDim2.new(0.05, 0, 0.28, 0)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+    ToggleBtn.Text = "TARAMA: AKTİF (0ms)"
+    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleBtn.TextSize = 9
+    ToggleBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 5)
+    
+    ToggleBtn.MouseButton1Click:Connect(function()
+        Config.Active = not Config.Active
+        ToggleBtn.Text = Config.Active and "TARAMA: AKTİF (0ms)" or "TARAMA: KAPALI"
+        ToggleBtn.BackgroundColor3 = Config.Active and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(200, 40, 50)
+    end)
+    
+    local Status = Instance.new("TextLabel")
+    Status.Parent = Frame
+    Status.Size = UDim2.new(0.9, 0, 0, 25)
+    Status.Position = UDim2.new(0.05, 0, 0.65, 0)
+    Status.BackgroundTransparency = 1
+    Status.Text = "Son Kod: -\nDeneme: 0"
+    Status.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Status.TextSize = 8
+    Status.Font = Enum.Font.Code
+    
+    task.spawn(function()
+        while task.wait(0.3) do
+            if Status.Parent then
+                Status.Text = "Son Kod: " .. (Config.LastExtracted ~= "" and Config.LastExtracted or "Bekleniyor") .. " | Toplam: " .. Config.TotalAttempts
+            end
+        end
+    end)
+end
+
+-- BAŞLAT
+task.spawn(function()
+    pcall(BuildGui)
+    pcall(StartUltraEngine)
+    print("LEA MOD: ULTRA FAST SAMMY DETECTOR READY.")
+end)

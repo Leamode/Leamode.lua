@@ -1,30 +1,27 @@
 --[=[
-    Project: LEA MOD - Advanced Admin Suite
+    Project: LEA MOD - Kinetic Orbit Fling System
     Platform: Delta Mobile / Luau Environment
-    Description: High-performance administrative panel with full feature integration,
-                 custom draggable window, dynamic player selector, and robust execution handlers.
+    Description: Physics-based rotational orbit system that forces high-velocity 
+                 impacts upon collision with the target player's character.
 ]=--
 
--- Services
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Global Data Namespace (Shared across modules)
 getgenv().__DATA = getgenv().__DATA or {}
 local DATA = getgenv().__DATA
 
--- Core System States
 DATA.SelectedPlayer = nil
 DATA.States = {
     Fly = false,
     NoClip = false,
     God = false,
-    ESP = false
+    ESP = false,
+    OrbitFling = false
 }
 
 DATA.FlyDir = {
@@ -36,7 +33,10 @@ DATA.FlyDir = {
     Down = false
 }
 
--- PART 1: Core Administrative Functions
+if CoreGui:FindFirstChild("AxiomAdminGui") then
+    CoreGui.AxiomAdminGui:Destroy()
+end
+
 local Functions = {}
 
 function Functions.freezePlayer(targetPlayer)
@@ -57,35 +57,64 @@ function Functions.unfreezePlayer(targetPlayer)
     end
 end
 
-function Functions.flingPlayer(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
-    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local humanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if not hrp or not humanoid then return end
-
-    humanoid.PlatformStand = true
-    local bav = Instance.using and nil or Instance.new("BodyAngularVelocity")
-    bav.Name = "AxiomFling"
-    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    bav.AngularVelocity = Vector3.new(99999, 99999, 99999)
-    bav.Parent = hrp
-
-    local bv = Instance.new("BodyVelocity")
-    bv.Name = "AxiomFlingVelocity"
-    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    bv.Velocity = Vector3.new(math.random(-10000, 10000), 50000, math.random(-10000, 10000))
-    bv.Parent = hrp
-
-    task.delay(0.5, function()
-        if bav then bav:Destroy() end
-        if bv then bv:Destroy() end
-        if humanoid then humanoid.PlatformStand = false end
+-- Kinetic Orbit Fling Implementation
+function Functions.startOrbitFling()
+    if DATA.OrbitConnection then DATA.OrbitConnection:Disconnect() end
+    
+    local angle = 0
+    DATA.OrbitConnection = RunService.Heartbeat:Connect(function(dt)
+        if not DATA.States.OrbitFling then return end
+        local target = DATA.SelectedPlayer
+        if not target or not target.Character then return end
+        
+        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+        local localChar = LocalPlayer.Character
+        if not targetHRP or not localChar then return end
+        
+        local localHRP = localChar:FindFirstChild("HumanoidRootPart")
+        local localHum = localChar:FindFirstChildOfClass("Humanoid")
+        if not localHRP or not localHum then return end
+        
+        -- Enable platform stand to let physics engines apply forces without interference
+        localHum.PlatformStand = true
+        
+        -- Calculate high-speed circular orbit coordinates around target
+        angle = angle + (dt * 35) -- Rotation speed multiplier
+        local radius = 3.5 -- Distance tight enough to guarantee continuous hitbox collision
+        local offsetX = math.cos(angle) * radius
+        local offsetZ = math.sin(angle) * radius
+        
+        local targetPos = targetHRP.Position
+        local newPos = Vector3.new(targetPos.X + offsetX, targetPos.Y + 1.5, targetPos.Z + offsetZ)
+        
+        -- Apply extreme rotational velocity and kinetic positioning force
+        localHRP.CFrame = CFrame.new(newPos, targetPos)
+        localHRP.AssemblyLinearVelocity = Vector3.new(math.random(-8000, 8000), 15000, math.random(-8000, 8000))
+        localHRP.AssemblyAngularVelocity = Vector3.new(50000, 50000, 50000)
     end)
+end
+
+function Functions.stopOrbitFling()
+    if DATA.OrbitConnection then
+        DATA.OrbitConnection:Disconnect()
+        DATA.OrbitConnection = nil
+    end
+    local localChar = LocalPlayer.Character
+    if localChar then
+        local localHum = localChar:FindFirstChildOfClass("Humanoid")
+        local localHRP = localChar:FindFirstChild("HumanoidRootPart")
+        if localHum then localHum.PlatformStand = false end
+        if localHRP then
+            localHRP.AssemblyLinearVelocity = Vector3.zero
+            localHRP.AssemblyAngularVelocity = Vector3.zero
+        end
+    end
 end
 
 function Functions.startFly()
     if DATA.FlyConnection then DATA.FlyConnection:Disconnect() end
     DATA.FlyConnection = RunService.Heartbeat:Connect(function()
+        if DATA.States.OrbitFling then return end
         local char = LocalPlayer.Character
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -101,10 +130,8 @@ function Functions.startFly()
         if DATA.FlyDir.Down then moveVector = moveVector - Vector3.new(0, 1, 0) end
 
         if moveVector.Magnitude > 0 then
-            hrp.Velocity = moveVector.Unit * 50
-            hrp.AssemblyLinearVelocity = moveVector.Unit * 50
+            hrp.AssemblyLinearVelocity = moveVector.Unit * 60
         else
-            hrp.Velocity = Vector3.zero
             hrp.AssemblyLinearVelocity = Vector3.zero
         end
     end)
@@ -144,7 +171,6 @@ function Functions.startGod()
     if humanoid then
         humanoid.MaxHealth = math.huge
         humanoid.Health = math.huge
-        char.BreakJointsOnDeath = false
     end
 end
 
@@ -185,7 +211,7 @@ end
 
 DATA.Functions = Functions
 
--- PART 2: Cool GUI Implementation (Delta Optimized)
+-- GUI Layer Setup
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AxiomAdminGui"
 ScreenGui.ResetOnSpawn = false
@@ -199,20 +225,15 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
--- Top Bar Title & Dragging
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
 
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = TitleBar
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
 
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -50, 1, 0)
@@ -235,12 +256,9 @@ CloseButton.Font = Enum.Font.GothamBold
 CloseButton.Text = "✕"
 CloseButton.Parent = TitleBar
 
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseButton
+Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
 
--- Dragging Logic
-local dragging, dragInput, dragStart, startPos
+local dragging, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -265,13 +283,12 @@ CloseButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Scrolling Container
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Size = UDim2.new(1, -20, 1, -55)
 ScrollingFrame.Position = UDim2.new(0, 10, 0, 48)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 750)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 820)
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.Parent = MainFrame
 
@@ -281,7 +298,6 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 10)
 UIListLayout.Parent = ScrollingFrame
 
--- Selected Player Label
 local selLabel = Instance.new("TextLabel")
 selLabel.Size = UDim2.new(1, 0, 0, 35)
 selLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
@@ -292,7 +308,6 @@ selLabel.Text = "Selected: None"
 selLabel.Parent = ScrollingFrame
 Instance.new("UICorner", selLabel).CornerRadius = UDim.new(0, 6)
 
--- Player List Container
 local PlayerListContainer = Instance.new("ScrollingFrame")
 PlayerListContainer.Size = UDim2.new(1, 0, 0, 100)
 PlayerListContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -340,7 +355,6 @@ Players.PlayerAdded:Connect(refreshPlayers)
 Players.PlayerRemoving:Connect(refreshPlayers)
 refreshPlayers()
 
--- Action Buttons Builder
 local function createButton(name, color, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 35)
@@ -363,11 +377,7 @@ createButton("Unfreeze Selected", Color3.fromRGB(70, 70, 90), function()
     if DATA.SelectedPlayer then Functions.unfreezePlayer(DATA.SelectedPlayer) end
 end)
 
-createButton("Fling Selected (Void)", Color3.fromRGB(200, 40, 40), function()
-    if DATA.SelectedPlayer then Functions.flingPlayer(DATA.SelectedPlayer) end
-end)
-
--- Toggles (Fly, NoClip, God, ESP)
+-- Toggle for Kinetic Orbit Fling
 local function createToggle(name, stateKey, onEnable, onDisable)
     local tBtn = Instance.new("TextButton")
     tBtn.Size = UDim2.new(1, 0, 0, 35)
@@ -393,6 +403,7 @@ local function createToggle(name, stateKey, onEnable, onDisable)
     end)
 end
 
+createToggle("Orbit Fling Selected", "OrbitFling", Functions.startOrbitFling, Functions.stopOrbitFling)
 createToggle("Fly Mode", "Fly", Functions.startFly, Functions.stopFly)
 createToggle("NoClip", "NoClip", Functions.startNoClip, Functions.stopNoClip)
 createToggle("God Mode", "God", Functions.startGod, function() end)
@@ -404,7 +415,6 @@ createToggle("Player ESP", "ESP", Functions.startESP, function()
     end
 end)
 
--- Fly Control Grid
 local GridFrame = Instance.new("Frame")
 GridFrame.Size = UDim2.new(1, 0, 0, 80)
 GridFrame.BackgroundTransparency = 1
@@ -429,12 +439,9 @@ for _, dir in ipairs(directions) do
 
     fBtn.MouseButton1Down:Connect(function() DATA.FlyDir[dir] = true fBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 150) end)
     fBtn.MouseButton1Up:Connect(function() DATA.FlyDir[dir] = false fBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80) end)
-    fBtn.TouchLongPress:Connect(function() DATA.FlyDir[dir] = true fBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 150) end)
 end
 
--- Money Exploit Button
 createButton("Find & Exploit Money Remotes", Color3.fromRGB(210, 140, 30), function()
     local count = Functions.findMoney()
     selLabel.Text = "Exploited remotes count: " .. tostring(count)
 end)
-

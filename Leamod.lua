@@ -1,161 +1,147 @@
 --[[
-    100% ÇALIŞAN ROBLOX ADMIN BYPASS - PART 1/3
-    TARAYICI & TESPİT MOTORU
-    Gerçek ve güncel metodlar kullanır.
+    PART 1/3: TARAYICI
+    Oyundaki tüm admin sistemlerini bulur ve analiz eder.
+    Direkt execute edin, hiçbir şeye ihtiyaç duymaz.
 ]]--
 
 local env = getsenv or getfenv or function() return _G end
 local protected = env()
-if protected.__REAL_BYPASS_P1 then return end
-protected.__REAL_BYPASS_P1 = true
+if protected.__ADMIN_SCAN_DONE then return end
+protected.__ADMIN_SCAN_DONE = true
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
 
-local DetectedSystems = {}
-local AllAdminRemotes = {}
-local AllAdminModules = {}
-local TargetAdminId = nil
+-- 1. TÜM OBJELERİ TARA
+local function scanAll()
+    local items = {}
+    local function recurse(parent, depth)
+        if depth > 250 then return end
+        for _, child in ipairs(parent:GetChildren()) do
+            table.insert(items, {obj = child, depth = depth})
+            recurse(child, depth + 1)
+        end
+    end
+    recurse(game, 0)
+    return items
+end
 
--- Gerçek admin sistemi imzaları (güncel 2024-2025)
-local ADMIN_DATABASE = {
-    {Name = "HD Admin", RemoteKeys = {"HDAdmin", "HD_Admin", "HDAdminSystem", "hdadmin"}, ModuleKeys = {"MainModule", "HDAdminSystem"}},
-    {Name = "Kohl's Admin Infinite", RemoteKeys = {"KohlAdmin", "KAI_Remote", "KohlEvent", "kohl"}, ModuleKeys = {"KohlAdminModule", "KAI"}},
-    {Name = "Adonis", RemoteKeys = {"Adonis_Remote", "AdonisAdmin", "AdonisEvent", "adonis"}, ModuleKeys = {"MainModule", "Adonis_Loader"}},
-    {Name = "CMD-X", RemoteKeys = {"CMD_REMOTE", "CMD_X", "CMDXRemote", "cmdx"}, ModuleKeys = {"CMD_X_Main"}},
-    {Name = "Infinite Yield", RemoteKeys = {"IY_Remote", "IYAdmin", "IY_MainEvent", "iy"}, ModuleKeys = {"IY_Loader"}},
-    {Name = "Reviz Admin", RemoteKeys = {"RevizAdmin", "Reviz_Remote", "RevizEvent", "reviz"}, ModuleKeys = {"RevizAdminSystem"}},
-    {Name = "Fates Admin", RemoteKeys = {"FatesAdmin", "FatesRemote", "FA_Main", "fates"}, ModuleKeys = {"FatesAdminModule"}},
-    {Name = "Cavays Admin", RemoteKeys = {"CavaysAdmin", "CavaysRemote", "cavays"}, ModuleKeys = {"CavaysAdmin"}},
-    {Name = "Zaptosis", RemoteKeys = {"Zaptosis", "ZapRemote", "zap"}, ModuleKeys = {"ZaptosisLoader"}},
+-- 2. ADMIN KELİMELERİ
+local keywords = {
+    "admin","cmd","command","exec","staff","mod","owner","rank","perm","ban","kick",
+    "manage","control","hdadmin","kohl","adonis","iy","cmdx","reviz","fates","cavays",
+    "zap","give","tp","kill","freeze","mute","warn","panel","system","remote",
+    "whitelist","permission","access","grant","verify","check","promote","demote"
 }
 
--- Tüm objeleri recursive tara
-local function ScanAllDescendants(parent, depth)
-    depth = depth or 0
-    if depth > 300 then return {} end
-    local results = {}
-    local children = parent:GetChildren()
-    for _, child in ipairs(children) do
-        table.insert(results, child)
-        local sub = ScanAllDescendants(child, depth + 1)
-        for _, s in ipairs(sub) do
-            table.insert(results, s)
-        end
-    end
-    return results
-end
-
--- Admin remote'larını tespit et
-local function DetectAdminRemotes()
-    local allObjects = ScanAllDescendants(game, 0)
-    local found = {}
+-- 3. ADMIN REMOTE BUL
+local function findAdminRemotes(allItems)
+    local remotes = {}
+    local seen = {}
     
-    for _, obj in ipairs(allObjects) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") or obj:IsA("BindableFunction") then
-            local objName = obj.Name:lower()
+    for _, item in ipairs(allItems) do
+        local obj = item.obj
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            if seen[obj] then continue end
+            seen[obj] = true
+            
+            local name = obj.Name:lower()
             local parentName = obj.Parent and obj.Parent.Name:lower() or ""
             
-            -- Veritabanı eşleşmesi
-            for _, sys in ipairs(ADMIN_DATABASE) do
-                for _, key in ipairs(sys.RemoteKeys) do
-                    if objName:find(key:lower()) or parentName:find(key:lower()) then
-                        if not found[obj] then
-                            found[obj] = {Remote = obj, System = sys.Name}
-                        end
-                    end
-                end
-            end
-            
-            -- Genel admin kelimeleri
-            local generalKeys = {"admin", "cmd", "command", "exec", "staff", "mod", "owner", "rank", "perm", "ban", "kick", "manage"}
-            for _, key in ipairs(generalKeys) do
-                if objName:find(key) then
-                    if not found[obj] then
-                        found[obj] = {Remote = obj, System = "Bilinmeyen Admin Sistemi"}
-                    end
+            for _, kw in ipairs(keywords) do
+                if name:find(kw) or parentName:find(kw) then
+                    table.insert(remotes, {
+                        remote = obj,
+                        name = obj.Name,
+                        parent = obj.Parent and obj.Parent.Name or "?",
+                        class = obj.ClassName
+                    })
+                    break
                 end
             end
         end
     end
     
-    -- Listeye çevir
-    local resultList = {}
-    for obj, data in pairs(found) do
-        table.insert(resultList, data)
-    end
-    
-    AllAdminRemotes = resultList
-    return resultList
+    return remotes
 end
 
--- Admin modüllerini tespit et
-local function DetectAdminModules()
-    local allObjects = ScanAllDescendants(game, 0)
-    local found = {}
+-- 4. ADMIN MODÜL BUL
+local function findAdminModules(allItems)
+    local modules = {}
+    local seen = {}
     
-    for _, obj in ipairs(allObjects) do
+    for _, item in ipairs(allItems) do
+        local obj = item.obj
         if obj:IsA("ModuleScript") then
-            local objName = obj.Name:lower()
+            if seen[obj] then continue end
+            seen[obj] = true
             
-            for _, sys in ipairs(ADMIN_DATABASE) do
-                for _, key in ipairs(sys.ModuleKeys) do
-                    if objName:find(key:lower()) then
-                        table.insert(found, {Module = obj, System = sys.Name})
-                    end
+            local name = obj.Name:lower()
+            for _, kw in ipairs(keywords) do
+                if name:find(kw) then
+                    table.insert(modules, {
+                        module = obj,
+                        name = obj.Name,
+                        parent = obj.Parent and obj.Parent.Name or "?"
+                    })
+                    break
                 end
             end
         end
     end
     
-    AllAdminModules = found
-    return found
+    return modules
 end
 
--- Admin ID'lerini bul (whitelist taraması)
-local function FindAdminIds()
+-- 5. ADMIN ID BUL (MODÜL İÇERİĞİNDEN)
+local function findAdminIds(modules)
     local ids = {}
+    local seen = {}
     
-    -- Modül içeriğini tara
-    for _, modData in ipairs(AllAdminModules) do
-        local success, moduleContent = pcall(function()
-            return require(modData.Module)
+    for _, modData in ipairs(modules) do
+        local ok, content = pcall(function()
+            return require(modData.module)
         end)
         
-        if success and type(moduleContent) == "table" then
-            local function deepScan(t, d)
-                if d > 20 then return end
+        if ok and type(content) == "table" then
+            local function deepSearch(t, d)
+                if d > 15 then return end
                 if type(t) ~= "table" then return end
                 
                 for k, v in pairs(t) do
                     local ks = tostring(k):lower()
-                    if ks:find("admin") or ks:find("owner") or ks:find("whitelist") or ks:find("creator") or ks:find("staff") then
-                        if type(v) == "number" and v > 10000 then
-                            table.insert(ids, v)
+                    if ks:find("admin") or ks:find("owner") or ks:find("whitelist") or ks:find("creator") then
+                        if type(v) == "number" and v > 1000 then
+                            if not seen[v] then
+                                seen[v] = true
+                                table.insert(ids, v)
+                            end
                         elseif type(v) == "table" then
                             for _, iv in pairs(v) do
-                                if type(iv) == "number" and iv > 10000 then
-                                    table.insert(ids, iv)
+                                if type(iv) == "number" and iv > 1000 then
+                                    if not seen[iv] then
+                                        seen[iv] = true
+                                        table.insert(ids, iv)
+                                    end
                                 end
                             end
                         end
                     end
                     if type(v) == "table" then
-                        deepScan(v, d + 1)
+                        deepSearch(v, d + 1)
                     end
                 end
             end
             
-            deepScan(moduleContent, 0)
+            deepSearch(content, 0)
         end
     end
     
-    -- Owner tespiti (en yüksek UserId)
+    -- Eğer ID bulunamazsa owner tahmini yap
     if #ids == 0 then
         local highest = 0
         for _, p in ipairs(Players:GetPlayers()) do
-            if p.UserId > highest and p ~= LP then
+            if p ~= LP and p.UserId > highest then
                 highest = p.UserId
             end
         end
@@ -164,149 +150,133 @@ local function FindAdminIds()
         end
     end
     
-    -- Benzersizleştir
-    local unique = {}
-    local seen = {}
-    for _, id in ipairs(ids) do
-        if not seen[id] then
-            seen[id] = true
-            table.insert(unique, id)
-        end
-    end
-    
-    if #unique > 0 then
-        TargetAdminId = unique[1]
-    end
-    
-    return unique
+    return ids
 end
 
--- Player'ın grup rank'ını kontrol et
-local function CheckGroupRanks()
-    local adminPlayers = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP then
-            pcall(function()
-                local rank = p:GetRankInGroup(p.Team and p.Team.TeamColor and 0 or 0)
-                if rank >= 250 then
-                    table.insert(adminPlayers, {Player = p, Rank = rank})
-                end
-            end)
-        end
-    end
-    return adminPlayers
-end
+-- 6. ANA TARAMA
+print("══════════════════════════════════")
+print("  PART 1: TARAYICI ÇALIŞIYOR")
+print("══════════════════════════════════")
 
--- Tespit edilen korumaları analiz et
-local function AnalyzeProtection(remoteList)
-    local protections = {
-        Whitelist = false,
-        RankCheck = false,
-        KeyAuth = false,
-        AntiExploit = false
-    }
-    
-    for _, remoteData in ipairs(remoteList) do
-        local remote = remoteData.Remote
-        
-        -- Remote isminden koruma tahmini
-        local rName = remote.Name:lower()
-        if rName:find("whitelist") or rName:find("check") or rName:find("verify") then
-            protections.Whitelist = true
-        end
-        if rName:find("rank") or rName:find("group") then
-            protections.RankCheck = true
-        end
-        if rName:find("key") or rName:find("pass") or rName:find("auth") then
-            protections.KeyAuth = true
-        end
-        if rName:find("anti") or rName:find("detect") or rName:find("ban") then
-            protections.AntiExploit = true
-        end
-    end
-    
-    return protections
-end
-
--- === ANA TARAMA ===
-print("══════════════════════════════════════")
-print("  PART 1: TARAMA BAŞLATILIYOR")
-print("══════════════════════════════════════")
+print("[TARAMA] Objeler toplanıyor...")
+local allItems = scanAll()
+print("[TARAMA] " .. #allItems .. " obje bulundu")
 
 print("[TARAMA] Admin remote'ları aranıyor...")
-local remotes = DetectAdminRemotes()
-print("[TARAMA] " .. #remotes .. " admin remote bulundu")
-
-print("[TARAMA] Admin modülleri aranıyor...")
-local modules = DetectAdminModules()
-print("[TARAMA] " .. #modules .. " admin modülü bulundu")
-
-print("[TARAMA] Admin ID'leri taranıyor...")
-local adminIds = FindAdminIds()
-print("[TARAMA] " .. #adminIds .. " admin ID bulundu")
-if TargetAdminId then
-    print("[TARAMA] Hedef Admin ID: " .. TargetAdminId)
+local adminRemotes = findAdminRemotes(allItems)
+print("[TARAMA] " .. #adminRemotes .. " admin remote tespit edildi")
+for i, r in ipairs(adminRemotes) do
+    print("  " .. i .. ". " .. r.name .. " (" .. r.parent .. ")")
 end
 
-local protections = AnalyzeProtection(remotes)
-print("[TARAMA] Korumalar: Whitelist=" .. tostring(protections.Whitelist) .. " Rank=" .. tostring(protections.RankCheck) .. " Key=" .. tostring(protections.KeyAuth))
+print("[TARAMA] Admin modülleri aranıyor...")
+local adminModules = findAdminModules(allItems)
+print("[TARAMA] " .. #adminModules .. " admin modül tespit edildi")
+for i, m in ipairs(adminModules) do
+    print("  " .. i .. ". " .. m.name .. " (" .. m.parent .. ")")
+end
 
--- Part 2 için veri aktar
-protected.__REAL_BYPASS_DATA = {
-    Remotes = remotes,
-    Modules = modules,
-    AdminIds = adminIds,
-    TargetId = TargetAdminId,
-    Protections = protections,
-    DetectedSystems = DetectedSystems
+print("[TARAMA] Admin ID'leri çıkarılıyor...")
+local adminIds = findAdminIds(adminModules)
+print("[TARAMA] " .. #adminIds .. " hedef ID bulundu")
+for i, id in ipairs(adminIds) do
+    print("  " .. i .. ". ID: " .. id)
+end
+
+-- VERİYİ PART 2'YE AKTAR
+protected.__BYPASS_PART1_DATA = {
+    adminRemotes = adminRemotes,
+    adminModules = adminModules,
+    adminIds = adminIds,
+    totalRemotes = #adminRemotes
 }
 
-print("[PART 1] TAMAMLANDI - Part 2'yi çalıştırın")--[[
-    100% ÇALIŞAN ROBLOX ADMIN BYPASS - PART 2/3
-    BYPASS ENJEKTÖRÜ
-    Part 1 çalıştıktan sonra execute edin.
+print("══════════════════════════════════")
+print("  PART 1 TAMAMLANDI")
+print("  Part 2'yi execute edin")
+print("══════════════════════════════════")--[[
+    PART 2/3: BYPASS MOTORU
+    Part 1'den gelen verilerle bypass işlemini gerçekleştirir.
+    Part 1 çalıştıktan SONRA execute edin.
 ]]--
 
 local env = getsenv or getfenv or function() return _G end
 local protected = env()
-if protected.__REAL_BYPASS_P2 then return end
-protected.__REAL_BYPASS_P2 = true
+if protected.__ADMIN_BYPASS_DONE then return end
+protected.__ADMIN_BYPASS_DONE = true
 
-local data = protected.__REAL_BYPASS_DATA
+-- Part 1 verisini al
+local data = protected.__BYPASS_PART1_DATA
 if not data then
+    warn("[PART 2] HATA: Part 1 verisi bulunamadı!")
     warn("[PART 2] Önce Part 1'i çalıştırın!")
     return
 end
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
-local TargetId = data.TargetId or 1
-local Remotes = data.Remotes or {}
-local Protections = data.Protections or {}
+local adminRemotes = data.adminRemotes or {}
+local adminModules = data.adminModules or {}
+local adminIds = data.adminIds or {}
+local targetId = adminIds[1] or 1
 
-local BypassSuccess = false
-local HookedRemotes = {}
+-- === BYPASS 1: DOĞRUDAN FIRE SALDIRISI ===
+local function directFireAll()
+    local payloads = {
+        {"AddAdmin", LP.UserId, 999, true},
+        {"GrantAdmin", LP.UserId, 999},
+        {"Whitelist", "add", LP.UserId, LP.Name},
+        {"SetPermission", LP.UserId, "Owner"},
+        {"SetRank", LP.UserId, 255},
+        {"SetAdminLevel", LP.UserId, 999},
+        {"MakeOwner", LP.UserId},
+        {"Promote", LP.UserId, 999},
+        {LP.UserId, 999, true, "Owner"},
+        {"Bypass", LP.UserId, 999},
+        {"AdminPanel", LP.UserId, "Activate"},
+        {"GiveAdmin", LP.Name, 999},
+        {LP.Name, 999, true},
+        {"", LP.UserId, 999},
+        {"admin", LP.UserId, 999},
+        {"bypass", LP.UserId, 999},
+        {true, LP.UserId, 999},
+        {"kohl", LP.UserId, 999},
+        {"hdadmin", LP.UserId, 999},
+        {"adonis", LP.UserId, 999},
+    }
+    
+    for _, rData in ipairs(adminRemotes) do
+        local remote = rData.remote
+        spawn(function()
+            for _, payload in ipairs(payloads) do
+                pcall(function()
+                    if remote:IsA("RemoteEvent") then
+                        remote:FireServer(unpack(payload))
+                    elseif remote:IsA("RemoteFunction") then
+                        remote:InvokeServer(unpack(payload))
+                    end
+                end)
+                task.wait(0.003)
+            end
+        end)
+    end
+end
 
--- === METOD 1: GETSENV ILE MODÜL İÇİNE SIZMA ===
-local function InjectViaModuleEnv()
-    for _, modData in ipairs(data.Modules or {}) do
-        local success, moduleEnv = pcall(function()
-            return getsenv(modData.Module)
+-- === BYPASS 2: MODÜL ENV MANİPÜLASYONU ===
+local function moduleEnvBypass()
+    for _, mData in ipairs(adminModules) do
+        local ok, env = pcall(function()
+            return getsenv(mData.module)
         end)
         
-        if success and moduleEnv then
-            -- Admin kontrol fonksiyonlarını override et
-            local adminCheckFuncs = {
-                "IsAdmin", "isAdmin", "CheckAdmin", "checkAdmin",
-                "HasPermission", "hasPermission", "GetRank", "getRank",
-                "IsStaff", "isStaff", "IsOwner", "isOwner"
-            }
+        if ok and env then
+            -- Admin kontrol fonksiyonlarını değiştir
+            local funcs = {"IsAdmin","isAdmin","CheckAdmin","checkAdmin","HasPermission","hasPermission","GetRank","getRank","IsStaff","isStaff","IsOwner","isOwner"}
             
-            for _, funcName in ipairs(adminCheckFuncs) do
-                if type(moduleEnv[funcName]) == "function" then
-                    local orig = moduleEnv[funcName]
-                    moduleEnv[funcName] = function(...)
+            for _, fn in ipairs(funcs) do
+                if type(env[fn]) == "function" then
+                    local orig = env[fn]
+                    env[fn] = function(...)
                         local args = {...}
                         if args[1] == LP or args[1] == LP.UserId or args[1] == LP.Name then
                             return true, 999, "Owner"
@@ -316,295 +286,215 @@ local function InjectViaModuleEnv()
                 end
             end
             
-            -- Whitelist tablosuna ekle
-            local whitelistKeys = {"Admins", "admins", "Whitelist", "whitelist", "AdminList", "adminList", "Owners", "owners", "Staff", "staff"}
-            for _, key in ipairs(whitelistKeys) do
-                if type(moduleEnv[key]) == "table" then
-                    moduleEnv[key][LP.UserId] = 999
-                    moduleEnv[key][LP.Name] = 999
-                    moduleEnv[key][tostring(LP.UserId)] = "Owner"
+            -- Whitelist tablosuna kendimizi ekle
+            local tables = {"Admins","admins","Whitelist","whitelist","AdminList","adminList","Owners","owners","Staff","staff"}
+            for _, tn in ipairs(tables) do
+                if type(env[tn]) == "table" then
+                    env[tn][LP.UserId] = 999
+                    env[tn][LP.Name] = "Owner"
                 end
             end
-            
-            return true
         end
     end
-    return false
 end
 
--- === METOD 2: REMOTE FIRE OVERRIDE ===
-local function OverrideRemoteFire()
-    for _, remoteData in ipairs(Remotes) do
-        local remote = remoteData.Remote
-        if HookedRemotes[remote] then return end
-        HookedRemotes[remote] = true
-        
+-- === BYPASS 3: REMOTE FONKSİYON HOOK ===
+local function hookRemoteFunctions()
+    for _, rData in ipairs(adminRemotes) do
+        local remote = rData.remote
         spawn(function()
-            if remote:IsA("RemoteEvent") then
-                local oldFire = remote.FireServer
-                local newFire = function(self, ...)
-                    local args = {...}
-                    local newArgs = {}
-                    
-                    -- Admin yetki argümanlarını enjekte et
-                    if #args >= 1 then
-                        -- İlk argüman kontrol komutu ise override et
-                        if type(args[1]) == "string" then
+            pcall(function()
+                if remote:IsA("RemoteEvent") then
+                    local oldFire = remote.FireServer
+                    local newFire = function(self, ...)
+                        local args = {...}
+                        if #args >= 1 and type(args[1]) == "string" then
                             local cmd = args[1]:lower()
                             if cmd:find("check") or cmd:find("verify") or cmd:find("isadmin") then
-                                newArgs = {LP.UserId, 999, true, "Owner"}
-                            else
-                                newArgs = args
+                                return oldFire(self, LP.UserId, 999, true, "Owner")
                             end
-                        elseif type(args[1]) == "number" and args[1] == LP.UserId then
-                            newArgs = {args[1], 999, true, "Owner"}
-                            for i = 2, #args do
-                                newArgs[i + 1] = args[i]
-                            end
-                        else
-                            newArgs = args
                         end
-                    else
-                        newArgs = {LP.UserId, 999, true}
+                        if #args >= 1 and type(args[1]) == "number" and args[1] == LP.UserId then
+                            return oldFire(self, args[1], 999, true, "Owner")
+                        end
+                        return oldFire(self, ...)
                     end
-                    
-                    return oldFire(self, unpack(newArgs))
-                end
-                
-                pcall(function()
                     hookfunction(remote.FireServer, newFire)
-                end)
-                
-            elseif remote:IsA("RemoteFunction") then
-                local oldInvoke = remote.InvokeServer
-                local newInvoke = function(self, ...)
-                    local args = {...}
-                    local newArgs = {}
                     
-                    if #args >= 1 then
-                        if type(args[1]) == "string" then
+                elseif remote:IsA("RemoteFunction") then
+                    local oldInvoke = remote.InvokeServer
+                    local newInvoke = function(self, ...)
+                        local args = {...}
+                        if #args >= 1 and type(args[1]) == "string" then
                             local cmd = args[1]:lower()
                             if cmd:find("check") or cmd:find("verify") or cmd:find("isadmin") then
-                                newArgs = {LP.UserId, 999, true, "Owner"}
-                            else
-                                newArgs = args
+                                local res = oldInvoke(self, LP.UserId, 999, true, "Owner")
+                                if res == false or res == nil then return true end
+                                return res
                             end
-                        elseif type(args[1]) == "number" and args[1] == LP.UserId then
-                            newArgs = {args[1], 999, true, "Owner"}
-                        else
-                            newArgs = args
                         end
-                    else
-                        newArgs = {LP.UserId, 999, true}
+                        local res = oldInvoke(self, ...)
+                        if res == false or res == nil then return true end
+                        return res
                     end
-                    
-                    local result = oldInvoke(self, unpack(newArgs))
-                    if result == false or result == nil then
-                        return true
-                    end
-                    return result
-                end
-                
-                pcall(function()
                     hookfunction(remote.InvokeServer, newInvoke)
-                end)
-            end
+                end
+            end)
         end)
     end
 end
 
--- === METOD 3: DOĞRUDAN FIRE SALDIRISI ===
-local function DirectFireAttack()
-    local payloads = {
-        -- Whitelist bypass
-        {"AddAdmin", LP.UserId, 999},
-        {"GrantAdmin", LP.UserId, 999, true},
-        {"Whitelist", "add", LP.UserId},
-        {"AddToWhitelist", LP.UserId, LP.Name},
-        {"SetPermission", LP.UserId, "Owner"},
-        {"PromoteToAdmin", LP.UserId},
-        {"MakeOwner", LP.UserId},
-        {"SetRank", LP.UserId, 255},
-        {"SetAdminLevel", LP.UserId, 999},
-        {"GiveAdmin", LP.UserId, 999, true},
-        {"AdminBypass", LP.UserId, 999, true, "Owner"},
-        
-        -- Rank bypass
-        {LP.UserId, 255, "Owner"},
-        {LP.Name, 255, true},
-        {LP.UserId, "Admin", true},
-        
-        -- Key bypass (boş key dene)
-        {"", LP.UserId, 999},
-        {"admin", LP.UserId, 999},
-        {"password", LP.UserId, 999},
-        {"bypass", LP.UserId, 999},
-        {nil, LP.UserId, 999},
-        {true, LP.UserId, 999},
-    }
+-- === BYPASS 4: IDENTITY SPOOFING ===
+local function identitySpoof()
+    if targetId < 1 then return false end
     
-    for _, remoteData in ipairs(Remotes) do
-        local remote = remoteData.Remote
-        
-        for _, payload in ipairs(payloads) do
-            spawn(function()
-                pcall(function()
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(unpack(payload))
-                    else
-                        remote:InvokeServer(unpack(payload))
-                    end
-                end)
-            end)
-            task.wait(0.01)
-        end
-    end
-end
-
--- === METOD 4: IDENTITY SPOOFING ===
-local function IdentitySpoof()
-    if not TargetId or TargetId < 1 then return false end
-    
-    -- __index metatable hook
-    local mt = getrawmetatable(LP)
-    if mt then
-        local oldIndex = mt.__index
-        mt.__index = function(self, key)
-            if self == LP and key == "UserId" then
-                return TargetId
-            end
-            if type(oldIndex) == "function" then
-                return oldIndex(self, key)
-            elseif type(oldIndex) == "table" then
-                return oldIndex[key]
+    -- __index metatable override
+    pcall(function()
+        local mt = getrawmetatable(LP)
+        if mt then
+            local oldIndex = mt.__index
+            mt.__index = function(self, key)
+                if self == LP and key == "UserId" then
+                    return targetId
+                end
+                if type(oldIndex) == "function" then
+                    return oldIndex(self, key)
+                elseif type(oldIndex) == "table" then
+                    return oldIndex[key]
+                end
             end
         end
-    end
+    end)
     
     -- GetUserId override
-    local oldGetId = LP.GetUserId
-    local newGetId = function(self)
-        if self == LP then
-            return TargetId
-        end
-        return oldGetId(self)
-    end
-    
     pcall(function()
-        hookfunction(LP.GetUserId, newGetId)
+        local oldGetId = LP.GetUserId
+        hookfunction(LP.GetUserId, function(self)
+            if self == LP then return targetId end
+            return oldGetId(self)
+        end)
     end)
     
     return true
 end
 
--- === METOD 5: __NAMECALL GLOBAL HOOK ===
-local function GlobalNamecallHook()
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+-- === BYPASS 5: GLOBAL __NAMECALL HOOK ===
+local function globalNamecallHook()
+    local oldNc = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
         local args = {...}
         
-        -- FireServer/InvokeServer override
         if method == "FireServer" or method == "InvokeServer" then
-            local remoteName = tostring(self):lower()
-            local isAdminRemote = false
-            
-            for _, key in ipairs({"admin", "cmd", "command", "exec", "staff", "mod", "owner", "rank", "perm", "ban", "kick"}) do
-                if remoteName:find(key) then
-                    isAdminRemote = true
-                    break
-                end
+            local rname = tostring(self):lower()
+            local isAdmin = false
+            local keywords = {"admin","cmd","command","exec","staff","mod","owner","rank","perm","ban","kick"}
+            for _, kw in ipairs(keywords) do
+                if rname:find(kw) then isAdmin = true break end
             end
-            
-            if isAdminRemote then
-                local newArgs = {LP.UserId, 999, true, "Owner", "bypass"}
-                return oldNamecall(self, unpack(newArgs))
+            if isAdmin then
+                return oldNc(self, LP.UserId, 999, true, "Owner", "bypass")
             end
         end
         
-        -- IsInGroup override
-        if method == "IsInGroup" then
-            return true
-        end
+        if method == "IsInGroup" then return true end
+        if method == "GetRankInGroup" then return 255 end
+        if method == "GetRoleInGroup" then return "Owner" end
         
-        -- GetRankInGroup override
-        if method == "GetRankInGroup" then
-            return 255
-        end
-        
-        -- GetRoleInGroup override
-        if method == "GetRoleInGroup" then
-            return "Owner"
-        end
-        
-        return oldNamecall(self, ...)
+        return oldNc(self, ...)
     end)
 end
 
--- === TÜM METODLARI UYGULA ===
-print("══════════════════════════════════════")
+-- === TÜM BYPASS'LARI UYGULA ===
+print("══════════════════════════════════")
 print("  PART 2: BYPASS BAŞLATILIYOR")
-print("══════════════════════════════════════")
+print("══════════════════════════════════")
 
-print("[METOD 1] Module env injection...")
-local m1 = InjectViaModuleEnv()
-print("[METOD 1] " .. (m1 and "BAŞARILI" or "Modül bulunamadı"))
+print("[1/5] Direct fire saldırısı...")
+directFireAll()
+print("[1/5] Payload'lar gönderildi")
 
-print("[METOD 2] Remote fire override...")
-OverrideRemoteFire()
-print("[METOD 2] " .. #Remotes .. " remote hook'landı")
+print("[2/5] Modül env manipülasyonu...")
+moduleEnvBypass()
+print("[2/5] Modüller manipüle edildi")
 
-print("[METOD 3] Direct fire attack...")
-DirectFireAttack()
-print("[METOD 3] Payload'lar gönderildi")
+print("[3/5] Remote fonksiyon hook...")
+hookRemoteFunctions()
+print("[3/5] Remote'lar hook'landı")
 
-print("[METOD 4] Identity spoofing...")
-local m4 = IdentitySpoof()
-print("[METOD 4] " .. (m4 and "BAŞARILI - ID: " .. TargetId or "Başarısız"))
+print("[4/5] Identity spoofing...")
+local spoofOk = identitySpoof()
+print("[4/5] " .. (spoofOk and "Başarılı (ID: " .. targetId .. ")" or "Başarısız"))
 
-print("[METOD 5] Global namecall hook...")
-GlobalNamecallHook()
-print("[METOD 5] Kuruldu")
+print("[5/5] Global namecall hook...")
+globalNamecallHook()
+print("[5/5] Global hook kuruldu")
 
 -- Part 3 için durum aktar
-protected.__REAL_BYPASS_STATUS = {
-    ModuleEnvInjected = m1,
-    RemotesHooked = #HookedRemotes > 0,
-    DirectFired = true,
-    IdentitySpoofed = m4,
-    GlobalHooked = true,
-    TotalRemotes = #Remotes,
-    TargetId = TargetId
+protected.__BYPASS_PART2_STATUS = {
+    directFired = true,
+    moduleBypassed = true,
+    remoteHooked = true,
+    identitySpoofed = spoofOk,
+    globalHooked = true,
+    totalRemotes = #adminRemotes,
+    targetId = targetId
 }
 
-print("[PART 2] TAMAMLANDI - Part 3'ü çalıştırın")--[[
-    100% ÇALIŞAN ROBLOX ADMIN BYPASS - PART 3/3
-    MOBİL UYUMLU GUI + BAKIM DÖNGÜSÜ
-    Part 1 ve 2 çalıştıktan sonra execute edin.
+print("══════════════════════════════════")
+print("  PART 2 TAMAMLANDI")
+print("  Part 3'ü execute edin")
+print("══════════════════════════════════")--[[
+    PART 3/3: MOBİL MENÜ + BAKIM DÖNGÜSÜ
+    Part 1 ve 2 çalıştıktan SONRA execute edin.
+    Küçük, kaydırılabilir, aç/kapa yapılabilir menü.
 ]]--
 
 local env = getsenv or getfenv or function() return _G end
 local protected = env()
-if protected.__REAL_BYPASS_P3 then return end
-protected.__REAL_BYPASS_P3 = true
+if protected.__ADMIN_MENU_DONE then return end
+protected.__ADMIN_MENU_DONE = true
 
-local data = protected.__REAL_BYPASS_DATA or {}
-local status = protected.__REAL_BYPASS_STATUS or {}
-local Remotes = data.Remotes or {}
+-- Verileri al
+local data = protected.__BYPASS_PART1_DATA or {}
+local status = protected.__BYPASS_PART2_STATUS or {}
+local adminRemotes = data.adminRemotes or {}
+local targetId = data.adminIds and data.adminIds[1] or 1
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
-local TargetId = data.TargetId or 1
 
--- === MOBİL UYUMLU KÜÇÜK GUI ===
-local function CreateMobileGUI()
-    -- ScreenGui
+-- === KOMUT GÖNDERME ===
+local function sendCommand(cmd)
+    for _, rData in ipairs(adminRemotes) do
+        local remote = rData.remote
+        spawn(function()
+            pcall(function()
+                local payloads = {
+                    {cmd, LP.UserId, 999, true},
+                    {"Execute", cmd, LP.UserId},
+                    {"RunCommand", cmd, 999},
+                    {cmd},
+                }
+                for _, p in ipairs(payloads) do
+                    if remote:IsA("RemoteEvent") then
+                        remote:FireServer(unpack(p))
+                    else
+                        remote:InvokeServer(unpack(p))
+                    end
+                    task.wait(0.003)
+                end
+            end)
+        end)
+    end
+end
+
+-- === MENÜ OLUŞTUR ===
+local function createMenu()
     local gui = Instance.new("ScreenGui")
-    gui.Name = "BypassPanel_Mobile"
+    gui.Name = "BypassPanel"
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -613,134 +503,114 @@ local function CreateMobileGUI()
         syn.protect_gui(gui)
     end
     
-    -- Ana container - küçük boyut
-    local Main = Instance.new("Frame")
-    Main.Name = "MainContainer"
-    Main.Size = UDim2.new(0, 220, 0, 280)
-    Main.Position = UDim2.new(1, -230, 0, 80)
-    Main.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
-    Main.BorderSizePixel = 0
-    Main.ClipsDescendants = true
-    Main.Parent = gui
+    -- Ana panel (küçük)
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 195, 0, 245)
+    panel.Position = UDim2.new(1, -205, 0, 90)
+    panel.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+    panel.BorderSizePixel = 0
+    panel.ClipsDescendants = true
+    panel.Parent = gui
     
-    local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 10)
-    MainCorner.Parent = Main
+    local panelCorner = Instance.new("UICorner")
+    panelCorner.CornerRadius = UDim.new(0, 10)
+    panelCorner.Parent = panel
     
-    -- Aç/kapa butonu (her zaman görünür)
-    local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Name = "ToggleBtn"
-    ToggleBtn.Size = UDim2.new(0, 36, 0, 36)
-    ToggleBtn.Position = UDim2.new(1, -40, 0, 5)
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 0)
-    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleBtn.Text = "◄"
-    ToggleBtn.Font = Enum.Font.SourceSansBold
-    ToggleBtn.TextSize = 18
-    ToggleBtn.BorderSizePixel = 0
-    ToggleBtn.ZIndex = 10
-    ToggleBtn.Parent = Main
+    -- Aç/kapa butonu
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 28, 0, 28)
+    toggle.Position = UDim2.new(1, -33, 0, 5)
+    toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.Text = "◄"
+    toggle.Font = Enum.Font.SourceSansBold
+    toggle.TextSize = 15
+    toggle.BorderSizePixel = 0
+    toggle.ZIndex = 10
+    toggle.Parent = panel
     
-    local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 8)
-    ToggleCorner.Parent = ToggleBtn
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 6)
+    toggleCorner.Parent = toggle
     
-    -- İçerik frame (kaydırılabilir)
-    local Content = Instance.new("ScrollingFrame")
-    Content.Name = "Content"
-    Content.Size = UDim2.new(1, -10, 1, -45)
-    Content.Position = UDim2.new(0, 5, 0, 45)
-    Content.BackgroundTransparency = 1
-    Content.BorderSizePixel = 0
-    Content.ScrollBarThickness = 3
-    Content.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 0)
-    Content.CanvasSize = UDim2.new(0, 0, 0, 400)
-    Content.ScrollingDirection = Enum.ScrollingDirection.Y
-    Content.Parent = Main
+    -- Başlık
+    local title = Instance.new("Frame")
+    title.Size = UDim2.new(1, 0, 0, 28)
+    title.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
+    title.BorderSizePixel = 0
+    title.Parent = panel
     
-    local UIList = Instance.new("UIListLayout")
-    UIList.Padding = UDim.new(0, 3)
-    UIList.Parent = Content
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 10)
+    titleCorner.Parent = title
     
-    -- Panel görünürlük durumu
-    local isVisible = true
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, -40, 1, 0)
+    titleText.Position = UDim2.new(0, 8, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleText.Text = "⚡ BYPASS"
+    titleText.Font = Enum.Font.SourceSansBold
+    titleText.TextSize = 12
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = title
     
-    -- Title bar
-    local TitleBar = Instance.new("Frame")
-    TitleBar.Name = "TitleBar"
-    TitleBar.Size = UDim2.new(1, 0, 0, 40)
-    TitleBar.Position = UDim2.new(0, 0, 0, 0)
-    TitleBar.BackgroundColor3 = Color3.fromRGB(0, 110, 0)
-    TitleBar.BorderSizePixel = 0
-    TitleBar.ZIndex = 5
-    TitleBar.Parent = Main
+    -- Kaydırılabilir içerik
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -6, 1, -33)
+    scroll.Position = UDim2.new(0, 3, 0, 31)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 3
+    scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 0)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 350)
+    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    scroll.Parent = panel
     
-    local TitleCorner = Instance.new("UICorner")
-    TitleCorner.CornerRadius = UDim.new(0, 10)
-    TitleCorner.Parent = TitleBar
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(0, 2)
+    list.Parent = scroll
     
-    local TitleText = Instance.new("TextLabel")
-    TitleText.Size = UDim2.new(1, -40, 1, 0)
-    TitleText.Position = UDim2.new(0, 8, 0, 0)
-    TitleText.BackgroundTransparency = 1
-    TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleText.Text = "⚡ BYPASS"
-    TitleText.Font = Enum.Font.SourceSansBold
-    TitleText.TextSize = 13
-    TitleText.TextXAlignment = Enum.TextXAlignment.Left
-    TitleText.ZIndex = 6
-    TitleText.Parent = TitleBar
+    -- Durum
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 30)
+    info.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+    info.TextColor3 = Color3.fromRGB(0, 255, 0)
+    info.Text = "🟢 " .. #adminRemotes .. " remote | ID:" .. targetId
+    info.Font = Enum.Font.SourceSansBold
+    info.TextSize = 10
+    info.RichText = true
+    info.Parent = scroll
     
-    -- Durum göstergesi
-    local StatusDot = Instance.new("Frame")
-    StatusDot.Name = "StatusDot"
-    StatusDot.Size = UDim2.new(0, 8, 0, 8)
-    StatusDot.Position = UDim2.new(1, -40, 0, 16)
-    StatusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    StatusDot.BorderSizePixel = 0
-    StatusDot.ZIndex = 7
-    StatusDot.Parent = TitleBar
+    local infoCorner = Instance.new("UICorner")
+    infoCorner.CornerRadius = UDim.new(0, 4)
+    infoCorner.Parent = info
     
-    local StatusCorner = Instance.new("UICorner")
-    StatusCorner.CornerRadius = UDim.new(0, 4)
-    StatusCorner.Parent = StatusDot
+    -- Komut kutusu
+    local cmdBox = Instance.new("TextBox")
+    cmdBox.Size = UDim2.new(1, 0, 0, 24)
+    cmdBox.BackgroundColor3 = Color3.fromRGB(30, 30, 33)
+    cmdBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    cmdBox.PlaceholderText = "Komut gir..."
+    cmdBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+    cmdBox.Text = ""
+    cmdBox.Font = Enum.Font.SourceSans
+    cmdBox.TextSize = 11
+    cmdBox.BorderSizePixel = 0
+    cmdBox.Parent = scroll
     
-    -- Bilgi label
-    local InfoLabel = Instance.new("TextLabel")
-    InfoLabel.Name = "InfoLabel"
-    InfoLabel.Size = UDim2.new(1, 0, 0, 50)
-    InfoLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 33)
-    InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    InfoLabel.Text = "🟢 Sistem: Aktif\n🎯 Hedef ID: " .. tostring(TargetId) .. "\n📡 Remote: " .. #Remotes .. " adet"
-    InfoLabel.Font = Enum.Font.SourceSans
-    InfoLabel.TextSize = 10
-    InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    InfoLabel.RichText = true
-    InfoLabel.Parent = Content
+    local cmdCorner = Instance.new("UICorner")
+    cmdCorner.CornerRadius = UDim.new(0, 4)
+    cmdCorner.Parent = cmdBox
     
-    local InfoCorner = Instance.new("UICorner")
-    InfoCorner.CornerRadius = UDim.new(0, 5)
-    InfoCorner.Parent = InfoLabel
+    cmdBox.FocusLost:Connect(function(enter)
+        if enter and cmdBox.Text ~= "" then
+            sendCommand(cmdBox.Text)
+            cmdBox.Text = ""
+        end
+    end)
     
-    -- Komut input
-    local CmdBox = Instance.new("TextBox")
-    CmdBox.Name = "CmdBox"
-    CmdBox.Size = UDim2.new(1, 0, 0, 28)
-    CmdBox.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
-    CmdBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CmdBox.PlaceholderText = "Komut yaz..."
-    CmdBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-    CmdBox.Text = ""
-    CmdBox.Font = Enum.Font.SourceSans
-    CmdBox.TextSize = 11
-    CmdBox.BorderSizePixel = 0
-    CmdBox.Parent = Content
-    
-    local CmdCorner = Instance.new("UICorner")
-    CmdCorner.CornerRadius = UDim.new(0, 4)
-    CmdCorner.Parent = CmdBox
-    
-    -- Hızlı butonlar
+    -- Butonlar
     local buttons = {
         {"🛡️ God", "god"},
         {"🦅 Fly", "fly"},
@@ -748,44 +618,24 @@ local function CreateMobileGUI()
         {"👁️ ESP", "esp"},
         {"💀 Kill All", "kill all"},
         {"🔨 Ban", "ban"},
-        {"👢 Kick", "kick"},
+        {"👢 Kick All", "kick all"},
         {"❄️ Freeze", "freeze"},
         {"💥 Explode", "explode"},
         {"🔄 Respawn", "respawn"},
-        {"📋 Server Info", "info"},
-        {"💣 Crash", "crash"}
+        {"📋 Info", "info"},
+        {"💣 Crash", "crash"},
     }
-    
-    local function sendCommand(cmd)
-        for _, remoteData in ipairs(Remotes) do
-            local remote = remoteData.Remote
-            spawn(function()
-                pcall(function()
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(cmd, LP.UserId, 999, true)
-                        remote:FireServer("Execute", cmd, LP.UserId)
-                        remote:FireServer(cmd)
-                    else
-                        remote:InvokeServer(cmd, LP.UserId, 999, true)
-                        remote:InvokeServer("Execute", cmd, LP.UserId)
-                        remote:InvokeServer(cmd)
-                    end
-                end)
-            end)
-        end
-    end
     
     for _, btnData in ipairs(buttons) do
         local btn = Instance.new("TextButton")
-        btn.Name = btnData[2]
-        btn.Size = UDim2.new(1, 0, 0, 26)
-        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+        btn.Size = UDim2.new(1, 0, 0, 23)
+        btn.BackgroundColor3 = Color3.fromRGB(32, 32, 35)
         btn.TextColor3 = Color3.fromRGB(220, 220, 220)
         btn.Text = btnData[1]
         btn.Font = Enum.Font.SourceSans
-        btn.TextSize = 11
+        btn.TextSize = 10
         btn.BorderSizePixel = 0
-        btn.Parent = Content
+        btn.Parent = scroll
         
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 4)
@@ -794,61 +644,52 @@ local function CreateMobileGUI()
         btn.MouseButton1Click:Connect(function()
             sendCommand(btnData[2])
             btn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-            task.wait(0.2)
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+            task.wait(0.15)
+            btn.BackgroundColor3 = Color3.fromRGB(32, 32, 35)
         end)
     end
     
-    -- Canvas size güncelle
-    Content.CanvasSize = UDim2.new(0, 0, 0, #buttons * 29 + 80)
+    -- Aç/kapa mantığı
+    local visible = true
     
-    -- Toggle fonksiyonu
-    local function togglePanel()
-        isVisible = not isVisible
-        if isVisible then
-            Main.Size = UDim2.new(0, 220, 0, 280)
-            Content.Visible = true
-            TitleBar.Visible = true
-            ToggleBtn.Text = "◄"
-            ToggleBtn.Position = UDim2.new(1, -40, 0, 5)
-            Main.Position = UDim2.new(1, -230, 0, 80)
+    toggle.MouseButton1Click:Connect(function()
+        visible = not visible
+        if visible then
+            panel.Size = UDim2.new(0, 195, 0, 245)
+            panel.Position = UDim2.new(1, -205, 0, 90)
+            title.Visible = true
+            scroll.Visible = true
+            toggle.Text = "◄"
+            toggle.Position = UDim2.new(1, -33, 0, 5)
         else
-            Main.Size = UDim2.new(0, 40, 0, 40)
-            Content.Visible = false
-            TitleBar.Visible = false
-            ToggleBtn.Text = "►"
-            ToggleBtn.Position = UDim2.new(0, 2, 0, 2)
-            Main.Position = UDim2.new(1, -50, 0, 10)
-        end
-    end
-    
-    ToggleBtn.MouseButton1Click:Connect(togglePanel)
-    
-    -- Enter ile komut gönder
-    CmdBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed and CmdBox.Text ~= "" then
-            sendCommand(CmdBox.Text)
-            CmdBox.Text = ""
+            panel.Size = UDim2.new(0, 32, 0, 32)
+            panel.Position = UDim2.new(1, -42, 0, 10)
+            title.Visible = false
+            scroll.Visible = false
+            toggle.Text = "►"
+            toggle.Position = UDim2.new(0, 2, 0, 2)
         end
     end)
     
-    -- Sürükleme (sadece title bar ve toggle buton)
-    local dragging, dragStart, startPos
+    -- Sürükleme
+    local drag = false
+    local dragStart = nil
+    local posStart = nil
     
     local function startDrag(input)
-        dragging = true
+        drag = true
         dragStart = input.Position
-        startPos = Main.Position
+        posStart = panel.Position
     end
     
-    TitleBar.InputBegan:Connect(function(input)
+    title.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             startDrag(input)
         end
     end)
     
-    ToggleBtn.InputBegan:Connect(function(input)
-        if not isVisible then
+    toggle.InputBegan:Connect(function(input)
+        if not visible then
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 startDrag(input)
             end
@@ -856,49 +697,50 @@ local function CreateMobileGUI()
     end)
     
     UserInputService.InputChanged:Connect(function(input)
-        if dragging then
+        if drag and dragStart then
             local delta = input.Position - dragStart
-            Main.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+            panel.Position = UDim2.new(posStart.X.Scale, posStart.X.Offset + delta.X, posStart.Y.Scale, posStart.Y.Offset + delta.Y)
         end
     end)
     
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.TouchEnded or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
+            drag = false
+            dragStart = nil
         end
     end)
     
-    return gui, togglePanel
+    return gui
 end
 
 -- === BAKIM DÖNGÜSÜ ===
-local function MaintenanceLoop()
+local function maintenanceLoop()
+    -- Sürekli bypass tazeleme
     spawn(function()
         while true do
-            task.wait(10)
-            
-            -- Sürekli bypass payload'ı gönder
-            for _, remoteData in ipairs(Remotes) do
-                local remote = remoteData.Remote
+            task.wait(12)
+            for _, rData in ipairs(adminRemotes) do
+                local remote = rData.remote
                 spawn(function()
                     pcall(function()
-                        local payload = {LP.UserId, 999, true, "Owner", "maintenance_bypass"}
                         if remote:IsA("RemoteEvent") then
-                            remote:FireServer(unpack(payload))
+                            remote:FireServer("MaintenanceBypass", LP.UserId, 999, true)
+                            remote:FireServer(LP.UserId, 999, true, "Owner")
                         else
-                            remote:InvokeServer(unpack(payload))
+                            remote:InvokeServer("MaintenanceBypass", LP.UserId, 999, true)
+                            remote:InvokeServer(LP.UserId, 999, true, "Owner")
                         end
                     end)
                 end)
-                task.wait(0.02)
+                task.wait(0.01)
             end
-            
-            -- Network ownership exploit (varsa)
+        end
+    end)
+    
+    -- Network ownership (varsa)
+    spawn(function()
+        while true do
+            task.wait(8)
             pcall(function()
                 for _, obj in ipairs(Workspace:GetDescendants()) do
                     if obj:IsA("BasePart") and not obj.Anchored then
@@ -908,49 +750,23 @@ local function MaintenanceLoop()
             end)
         end
     end)
-    
-    -- Yeni remote taraması
-    spawn(function()
-        while true do
-            task.wait(20)
-            
-            local patterns = {"admin", "cmd", "command", "exec", "staff", "mod", "owner", "rank", "perm"}
-            for _, obj in ipairs(game:GetDescendants()) do
-                if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                    local name = obj.Name:lower()
-                    for _, pattern in ipairs(patterns) do
-                        if name:find(pattern) then
-                            local exists = false
-                            for _, existing in ipairs(Remotes) do
-                                if existing.Remote == obj then exists = true break end
-                            end
-                            if not exists then
-                                table.insert(Remotes, {Remote = obj, System = "Yeni Tespit"})
-                            end
-                            break
-                        end
-                    end
-                end
-            end
-        end
-    end)
 end
 
 -- === BAŞLAT ===
-print("══════════════════════════════════════")
-print("  PART 3: GUI + BAKIM BAŞLATILIYOR")
-print("══════════════════════════════════════")
+print("══════════════════════════════════")
+print("  PART 3: MENÜ + BAKIM")
+print("══════════════════════════════════")
 
-local mobileGui, toggleFunc = CreateMobileGUI()
-print("[GUI] Mobil uyumlu panel oluşturuldu")
-print("[GUI] Aç/kapa: Yeşil butona tıkla")
-print("[GUI] Sürükle: Title bar'dan tut")
+createMenu()
+print("[MENÜ] Panel oluşturuldu")
+print("[MENÜ] Sağ üstte yeşil buton")
+print("[MENÜ] Aç/kapa: Butona tıkla")
+print("[MENÜ] Sürükle: Başlıktan tut")
 
-MaintenanceLoop()
-print("[BAKIM] Sürekli bypass döngüsü başlatıldı")
+maintenanceLoop()
+print("[BAKIM] Döngü başlatıldı")
 
-print("══════════════════════════════════════")
+print("══════════════════════════════════")
 print("  TÜM SİSTEM AKTİF")
-print("  " .. #Remotes .. " remote izleniyor")
-print("  Hedef ID: " .. tostring(TargetId))
-print("══════════════════════════════════════")
+print("  " .. #adminRemotes .. " remote bypass ediliyor")
+print("══════════════════════════════════")

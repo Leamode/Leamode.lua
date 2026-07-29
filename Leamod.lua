@@ -1,263 +1,200 @@
 --[[
-    PART 1/2: TÜM ÖZEL FONKSİYONLAR - TELEFON OPTİMİZE
-    Freeze, Unfreeze, Fling, Fly (dokunmatik), God, NoClip, ESP, Para Bulucu
-    Hiçbir oyun remote'una bağlı değil.
+    PART 1/2: TÜM FONKSİYONLAR
+    Telefon için optimize. Freeze, Unfreeze, Fling, Fly, NoClip, God, ESP, Para.
 ]]--
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local LP = Players.LocalPlayer
 
-local ActiveFeatures = {
-    Fly = false,
-    NoClip = false,
-    God = false,
-    ESP = false
-}
-
--- === DOKUNMATİK FLY KONTROLLERİ ===
+local FlyEnabled = false
+local NoClipEnabled = false
+local GodEnabled = false
+local ESPEnabled = false
+local EspObjects = {}
 local FlySpeed = 50
-local TouchControls = {
-    Forward = false,
-    Backward = false,
-    Left = false,
-    Right = false,
-    Up = false,
-    Down = false
+
+local FlyDir = {
+    Forward = false, Backward = false, Left = false,
+    Right = false, Up = false, Down = false
 }
 
--- === FREEZE ===
-local function freezePlayer(player)
-    local char = player.Character
+function freezePlayer(plr)
+    local char = plr.Character
     if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.Anchored = true end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.Anchored = true end
     end
 end
 
-local function unfreezePlayer(player)
-    local char = player.Character
+function unfreezePlayer(plr)
+    local char = plr.Character
     if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.Anchored = false end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.Anchored = false end
     end
 end
 
-local function freezeAll()
+function freezeAll()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LP then freezePlayer(p) end
     end
 end
 
-local function unfreezeAll()
+function unfreezeAll()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LP then unfreezePlayer(p) end
     end
 end
 
--- === FLING (En alta ışınlar/atar) ===
-local function flingPlayer(player)
-    local char = player.Character
+function flingPlayer(plr)
+    local char = plr.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChild("Humanoid")
     if not hrp or not hum then return end
-    
     hum.PlatformStand = true
-    hrp.Velocity = Vector3.new(math.random(-99999, 99999), math.random(99999, 199999), math.random(-99999, 99999))
-    hrp.RotVelocity = Vector3.new(math.random(-999, 999), math.random(-999, 999), math.random(-999, 999))
+    hrp.Velocity = Vector3.new(math.random(-99999,99999), math.random(99999,199999), math.random(-99999,99999))
+    hrp.RotVelocity = Vector3.new(math.random(-999,999), math.random(-999,999), math.random(-999,999))
     task.wait(0.5)
     hum.PlatformStand = false
 end
 
--- === FLY (Dokunmatik butonlarla) ===
-local function startFly()
+function startFly()
     local char = LP.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChild("Humanoid")
     if not hrp or not hum then return end
-    
     hum.PlatformStand = true
-    ActiveFeatures.Fly = true
-    
+    FlyEnabled = true
     local conn
     conn = RunService.Heartbeat:Connect(function()
-        if not ActiveFeatures.Fly then conn:Disconnect(); hum.PlatformStand = false; return end
-        
-        local dir = Vector3.new(0, 0, 0)
+        if not FlyEnabled then conn:Disconnect(); hum.PlatformStand = false; return end
+        local dir = Vector3.new(0,0,0)
         local cam = Workspace.CurrentCamera
-        
-        if TouchControls.Forward then dir += cam.CFrame.LookVector * FlySpeed end
-        if TouchControls.Backward then dir += cam.CFrame.LookVector * -FlySpeed end
-        if TouchControls.Left then dir += cam.CFrame.RightVector * -FlySpeed end
-        if TouchControls.Right then dir += cam.CFrame.RightVector * FlySpeed end
-        if TouchControls.Up then dir += Vector3.new(0, FlySpeed, 0) end
-        if TouchControls.Down then dir += Vector3.new(0, -FlySpeed, 0) end
-        
+        if FlyDir.Forward then dir = dir + cam.CFrame.LookVector * FlySpeed end
+        if FlyDir.Backward then dir = dir + cam.CFrame.LookVector * -FlySpeed end
+        if FlyDir.Left then dir = dir + cam.CFrame.RightVector * -FlySpeed end
+        if FlyDir.Right then dir = dir + cam.CFrame.RightVector * FlySpeed end
+        if FlyDir.Up then dir = dir + Vector3.new(0, FlySpeed, 0) end
+        if FlyDir.Down then dir = dir + Vector3.new(0, -FlySpeed, 0) end
         hrp.Velocity = dir
     end)
 end
 
-local function stopFly()
-    ActiveFeatures.Fly = false
+function stopFly()
+    FlyEnabled = false
     local char = LP.Character
     if char then
         local hum = char:FindFirstChild("Humanoid")
         if hum then hum.PlatformStand = false end
         local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.Velocity = Vector3.new(0, 0, 0) end
+        if hrp then hrp.Velocity = Vector3.new(0,0,0) end
     end
 end
 
--- === NOCLIP ===
-local function startNoClip()
-    ActiveFeatures.NoClip = true
+function startNoClip()
+    NoClipEnabled = true
     local conn
     conn = RunService.Stepped:Connect(function()
-        if not ActiveFeatures.NoClip then conn:Disconnect(); return end
+        if not NoClipEnabled then conn:Disconnect(); return end
         local char = LP.Character
         if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
             end
         end
     end)
 end
 
-local function stopNoClip()
-    ActiveFeatures.NoClip = false
+function stopNoClip()
+    NoClipEnabled = false
     local char = LP.Character
     if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = true end
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = true end
         end
     end
 end
 
--- === GOD MODE ===
-local function startGod()
-    ActiveFeatures.God = true
-    local function apply(char)
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            hum.MaxHealth = math.huge
-            hum.Health = math.huge
-            hum.BreakJointsOnDeath = false
-        end
+function startGod()
+    GodEnabled = true
+    local function apply(c)
+        local h = c:FindFirstChild("Humanoid")
+        if h then h.MaxHealth = math.huge; h.Health = math.huge; h.BreakJointsOnDeath = false end
     end
     if LP.Character then apply(LP.Character) end
-    LP.CharacterAdded:Connect(function(c) if ActiveFeatures.God then task.wait(0.1); apply(c) end end)
+    LP.CharacterAdded:Connect(function(c) if GodEnabled then task.wait(0.1); apply(c) end end)
 end
 
--- === ESP ===
-local function startESP()
-    ActiveFeatures.ESP = true
-    local objects = {}
-    
+function startESP()
+    ESPEnabled = true
     spawn(function()
-        while ActiveFeatures.ESP do
+        while ESPEnabled do
             for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LP and p.Character and p.Character:FindFirstChild("Head") then
-                    if not objects[p] then
-                        local hl = Instance.new("Highlight")
-                        hl.FillColor = Color3.fromRGB(255, 0, 0)
-                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        hl.FillTransparency = 0.5
-                        hl.Parent = p.Character
-                        objects[p] = hl
-                        
-                        local bg = Instance.new("BillboardGui")
-                        bg.Size = UDim2.new(0, 100, 0, 30)
-                        bg.StudsOffset = Vector3.new(0, 3, 0)
-                        bg.AlwaysOnTop = true
-                        bg.Parent = p.Character.Head
-                        
-                        local lb = Instance.new("TextLabel")
-                        lb.Size = UDim2.new(1, 0, 1, 0)
-                        lb.BackgroundTransparency = 1
-                        lb.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        lb.TextStrokeTransparency = 0
-                        lb.Text = p.Name
-                        lb.Font = Enum.Font.SourceSansBold
-                        lb.TextSize = 12
-                        lb.Parent = bg
-                        
-                        objects[p .. "_bg"] = bg
-                    end
+                if p ~= LP and p.Character and p.Character:FindFirstChild("Head") and not EspObjects[p] then
+                    local hl = Instance.new("Highlight")
+                    hl.FillColor = Color3.fromRGB(255,0,0)
+                    hl.OutlineColor = Color3.fromRGB(255,255,255)
+                    hl.FillTransparency = 0.5
+                    hl.Parent = p.Character
+                    EspObjects[p] = hl
                 end
             end
             task.wait(1)
         end
-        
-        for _, v in pairs(objects) do
-            if v and v.Parent then v:Destroy() end
-        end
+        for _, v in pairs(EspObjects) do if v and v.Parent then v:Destroy() end end
+        EspObjects = {}
     end)
 end
 
--- === PARA SİSTEMİ BULUCU VE BYPASS ===
-local function findAndExploitMoney()
-    local moneyRemotes = {}
-    local keywords = {"money","cash","coin","gold","gem","diamond","credit","point","balance","currency","buy","purchase","shop","store","add","give","set"}
-    
-    local function scan(parent)
-        for _, child in ipairs(parent:GetChildren()) do
-            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-                local nm = child.Name:lower()
-                local pn = child.Parent and child.Parent.Name:lower() or ""
-                for _, kw in ipairs(keywords) do
-                    if nm:find(kw) or pn:find(kw) then
-                        table.insert(moneyRemotes, child)
-                        break
-                    end
+function stopESP()
+    ESPEnabled = false
+end
+
+function findMoney()
+    local remotes = {}
+    local function scan(p)
+        for _, c in ipairs(p:GetChildren()) do
+            if c:IsA("RemoteEvent") or c:IsA("RemoteFunction") then
+                local nm = c.Name:lower()
+                local pn = c.Parent and c.Parent.Name:lower() or ""
+                local keys = {"money","cash","coin","gold","gem","diamond","credit","point","balance","currency","buy","purchase","shop","store","add","give","set"}
+                for _, k in ipairs(keys) do
+                    if nm:find(k) or pn:find(k) then table.insert(remotes, c); break end
                 end
             end
-            scan(child)
+            scan(c)
         end
     end
     scan(game)
     
     local payloads = {
-        {"AddMoney", 99999999999},
-        {"GiveMoney", LP.UserId, 99999999999},
-        {"SetMoney", LP.UserId, 99999999999},
-        {"AddCash", 99999999999},
-        {"GiveCash", LP.UserId, 99999999999},
-        {"AddCoins", 99999999999},
-        {"GiveCoins", LP.UserId, 99999999999},
-        {"AddGems", 99999999999},
-        {"GiveGems", LP.UserId, 99999999999},
-        {"AddBalance", LP.UserId, 99999999999},
-        {LP.UserId, 99999999999, "Money"},
-        {99999999999, LP.UserId},
-        {"Add", "Money", 99999999999},
-        {"Give", LP.UserId, "Money", 99999999999},
+        {"AddMoney",99999999999},{"GiveMoney",LP.UserId,99999999999},{"SetMoney",LP.UserId,99999999999},
+        {"AddCash",99999999999},{"GiveCash",LP.UserId,99999999999},{"AddCoins",99999999999},
+        {"GiveCoins",LP.UserId,99999999999},{"AddGems",99999999999},{"GiveGems",LP.UserId,99999999999},
+        {"AddBalance",LP.UserId,99999999999},{LP.UserId,99999999999,"Money"},{99999999999,LP.UserId}
     }
     
-    for _, remote in ipairs(moneyRemotes) do
+    for _, r in ipairs(remotes) do
         spawn(function()
-            for _, payload in ipairs(payloads) do
+            for _, pl in ipairs(payloads) do
                 pcall(function()
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(unpack(payload))
-                    else
-                        remote:InvokeServer(unpack(payload))
-                    end
+                    if r:IsA("RemoteEvent") then r:FireServer(unpack(pl))
+                    else r:InvokeServer(unpack(pl)) end
                 end)
                 task.wait(0.005)
             end
         end)
     end
-    
-    return #moneyRemotes
+    return #remotes
 end
 
--- PART 2'YE VERİ AKTAR
+-- PART 2'YE AKTAR
 local env = getsenv and getsenv() or _G
-env.__CUSTOM_ADMIN_DATA = {
+env.__DATA = {
     freezePlayer = freezePlayer,
     unfreezePlayer = unfreezePlayer,
     freezeAll = freezeAll,
@@ -269,579 +206,337 @@ env.__CUSTOM_ADMIN_DATA = {
     stopNoClip = stopNoClip,
     startGod = startGod,
     startESP = startESP,
-    findAndExploitMoney = findAndExploitMoney,
-    ActiveFeatures = ActiveFeatures,
-    TouchControls = TouchControls
+    stopESP = stopESP,
+    findMoney = findMoney,
+    FlyDir = FlyDir
 }
-
-print("[PART 1] Telefon için tüm fonksiyonlar hazır")
-print("[PART 1] Part 2'yi execute edin")--[[
-    PART 2/2: TELEFON İÇİN TAM DOKUNMATİK MENÜ
-    Part 1 çalıştıktan sonra execute edin.
-    Büyük butonlar, dokunmatik fly kontrolü, oyuncu seçimi.
-    Telefon ekranına tam uyumlu.
+print("[PART 1] Tamam. Part 2'yi çalıştır.")--[[
+    PART 2/2: TELEFON MENÜSÜ
+    Part 1'den sonra çalıştır.
 ]]--
 
 local env = getsenv and getsenv() or _G
-local data = env.__CUSTOM_ADMIN_DATA
-if not data then
-    warn("[PART 2] Önce Part 1'i çalıştırın!")
-    return
-end
+local d = env.__DATA
+if not d then warn("Önce Part 1'i çalıştır!"); return end
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 local LP = Players.LocalPlayer
 
 local SelectedPlayer = nil
-local MenuOpen = true
+local playerBtns = {}
 
--- === ANA MENÜ ===
-local gui = Instance.new("ScreenGui")
-gui.Name = "PhoneAdmin"
-gui.Parent = CoreGui
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local g = Instance.new("ScreenGui")
+g.Name = "CoolerAdmin"
+g.Parent = CoreGui
+g.ResetOnSpawn = false
+g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-if syn and syn.protect_gui then
-    syn.protect_gui(gui)
-end
-
--- Ana panel - telefon ekranına uygun büyüklükte
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 280, 0, 420)
-main.Position = UDim2.new(0.5, -140, 0.5, -210)
-main.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+main.Size = UDim2.new(0, 300, 0, 450)
+main.Position = UDim2.new(0.5, -150, 0.5, -225)
+main.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
-main.Parent = gui
+main.Parent = g
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = main
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0, 44, 0, 44)
+close.Position = UDim2.new(1, -50, 0, 6)
+close.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+close.TextColor3 = Color3.fromRGB(255, 255, 255)
+close.Text = "✕"
+close.Font = Enum.Font.SourceSansBold
+close.TextSize = 22
+close.BorderSizePixel = 0
+close.ZIndex = 10
+close.Parent = main
+Instance.new("UICorner", close).CornerRadius = UDim.new(0, 12)
 
--- Toggle buton (aç/kapa)
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(0, 40, 0, 40)
-toggle.Position = UDim2.new(1, -45, 0, 5)
-toggle.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggle.Text = "✕"
-toggle.Font = Enum.Font.SourceSansBold
-toggle.TextSize = 20
-toggle.BorderSizePixel = 0
-toggle.ZIndex = 100
-toggle.Parent = main
+local title = Instance.new("Frame")
+title.Size = UDim2.new(1, 0, 0, 44)
+title.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+title.BorderSizePixel = 0
+title.Parent = main
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 14)
 
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 10)
-toggleCorner.Parent = toggle
+local titleTxt = Instance.new("TextLabel")
+titleTxt.Size = UDim2.new(1, -60, 1, 0)
+titleTxt.Position = UDim2.new(0, 14, 0, 0)
+titleTxt.BackgroundTransparency = 1
+titleTxt.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleTxt.Text = "🔥 COOLER ADMIN"
+titleTxt.Font = Enum.Font.SourceSansBold
+titleTxt.TextSize = 17
+titleTxt.TextXAlignment = Enum.TextXAlignment.Left
+titleTxt.Parent = title
 
--- Başlık
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 40)
-titleBar.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-titleBar.BorderSizePixel = 0
-titleBar.Parent = main
-
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 12)
-titleCorner.Parent = titleBar
-
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, -50, 1, 0)
-titleText.Position = UDim2.new(0, 12, 0, 0)
-titleText.BackgroundTransparency = 1
-titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.Text = "🔥 COOLER ADMIN"
-titleText.Font = Enum.Font.SourceSansBold
-titleText.TextSize = 16
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.Parent = titleBar
-
--- Kaydırılabilir içerik
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -12, 1, -48)
-scroll.Position = UDim2.new(0, 6, 0, 44)
+scroll.Size = UDim2.new(1, -14, 1, -54)
+scroll.Position = UDim2.new(0, 7, 0, 50)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 4
 scroll.ScrollBarImageColor3 = Color3.fromRGB(200, 50, 50)
-scroll.CanvasSize = UDim2.new(0, 0, 0, 750)
+scroll.ScrollBarImageTransparency = 0.4
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-scroll.ScrollBarImageTransparency = 0.5
 scroll.Parent = main
 
-local list = Instance.new("UIListLayout")
-list.Padding = UDim.new(0, 4)
-list.Parent = scroll
+local lst = Instance.new("UIListLayout")
+lst.Padding = UDim.new(0, 5)
+lst.Parent = scroll
 
--- Seçili oyuncu göstergesi
-local selectedLabel = Instance.new("TextLabel")
-selectedLabel.Size = UDim2.new(1, 0, 0, 32)
-selectedLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
-selectedLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-selectedLabel.Text = "🎯 Seçili: YOK"
-selectedLabel.Font = Enum.Font.SourceSansBold
-selectedLabel.TextSize = 13
-selectedLabel.Parent = scroll
+local totalH = 0
 
-local selCorner = Instance.new("UICorner")
-selCorner.CornerRadius = UDim.new(0, 6)
-selCorner.Parent = selectedLabel
+local selLabel = Instance.new("TextLabel")
+selLabel.Size = UDim2.new(1, 0, 0, 34)
+selLabel.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+selLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+selLabel.Text = "🎯 Seçili: YOK"
+selLabel.Font = Enum.Font.SourceSansBold
+selLabel.TextSize = 14
+selLabel.Parent = scroll
+Instance.new("UICorner", selLabel).CornerRadius = UDim.new(0, 8)
+totalH = totalH + 39
 
--- Oyuncu listesi başlığı
-local playerHeader = Instance.new("TextLabel")
-playerHeader.Size = UDim2.new(1, 0, 0, 20)
-playerHeader.BackgroundTransparency = 1
-playerHeader.TextColor3 = Color3.fromRGB(140, 140, 140)
-playerHeader.Text = "─ OYUNCULAR ─"
-playerHeader.Font = Enum.Font.SourceSans
-playerHeader.TextSize = 12
-playerHeader.Parent = scroll
+local ph = Instance.new("TextLabel")
+ph.Size = UDim2.new(1, 0, 0, 20)
+ph.BackgroundTransparency = 1
+ph.TextColor3 = Color3.fromRGB(140, 140, 140)
+ph.Text = "── OYUNCULAR ──"
+ph.Font = Enum.Font.SourceSans
+ph.TextSize = 12
+ph.Parent = scroll
+totalH = totalH + 25
 
--- Oyuncu butonları
-local playerButtons = {}
-
-local function refreshPlayerList()
-    for _, btn in ipairs(playerButtons) do
-        if btn and btn.Parent then btn:Destroy() end
-    end
-    playerButtons = {}
-    
+local function refreshPlayers()
+    for _, b in ipairs(playerBtns) do if b and b.Parent then b:Destroy() end end
+    playerBtns = {}
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LP then
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 36)
-            btn.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-            btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-            btn.Text = "👤 " .. p.Name
-            btn.Font = Enum.Font.SourceSansBold
-            btn.TextSize = 13
-            btn.BorderSizePixel = 0
-            btn.AutoButtonColor = false
-            btn.Parent = scroll
-            
-            local btnCorner = Instance.new("UICorner")
-            btnCorner.CornerRadius = UDim.new(0, 6)
-            btnCorner.Parent = btn
-            
-            btn.MouseButton1Click:Connect(function()
+            local b = Instance.new("TextButton")
+            b.Size = UDim2.new(1, 0, 0, 38)
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+            b.TextColor3 = Color3.fromRGB(230, 230, 230)
+            b.Text = "👤  " .. p.Name
+            b.Font = Enum.Font.SourceSansBold
+            b.TextSize = 14
+            b.BorderSizePixel = 0
+            b.AutoButtonColor = false
+            b.Parent = scroll
+            Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+            b.Activated:Connect(function()
                 SelectedPlayer = p
-                selectedLabel.Text = "🎯 Seçili: " .. p.Name
-                for _, b in ipairs(playerButtons) do
-                    b.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-                end
-                btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+                selLabel.Text = "🎯 Seçili: " .. p.Name
+                for _, bb in ipairs(playerBtns) do bb.BackgroundColor3 = Color3.fromRGB(30, 30, 35) end
+                b.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
             end)
-            
-            btn.TouchTap:Connect(function()
-                SelectedPlayer = p
-                selectedLabel.Text = "🎯 Seçili: " .. p.Name
-                for _, b in ipairs(playerButtons) do
-                    b.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-                end
-                btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-            end)
-            
-            table.insert(playerButtons, btn)
+            table.insert(playerBtns, b)
+            totalH = totalH + 43
         end
     end
+    scroll.CanvasSize = UDim2.new(0, 0, 0, totalH + 60)
 end
 
-refreshPlayerList()
+refreshPlayers()
 
--- Aksiyon başlığı
-local actionHeader = Instance.new("TextLabel")
-actionHeader.Size = UDim2.new(1, 0, 0, 20)
-actionHeader.BackgroundTransparency = 1
-actionHeader.TextColor3 = Color3.fromRGB(140, 140, 140)
-actionHeader.Text = "─ AKSİYONLAR ─"
-actionHeader.Font = Enum.Font.SourceSans
-actionHeader.TextSize = 12
-actionHeader.Parent = scroll
-
--- Aksiyon butonları
-local actions = {
-    {"❄️ Freeze Seçili", function()
-        if SelectedPlayer then data.freezePlayer(SelectedPlayer) end
-    end},
-    {"🔥 Unfreeze Seçili", function()
-        if SelectedPlayer then data.unfreezePlayer(SelectedPlayer) end
-    end},
-    {"💨 Fling Seçili", function()
-        if SelectedPlayer then data.flingPlayer(SelectedPlayer) end
-    end},
-    {"❄️❄️ Freeze HERKES", function()
-        data.freezeAll()
-    end},
-    {"🔥🔥 Unfreeze HERKES", function()
-        data.unfreezeAll()
-    end},
-}
-
-for _, action in ipairs(actions) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 38)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
-    btn.Text = action[1]
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 14
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    btn.Parent = scroll
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        action[2]()
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        task.wait(0.2)
-        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    end)
-    
-    btn.TouchTap:Connect(function()
-        action[2]()
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        task.wait(0.2)
-        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    end)
+local function addHeader(txt)
+    local h = Instance.new("TextLabel")
+    h.Size = UDim2.new(1, 0, 0, 20)
+    h.BackgroundTransparency = 1
+    h.TextColor3 = Color3.fromRGB(140, 140, 140)
+    h.Text = txt
+    h.Font = Enum.Font.SourceSans
+    h.TextSize = 12
+    h.Parent = scroll
+    totalH = totalH + 25
 end
 
--- Özellik başlığı
-local featHeader = Instance.new("TextLabel")
-featHeader.Size = UDim2.new(1, 0, 0, 20)
-featHeader.BackgroundTransparency = 1
-featHeader.TextColor3 = Color3.fromRGB(140, 140, 140)
-featHeader.Text = "─ ÖZELLİKLER ─"
-featHeader.Font = Enum.Font.SourceSans
-featHeader.TextSize = 12
-featHeader.Parent = scroll
+local function addBtn(txt, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, 0, 0, 40)
+    b.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+    b.TextColor3 = Color3.fromRGB(245, 245, 245)
+    b.Text = txt
+    b.Font = Enum.Font.SourceSansBold
+    b.TextSize = 15
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Parent = scroll
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+    b.Activated:Connect(function()
+        callback()
+        b.BackgroundColor3 = Color3.fromRGB(0, 160, 0)
+        task.wait(0.2)
+        b.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+    end)
+    totalH = totalH + 45
+end
 
--- Toggle özellikler
-local features = {
-    {"🦅 Fly", data.startFly, data.stopFly},
-    {"🚶 NoClip", data.startNoClip, data.stopNoClip},
-    {"🛡️ God Mode", data.startGod, nil},
-    {"👁️ ESP", data.startESP, nil},
-}
-
-for _, feat in ipairs(features) do
+local function addToggle(txt, onStart, onStop)
     local isOn = false
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 38)
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
-    btn.Text = feat[1] .. " ⚪"
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 14
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    btn.Parent = scroll
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = btn
-    
-    local function toggleFeature()
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, 0, 0, 40)
+    b.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+    b.TextColor3 = Color3.fromRGB(245, 245, 245)
+    b.Text = txt .. "  ⚪"
+    b.Font = Enum.Font.SourceSansBold
+    b.TextSize = 15
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Parent = scroll
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+    b.Activated:Connect(function()
         isOn = not isOn
         if isOn then
-            btn.Text = feat[1] .. " 🟢"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
-            feat[2]()
+            b.Text = txt .. "  🟢"
+            b.BackgroundColor3 = Color3.fromRGB(0, 130, 0)
+            onStart()
         else
-            btn.Text = feat[1] .. " ⚪"
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-            if feat[3] then feat[3]() end
+            b.Text = txt .. "  ⚪"
+            b.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+            if onStop then onStop() end
         end
-    end
-    
-    btn.MouseButton1Click:Connect(toggleFeature)
-    btn.TouchTap:Connect(toggleFeature)
+    end)
+    totalH = totalH + 45
 end
 
--- === DOKUNMATİK FLY KONTROL BUTONLARI ===
-local flyCtrlHeader = Instance.new("TextLabel")
-flyCtrlHeader.Size = UDim2.new(1, 0, 0, 20)
-flyCtrlHeader.BackgroundTransparency = 1
-flyCtrlHeader.TextColor3 = Color3.fromRGB(140, 140, 140)
-flyCtrlHeader.Text = "─ FLY KONTROL (Dokunmatik) ─"
-flyCtrlHeader.Font = Enum.Font.SourceSans
-flyCtrlHeader.TextSize = 11
-flyCtrlHeader.Parent = scroll
+addHeader("── AKSİYONLAR ──")
+addBtn("❄️  Freeze Seçili", function() if SelectedPlayer then d.freezePlayer(SelectedPlayer) end end)
+addBtn("🔥  Unfreeze Seçili", function() if SelectedPlayer then d.unfreezePlayer(SelectedPlayer) end end)
+addBtn("💨  Fling Seçili", function() if SelectedPlayer then d.flingPlayer(SelectedPlayer) end end)
+addBtn("❄️❄️  Freeze HERKES", d.freezeAll)
+addBtn("🔥🔥  Unfreeze HERKES", d.unfreezeAll)
 
-local function createFlyButton(text, position, controlKey)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 60, 0, 50)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = text
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = btn
-    
-    btn.TouchTap:Connect(function()
-        data.TouchControls[controlKey] = true
-        btn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-        task.wait(0.3)
-        data.TouchControls[controlKey] = false
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    end)
-    
-    btn.MouseButton1Down:Connect(function()
-        data.TouchControls[controlKey] = true
-        btn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-    end)
-    
-    btn.MouseButton1Up:Connect(function()
-        data.TouchControls[controlKey] = false
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    end)
-    
-    btn.TouchLongPress:Connect(function()
-        data.TouchControls[controlKey] = true
-        btn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-    end)
-    
-    return btn
-end
+addHeader("── ÖZELLİKLER ──")
+addToggle("🦅  Fly", d.startFly, d.stopFly)
+addToggle("🚶  NoClip", d.startNoClip, d.stopNoClip)
+addToggle("🛡️  God Mode", d.startGod, nil)
+addToggle("👁️  ESP", d.startESP, d.stopESP)
 
--- Fly kontrol grid'i
+addHeader("── FLY KONTROL (Basılı Tut) ──")
 local flyGrid = Instance.new("Frame")
-flyGrid.Size = UDim2.new(1, 0, 0, 170)
+flyGrid.Size = UDim2.new(1, 0, 0, 180)
 flyGrid.BackgroundTransparency = 1
 flyGrid.Parent = scroll
+totalH = totalH + 185
 
--- İLERİ
-local btnFwd = createFlyButton("▲", nil, "Forward")
-btnFwd.Position = UDim2.new(0.5, -30, 0, 0)
-btnFwd.Parent = flyGrid
+local function makeFlyBtn(txt, posX, posY, dirKey)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0, 70, 0, 55)
+    b.Position = UDim2.new(0.5, posX, 0, posY)
+    b.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
+    b.TextColor3 = Color3.fromRGB(255, 255, 255)
+    b.Text = txt
+    b.Font = Enum.Font.SourceSansBold
+    b.TextSize = 20
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Parent = flyGrid
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+    b.TouchStarted:Connect(function() d.FlyDir[dirKey] = true; b.BackgroundColor3 = Color3.fromRGB(0, 180, 0) end)
+    b.TouchEnded:Connect(function() d.FlyDir[dirKey] = false; b.BackgroundColor3 = Color3.fromRGB(45, 45, 52) end)
+    b.MouseButton1Down:Connect(function() d.FlyDir[dirKey] = true; b.BackgroundColor3 = Color3.fromRGB(0, 180, 0) end)
+    b.MouseButton1Up:Connect(function() d.FlyDir[dirKey] = false; b.BackgroundColor3 = Color3.fromRGB(45, 45, 52) end)
+end
 
--- SOL
-local btnLeft = createFlyButton("◄", nil, "Left")
-btnLeft.Position = UDim2.new(0.5, -95, 0, 55)
-btnLeft.Parent = flyGrid
+makeFlyBtn("▲", -35, 0, "Forward")
+makeFlyBtn("◄", -110, 60, "Left")
+makeFlyBtn("►", 40, 60, "Right")
+makeFlyBtn("▼", -35, 120, "Backward")
+makeFlyBtn("⬆", -35, 60, "Up")
+makeFlyBtn("⬇", 40, 0, "Down")
 
--- SAĞ
-local btnRight = createFlyButton("►", nil, "Right")
-btnRight.Position = UDim2.new(0.5, 35, 0, 55)
-btnRight.Parent = flyGrid
-
--- GERİ
-local btnBack = createFlyButton("▼", nil, "Backward")
-btnBack.Position = UDim2.new(0.5, -30, 0, 110)
-btnBack.Parent = flyGrid
-
--- YUKARI
-local btnUp = createFlyButton("⬆", nil, "Up")
-btnUp.Position = UDim2.new(0.5, -30, 0, 55)
-btnUp.Parent = flyGrid
-
--- AŞAĞI (gizli tut, manuel)
-local btnDown = Instance.new("TextButton")
-btnDown.Size = UDim2.new(0, 60, 0, 50)
-btnDown.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-btnDown.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnDown.Text = "⬇"
-btnDown.Font = Enum.Font.SourceSansBold
-btnDown.TextSize = 18
-btnDown.BorderSizePixel = 0
-btnDown.AutoButtonColor = false
-btnDown.Position = UDim2.new(0.5, -30, 0, 55)
-btnDown.Visible = false
-btnDown.Parent = flyGrid
-
--- Para başlığı
-local moneyHeader = Instance.new("TextLabel")
-moneyHeader.Size = UDim2.new(1, 0, 0, 20)
-moneyHeader.BackgroundTransparency = 1
-moneyHeader.TextColor3 = Color3.fromRGB(140, 140, 140)
-moneyHeader.Text = "─ PARA ─"
-moneyHeader.Font = Enum.Font.SourceSans
-moneyHeader.TextSize = 12
-moneyHeader.Parent = scroll
-
--- Para butonu
+addHeader("── PARA ──")
 local moneyBtn = Instance.new("TextButton")
-moneyBtn.Size = UDim2.new(1, 0, 0, 42)
-moneyBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
+moneyBtn.Size = UDim2.new(1, 0, 0, 44)
+moneyBtn.BackgroundColor3 = Color3.fromRGB(240, 170, 0)
 moneyBtn.TextColor3 = Color3.fromRGB(30, 30, 30)
-moneyBtn.Text = "💰 SONSUZ PARA"
+moneyBtn.Text = "💰  SONSUZ PARA"
 moneyBtn.Font = Enum.Font.SourceSansBold
-moneyBtn.TextSize = 15
+moneyBtn.TextSize = 16
 moneyBtn.BorderSizePixel = 0
 moneyBtn.AutoButtonColor = false
 moneyBtn.Parent = scroll
-
-local moneyCorner = Instance.new("UICorner")
-moneyCorner.CornerRadius = UDim.new(0, 6)
-moneyCorner.Parent = moneyBtn
-
-moneyBtn.TouchTap:Connect(function()
-    moneyBtn.Text = "💰 TARANIYOR..."
+Instance.new("UICorner", moneyBtn).CornerRadius = UDim.new(0, 8)
+totalH = totalH + 49
+moneyBtn.Activated:Connect(function()
+    moneyBtn.Text = "⏳  TARANIYOR..."
     moneyBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    local count = data.findAndExploitMoney()
-    moneyBtn.Text = "💰 " .. count .. " remote"
-    moneyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    local cnt = d.findMoney()
+    moneyBtn.Text = "✅  " .. cnt .. " remote"
+    moneyBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 0)
     task.wait(2)
-    moneyBtn.Text = "💰 SONSUZ PARA"
-    moneyBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
+    moneyBtn.Text = "💰  SONSUZ PARA"
+    moneyBtn.BackgroundColor3 = Color3.fromRGB(240, 170, 0)
 end)
 
-moneyBtn.MouseButton1Click:Connect(function()
-    moneyBtn.Text = "💰 TARANIYOR..."
-    moneyBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    local count = data.findAndExploitMoney()
-    moneyBtn.Text = "💰 " .. count .. " remote"
-    moneyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    task.wait(2)
-    moneyBtn.Text = "💰 SONSUZ PARA"
-    moneyBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
-end)
-
--- Yenile butonu
 local refreshBtn = Instance.new("TextButton")
-refreshBtn.Size = UDim2.new(1, 0, 0, 36)
-refreshBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-refreshBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-refreshBtn.Text = "🔄 Listeyi Yenile"
+refreshBtn.Size = UDim2.new(1, 0, 0, 38)
+refreshBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 56)
+refreshBtn.TextColor3 = Color3.fromRGB(210, 210, 210)
+refreshBtn.Text = "🔄  Listeyi Yenile"
 refreshBtn.Font = Enum.Font.SourceSansBold
-refreshBtn.TextSize = 13
+refreshBtn.TextSize = 14
 refreshBtn.BorderSizePixel = 0
 refreshBtn.AutoButtonColor = false
 refreshBtn.Parent = scroll
-
-local refCorner = Instance.new("UICorner")
-refCorner.CornerRadius = UDim.new(0, 6)
-refCorner.Parent = refreshBtn
-
-refreshBtn.TouchTap:Connect(function()
-    refreshPlayerList()
+Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 8)
+totalH = totalH + 43
+refreshBtn.Activated:Connect(function()
+    refreshPlayers()
     if SelectedPlayer and not SelectedPlayer.Parent then
         SelectedPlayer = nil
-        selectedLabel.Text = "🎯 Seçili: YOK"
+        selLabel.Text = "🎯 Seçili: YOK"
     end
 end)
 
-refreshBtn.MouseButton1Click:Connect(function()
-    refreshPlayerList()
-    if SelectedPlayer and not SelectedPlayer.Parent then
-        SelectedPlayer = nil
-        selectedLabel.Text = "🎯 Seçili: YOK"
-    end
-end)
+scroll.CanvasSize = UDim2.new(0, 0, 0, totalH + 60)
 
--- Aç/kapa mantığı
-local visible = true
-
-toggle.TouchTap:Connect(function()
-    visible = not visible
-    if visible then
-        main.Size = UDim2.new(0, 280, 0, 420)
-        main.Position = UDim2.new(0.5, -140, 0.5, -210)
-        titleBar.Visible = true
+local isOpen = true
+close.Activated:Connect(function()
+    isOpen = not isOpen
+    if isOpen then
+        main.Size = UDim2.new(0, 300, 0, 450)
+        main.Position = UDim2.new(0.5, -150, 0.5, -225)
+        title.Visible = true
         scroll.Visible = true
-        toggle.Text = "✕"
-        toggle.Position = UDim2.new(1, -45, 0, 5)
+        close.Text = "✕"
+        close.Position = UDim2.new(1, -50, 0, 6)
     else
-        main.Size = UDim2.new(0, 50, 0, 50)
-        main.Position = UDim2.new(1, -60, 0, 10)
-        titleBar.Visible = false
+        main.Size = UDim2.new(0, 55, 0, 55)
+        main.Position = UDim2.new(1, -65, 0, 10)
+        title.Visible = false
         scroll.Visible = false
-        toggle.Text = "☰"
-        toggle.Position = UDim2.new(0, 5, 0, 5)
+        close.Text = "☰"
+        close.Position = UDim2.new(0, 8, 0, 8)
     end
 end)
 
-toggle.MouseButton1Click:Connect(function()
-    visible = not visible
-    if visible then
-        main.Size = UDim2.new(0, 280, 0, 420)
-        main.Position = UDim2.new(0.5, -140, 0.5, -210)
-        titleBar.Visible = true
-        scroll.Visible = true
-        toggle.Text = "✕"
-        toggle.Position = UDim2.new(1, -45, 0, 5)
-    else
-        main.Size = UDim2.new(0, 50, 0, 50)
-        main.Position = UDim2.new(1, -60, 0, 10)
-        titleBar.Visible = false
-        scroll.Visible = false
-        toggle.Text = "☰"
-        toggle.Position = UDim2.new(0, 5, 0, 5)
-    end
-end)
-
--- Sürükleme (dokunmatik)
-local drag = false
-local dragStart = nil
-local posStart = nil
+local dragging = false
+local dragStart, panelStart = nil, nil
 
 local function startDrag(input)
-    drag = true
+    dragging = true
     dragStart = input.Position
-    posStart = main.Position
+    panelStart = main.Position
 end
 
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        startDrag(input)
+title.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then startDrag(i) end end)
+close.InputBegan:Connect(function(i) if not isOpen and (i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1) then startDrag(i) end end)
+UserInputService.InputChanged:Connect(function(i)
+    if dragging and dragStart then
+        local d = i.Position - dragStart
+        main.Position = UDim2.new(panelStart.X.Scale, panelStart.X.Offset + d.X, panelStart.Y.Scale, panelStart.Y.Offset + d.Y)
     end
 end)
-
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        startDrag(input)
-    end
+UserInputService.InputEnded:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.TouchEnded or i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false; dragStart = nil end
 end)
 
-toggle.InputBegan:Connect(function(input)
-    if not visible then
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            startDrag(input)
-        end
-    end
-end)
-
-UserInputService.TouchMoved:Connect(function(input, processed)
-    if drag and dragStart then
-        local delta = input.Position - dragStart
-        main.Position = UDim2.new(posStart.X.Scale, posStart.X.Offset + delta.X, posStart.Y.Scale, posStart.Y.Offset + delta.Y)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and drag and dragStart then
-        local delta = input.Position - dragStart
-        main.Position = UDim2.new(posStart.X.Scale, posStart.X.Offset + delta.X, posStart.Y.Scale, posStart.Y.Offset + delta.Y)
-    end
-end)
-
-UserInputService.TouchEnded:Connect(function(input)
-    drag = false
-    dragStart = nil
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        drag = false
-        dragStart = nil
-    end
-end)
-
-print("══════════════════════════════════")
-print("  TELEFON COOLER ADMIN HAZIR")
-print("  Ekran ortasında kırmızı menü")
-print("  Yeşil ✕ buton: Aç/Kapa")
-print("  Başlıktan tutup sürükle")
-print("  Fly: Dokunmatik butonlar")
-print("══════════════════════════════════")
+StarterGui:SetCore("SendNotification", {Title = "COOLER ADMIN", Text = "Menü hazır!", Duration = 4})
+print("[PART 2] Menü açıldı.")

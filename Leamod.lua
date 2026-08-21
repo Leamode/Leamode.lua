@@ -1,4 +1,4 @@
--- HAMSTERLİVES v6  |  Temiz + Düzeltilmiş
+-- HAMSTERLİVES v7  |  %100 Çalışır Versiyon
 -- PART 1/2
 
 local Players = game:GetService("Players")
@@ -13,12 +13,12 @@ local HL = {
 	Saved = nil,
 	Noclip = false,
 	God = false,
-	EggProtect = true,
 	Conn = {},
 	Buttons = {},
-	IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
+	IsMobile = false,
 	HoldPos = nil,
 	HoldUntil = 0,
+	ModeSelected = false,
 }
 
 local function wait(t)
@@ -29,7 +29,7 @@ local function wait(t)
 end
 
 -------------------------------------------------
--- KORUMA (Anti-Reset + Anti-Kill + Yumurta)
+-- ANTİ RESET (sadece bu kaldı)
 -------------------------------------------------
 local function ProtectLoop()
 	if HL.Conn.Protect then return end
@@ -66,30 +66,6 @@ local function ProtectLoop()
 			root.CFrame = CFrame.new(HL.HoldPos)
 			root.AssemblyLinearVelocity = Vector3.zero
 			root.AssemblyAngularVelocity = Vector3.zero
-		end
-
-		-- Yumurta / Tool koruma
-		if HL.EggProtect then
-			for _, item in ipairs(char:GetChildren()) do
-				if item:IsA("Tool") then
-					if not item:IsDescendantOf(char) then
-						pcall(function() item.Parent = char end)
-					end
-					local handle = item:FindFirstChild("Handle")
-					if handle then
-						handle.CanCollide = false
-					end
-				end
-			end
-
-			local bp = LocalPlayer:FindFirstChild("Backpack")
-			if bp then
-				for _, item in ipairs(bp:GetChildren()) do
-					if item:IsA("Tool") and item.Parent \~= bp then
-						pcall(function() item.Parent = bp end)
-					end
-				end
-			end
 		end
 	end)
 end
@@ -318,12 +294,9 @@ end
 
 print("[HL] Part 1 hazır")-- PART 2/2 (hemen altına yapıştır)
 
-local function CreateMenu()
+local function CreateMainMenu()
 	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
-	if not playerGui then
-		warn("[HL] PlayerGui bulunamadı")
-		return
-	end
+	if not playerGui then return end
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HamsterLiveGUI"
@@ -333,8 +306,8 @@ local function CreateMenu()
 
 	local main = Instance.new("Frame")
 	main.Name = "Main"
-	main.Size = UDim2.new(0, 250, 0, 400)
-	main.Position = UDim2.new(1, -270, 0.5, -200)
+	main.Size = UDim2.new(0, 250, 0, 380)
+	main.Position = UDim2.new(0.5, -125, 0.55, -100) -- biraz aşağıda
 	main.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
 	main.BorderSizePixel = 0
 	main.Active = true
@@ -354,7 +327,7 @@ local function CreateMenu()
 	title.Size = UDim2.new(1, 0, 0, 44)
 	title.BackgroundColor3 = Color3.fromRGB(28, 18, 42)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v6"
+	title.Text = "  HAMSTERLİVES  v7"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 16
@@ -374,7 +347,6 @@ local function CreateMenu()
 			dragging = true
 			dragStart = inp.Position
 			startPos = main.Position
-
 			inp.Changed:Connect(function()
 				if inp.UserInputState == Enum.UserInputState.End then
 					dragging = false
@@ -386,12 +358,7 @@ local function CreateMenu()
 	title.InputChanged:Connect(function(inp)
 		if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
 			local delta = inp.Position - dragStart
-			main.Position = UDim2.new(
-				startPos.X.Scale,
-				startPos.X.Offset + delta.X,
-				startPos.Y.Scale,
-				startPos.Y.Offset + delta.Y
-			)
+			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end)
 
@@ -467,38 +434,104 @@ local function CreateMenu()
 	close.MouseButton1Click:Connect(function()
 		main.Visible = false
 	end)
-
-	-- HL butonu
-	local open = Instance.new("TextButton")
-	open.Size = UDim2.new(0, 54, 0, 54)
-	open.Position = UDim2.new(1, -68, 0, 18)
-	open.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
-	open.Text = "HL"
-	open.TextColor3 = Color3.fromRGB(255, 255, 255)
-	open.Font = Enum.Font.GothamBold
-	open.TextSize = 18
-	open.Parent = gui
-
-	local openCorner = Instance.new("UICorner")
-	openCorner.CornerRadius = UDim.new(1, 0)
-	openCorner.Parent = open
-
-	open.MouseButton1Click:Connect(function()
-		main.Visible = not main.Visible
-	end)
-
-	print("[HL] Menü hazır")
 end
 
--- Menüyü oluştur
-local ok, err = pcall(CreateMenu)
+-------------------------------------------------
+-- SİYAH EKRAN + PC / MOBİL SEÇİMİ
+-------------------------------------------------
+local function CreateStartScreen()
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+	if not playerGui then return end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "HL_Start"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.Parent = playerGui
+
+	-- Siyah arka plan
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	bg.BorderSizePixel = 0
+	bg.Parent = gui
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 60)
+	title.Position = UDim2.new(0, 0, 0.3, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "HAMSTERLİVES"
+	title.TextColor3 = Color3.fromRGB(180, 0, 255)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 36
+	title.Parent = bg
+
+	local sub = Instance.new("TextLabel")
+	sub.Size = UDim2.new(1, 0, 0, 30)
+	sub.Position = UDim2.new(0, 0, 0.38, 0)
+	sub.BackgroundTransparency = 1
+	sub.Text = "Cihazını seç"
+	sub.TextColor3 = Color3.fromRGB(200, 200, 200)
+	sub.Font = Enum.Font.Gotham
+	sub.TextSize = 18
+	sub.Parent = bg
+
+	-- PC Butonu
+	local pcBtn = Instance.new("TextButton")
+	pcBtn.Size = UDim2.new(0, 200, 0, 55)
+	pcBtn.Position = UDim2.new(0.5, -220, 0.5, -10)
+	pcBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	pcBtn.Text = "PC"
+	pcBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	pcBtn.Font = Enum.Font.GothamBold
+	pcBtn.TextSize = 22
+	pcBtn.Parent = bg
+
+	local pcCorner = Instance.new("UICorner")
+	pcCorner.CornerRadius = UDim.new(0, 12)
+	pcCorner.Parent = pcBtn
+
+	-- MOBİL Butonu
+	local mobBtn = Instance.new("TextButton")
+	mobBtn.Size = UDim2.new(0, 200, 0, 55)
+	mobBtn.Position = UDim2.new(0.5, 20, 0.5, -10)
+	mobBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	mobBtn.Text = "MOBİL"
+	mobBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	mobBtn.Font = Enum.Font.GothamBold
+	mobBtn.TextSize = 22
+	mobBtn.Parent = bg
+
+	local mobCorner = Instance.new("UICorner")
+	mobCorner.CornerRadius = UDim.new(0, 12)
+	mobCorner.Parent = mobBtn
+
+	local function selectMode(isMobile)
+		HL.IsMobile = isMobile
+		HL.ModeSelected = true
+		gui:Destroy()
+		CreateMainMenu()
+	end
+
+	pcBtn.MouseButton1Click:Connect(function()
+		selectMode(false)
+	end)
+
+	mobBtn.MouseButton1Click:Connect(function()
+		selectMode(true)
+	end)
+end
+
+-- Başlat
+local ok, err = pcall(CreateStartScreen)
 if not ok then
-	warn("[HL] Menü hatası:", err)
+	warn("[HL] StartScreen hatası:", err)
 end
 
 -- Tuşlar
 UserInputService.InputBegan:Connect(function(inp, gp)
 	if gp then return end
+	if not HL.ModeSelected then return end
 
 	if inp.KeyCode == Enum.KeyCode.F8 then
 		ToggleFly()
@@ -513,7 +546,6 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 	end
 end)
 
--- Karakter yenilenince
 LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(1.2)
 	if HL.Fly then
@@ -524,4 +556,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	end
 end)
 
-print("[HL] v6 tamamen yüklendi")
+print("[HL] v7 yüklendi - Siyah ekran gelmeli")

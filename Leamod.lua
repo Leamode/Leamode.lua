@@ -1,4 +1,4 @@
--- HAMSTERLİVES v9  |  Sahte Zemin + Güçlü TP Bypass
+-- HAMSTERLİVES v10
 -- PART 1/2
 
 local Players = game:GetService("Players")
@@ -9,17 +9,19 @@ local Camera = workspace.CurrentCamera
 
 local HL = {
 	Fly = false,
-	Speed = 85,
+	Speed = 80,
 	Saved = nil,
 	Noclip = false,
 	God = false,
+	Cube = false,
 	Conn = {},
 	Buttons = {},
 	IsMobile = false,
 	HoldPos = nil,
 	HoldUntil = 0,
 	ModeSelected = false,
-	FakeGround = nil,
+	LocalCube = nil,
+	OscTimer = 0,
 }
 
 local function wait(t)
@@ -29,35 +31,26 @@ local function wait(t)
 	end
 end
 
--------------------------------------------------
--- ANTİ RESET
--------------------------------------------------
+-- ==================== KORUMA ====================
 local function ProtectLoop()
 	if HL.Conn.Protect then return end
-
 	HL.Conn.Protect = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
-
 		local root = char:FindFirstChild("HumanoidRootPart")
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not root or not hum then return end
 
-		if HL.God or hum.Health < hum.MaxHealth * 0.95 then
+		if HL.God or hum.Health < hum.MaxHealth * 0.94 then
 			hum.Health = hum.MaxHealth
 		end
-
 		if hum:GetState() == Enum.HumanoidStateType.Dead then
 			hum.Health = hum.MaxHealth
-			pcall(function()
-				hum:ChangeState(Enum.HumanoidStateType.Running)
-			end)
+			pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
 		end
-
 		if not root:IsDescendantOf(workspace) then
 			pcall(function() root.Parent = char end)
 		end
-
 		if HL.HoldPos and os.clock() < HL.HoldUntil then
 			root.CFrame = CFrame.new(HL.HoldPos)
 			root.AssemblyLinearVelocity = Vector3.zero
@@ -67,75 +60,97 @@ local function ProtectLoop()
 end
 ProtectLoop()
 
--------------------------------------------------
--- SAHTE ZEMİN (Fly sırasında altta zemin varmış gibi)
--------------------------------------------------
-local function CreateFakeGround()
-	if HL.FakeGround then return end
-
-	local part = Instance.new("Part")
-	part.Name = "HL_FakeGround"
-	part.Size = Vector3.new(8, 1, 8)
-	part.Anchored = true
-	part.CanCollide = false
-	part.Transparency = 0.65
-	part.Material = Enum.Material.Grass
-	part.Color = Color3.fromRGB(60, 140, 50)
-	part.Parent = workspace
-	HL.FakeGround = part
-end
-
-local function RemoveFakeGround()
-	if HL.FakeGround then
-		pcall(function() HL.FakeGround:Destroy() end)
-		HL.FakeGround = nil
+-- ==================== CUBE MODU ====================
+local function DestroyCube()
+	if HL.LocalCube then
+		pcall(function() HL.LocalCube:Destroy() end)
+		HL.LocalCube = nil
 	end
 end
 
-local function UpdateFakeGround()
-	if not HL.Fly or not HL.FakeGround then return end
-	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if root then
-		HL.FakeGround.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.2, root.Position.Z)
+local function UpdateCube()
+	if not HL.Cube then
+		DestroyCube()
+		return
+	end
+
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then return end
+
+	local state = hum:GetState()
+	local moving = hum.MoveDirection.Magnitude > 0.1
+	local jumping = state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall
+
+	if not HL.LocalCube then
+		local p = Instance.new("Part")
+		p.Name = "HL_LocalOnly"
+		p.Size = Vector3.new(4.5, 1, 4.5)
+		p.Anchored = true
+		p.CanCollide = true
+		p.Transparency = 0.85
+		p.Material = Enum.Material.SmoothPlastic
+		p.Color = Color3.fromRGB(80, 80, 120)
+		p.Parent = workspace
+		HL.LocalCube = p
+	end
+
+	-- Sadece hareket ederken veya zıplarken altında tut
+	if moving or jumping or HL.Fly then
+		HL.LocalCube.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.1, root.Position.Z)
+		HL.LocalCube.CanCollide = true
+	else
+		HL.LocalCube.CanCollide = false
 	end
 end
 
--------------------------------------------------
--- FLY (yüzme + sahte zemin)
--------------------------------------------------
+local function ToggleCube()
+	HL.Cube = not HL.Cube
+	local b = HL.Buttons.Cube
+	if HL.Cube then
+		if b then
+			b.Text = "CUBE  ● AÇIK"
+			b.BackgroundColor3 = Color3.fromRGB(0, 190, 90)
+		end
+	else
+		if b then
+			b.Text = "CUBE  ○ KAPALI"
+			b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		end
+		DestroyCube()
+	end
+end
+
+-- ==================== FLY (düşme animasyonu + salınım) ====================
 local function StopFly()
 	if HL.Conn.Fly then
 		HL.Conn.Fly:Disconnect()
 		HL.Conn.Fly = nil
 	end
-	RemoveFakeGround()
-
 	local char = LocalPlayer.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.PlatformStand = false
-		pcall(function()
-			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-		end)
+		pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
 	end
 end
 
 local function StartFly()
 	StopFly()
-
 	local char = LocalPlayer.Character
 	if not char then return end
-
 	local root = char:FindFirstChild("HumanoidRootPart")
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum then return end
 
-	hum.PlatformStand = true
+	-- PlatformStand yerine Freefall state ile daha az kilitlenir
 	pcall(function()
-		hum:ChangeState(Enum.HumanoidStateType.Physics)
+		hum:ChangeState(Enum.HumanoidStateType.Freefall)
 	end)
 
-	CreateFakeGround()
+	HL.OscTimer = 0
 
 	HL.Conn.Fly = RunService.RenderStepped:Connect(function(dt)
 		if not HL.Fly then return end
@@ -144,8 +159,10 @@ local function StartFly()
 		local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if not r or not h then return end
 
-		h.PlatformStand = true
-		UpdateFakeGround()
+		-- Sürekli Freefall state zorla (düşüyormuş gibi görünsün)
+		pcall(function()
+			h:ChangeState(Enum.HumanoidStateType.Freefall)
+		end)
 
 		local cf = Camera.CFrame
 		local move = Vector3.zero
@@ -170,14 +187,18 @@ local function StartFly()
 			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.yAxis end
 		end
 
-		local speed = HL.Speed * 2.8
+		local speed = HL.Speed * 2.6
 		if move.Magnitude > 0 then
 			move = move.Unit * speed
 		end
 
-		local newPos = r.Position + move * dt
+		-- Küçük salınım (1 tik aşağı-yukarı)
+		HL.OscTimer = HL.OscTimer + dt
+		local osc = math.sin(HL.OscTimer * 3.2) * 0.35
+
+		local newPos = r.Position + move * dt + Vector3.new(0, osc * dt * 8, 0)
 		r.CFrame = CFrame.new(newPos, newPos + cf.LookVector)
-		r.AssemblyLinearVelocity = Vector3.zero
+		r.AssemblyLinearVelocity = Vector3.new(0, -1.2, 0) -- hafif düşüyormuş gibi velocity
 		r.AssemblyAngularVelocity = Vector3.zero
 	end)
 end
@@ -185,7 +206,6 @@ end
 local function ToggleFly()
 	HL.Fly = not HL.Fly
 	local b = HL.Buttons.Fly
-
 	if HL.Fly then
 		if b then
 			b.Text = "FLY  ● AÇIK"
@@ -201,15 +221,11 @@ local function ToggleFly()
 	end
 end
 
--------------------------------------------------
--- GÜÇLÜ TP (Başka yerden geliyormuş gibi)
--------------------------------------------------
+-- ==================== TP (çok hızlı koşuyormuş gibi) ====================
 local function DoTeleport(pos)
 	if not pos then return end
-
 	local char = LocalPlayer.Character
 	if not char then return end
-
 	local root = char:FindFirstChild("HumanoidRootPart")
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root then return end
@@ -222,53 +238,46 @@ local function DoTeleport(pos)
 
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
-
 	if hum then
-		hum.WalkSpeed = 16
+		hum.WalkSpeed = 22
 		hum.JumpPower = 50
 	end
 
 	local start = root.Position
 	local distance = (pos - start).Magnitude
-
-	-- Çok adımlı + doğal sapmalı yol
-	local steps = math.clamp(math.floor(distance / 10), 15, 50)
+	local steps = math.clamp(math.floor(distance / 9), 18, 55)
 
 	for i = 1, steps do
 		local alpha = i / steps
-		local offset = Vector3.new(
-			math.random(-2, 2) * 0.4,
-			math.random(-1, 1) * 0.3,
-			math.random(-2, 2) * 0.4
+		local jitter = Vector3.new(
+			(math.random() - 0.5) * 1.1,
+			(math.random() - 0.5) * 0.4,
+			(math.random() - 0.5) * 1.1
 		)
-		local mid = start:Lerp(pos, alpha) + offset
-
+		local mid = start:Lerp(pos, alpha) + jitter
 		root.CFrame = CFrame.new(mid)
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
-		wait(0.01)
+		wait(0.0085)
 	end
 
-	-- Uzun kilit
 	HL.HoldPos = pos
-	HL.HoldUntil = os.clock() + 6.0
+	HL.HoldUntil = os.clock() + 5.8
 
-	for i = 1, 18 do
+	for i = 1, 14 do
 		root.CFrame = CFrame.new(pos)
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
-		wait(0.008)
+		wait(0.007)
 	end
 
 	root.Anchored = true
-	wait(0.4)
+	wait(0.32)
 	root.Anchored = false
 	root.CFrame = CFrame.new(pos)
 
 	if hum then
-		pcall(function()
-			hum:ChangeState(Enum.HumanoidStateType.Running)
-		end)
+		pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
 	end
 
 	if was then
@@ -280,7 +289,6 @@ end
 local function SavePos()
 	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-
 	HL.Saved = root.Position
 	local b = HL.Buttons.Save
 	if b then
@@ -301,13 +309,10 @@ local function TP()
 	end
 end
 
--------------------------------------------------
--- NOCLIP
--------------------------------------------------
+-- ==================== NOCLIP ====================
 local function ToggleNoclip()
 	HL.Noclip = not HL.Noclip
 	local b = HL.Buttons.Noclip
-
 	if HL.Noclip then
 		if b then
 			b.Text = "NOCLIP  ● AÇIK"
@@ -336,13 +341,10 @@ local function ToggleNoclip()
 	end
 end
 
--------------------------------------------------
--- ANTİ YAKALANMA
--------------------------------------------------
+-- ==================== ANTİ YAKALANMA ====================
 local function ToggleGod()
 	HL.God = not HL.God
 	local b = HL.Buttons.God
-
 	if HL.God then
 		if b then
 			b.Text = "ANTİ-YAKALANMA  ●"
@@ -355,6 +357,11 @@ local function ToggleGod()
 		end
 	end
 end
+
+-- Cube güncellemesi
+HL.Conn.Cube = RunService.Heartbeat:Connect(function()
+	UpdateCube()
+end)
 
 print("[HL] Part 1 hazır")-- PART 2/2 (hemen altına yapıştır)
 
@@ -370,15 +377,14 @@ local function CreateMainMenu()
 
 	local main = Instance.new("Frame")
 	main.Name = "Main"
-	main.Size = UDim2.new(0, 250, 0, 380)
-	main.Position = UDim2.new(0.5, -125, 0.55, -90)
+	main.Size = UDim2.new(0, 250, 0, 420)
+	main.Position = UDim2.new(0.5, -125, 0.52, -100)
 	main.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
 	main.BorderSizePixel = 0
 	main.Active = true
 	main.Parent = gui
 
 	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
-
 	local stroke = Instance.new("UIStroke", main)
 	stroke.Color = Color3.fromRGB(140, 0, 255)
 	stroke.Thickness = 2.5
@@ -387,7 +393,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 44)
 	title.BackgroundColor3 = Color3.fromRGB(28, 18, 42)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v9"
+	title.Text = "  HAMSTERLİVES  v10"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 16
@@ -415,7 +421,7 @@ local function CreateMainMenu()
 
 	local function makeBtn(text, y, callback)
 		local b = Instance.new("TextButton")
-		b.Size = UDim2.new(1, -24, 0, 36)
+		b.Size = UDim2.new(1, -24, 0, 34)
 		b.Position = UDim2.new(0, 12, 0, y)
 		b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 		b.BorderSizePixel = 0
@@ -430,18 +436,19 @@ local function CreateMainMenu()
 		return b
 	end
 
-	HL.Buttons.Fly    = makeBtn("FLY  ○ KAPALI", 55, ToggleFly)
-	HL.Buttons.Save   = makeBtn("YER BELİLE", 98, SavePos)
-	HL.Buttons.TP     = makeBtn("TP ET", 141, TP)
-	HL.Buttons.Noclip = makeBtn("NOCLIP  ○ KAPALI", 184, ToggleNoclip)
-	HL.Buttons.God    = makeBtn("ANTİ-YAKALANMA  ○", 227, ToggleGod)
+	HL.Buttons.Fly    = makeBtn("FLY  ○ KAPALI", 52, ToggleFly)
+	HL.Buttons.Save   = makeBtn("YER BELİLE", 92, SavePos)
+	HL.Buttons.TP     = makeBtn("TP ET", 132, TP)
+	HL.Buttons.Noclip = makeBtn("NOCLIP  ○ KAPALI", 172, ToggleNoclip)
+	HL.Buttons.God    = makeBtn("ANTİ-YAKALANMA  ○", 212, ToggleGod)
+	HL.Buttons.Cube   = makeBtn("CUBE  ○ KAPALI", 252, ToggleCube)
 
 	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -24, 0, 34)
-	box.Position = UDim2.new(0, 12, 0, 280)
+	box.Size = UDim2.new(1, -24, 0, 32)
+	box.Position = UDim2.new(0, 12, 0, 300)
 	box.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
 	box.BorderSizePixel = 0
-	box.Text = "Hız: 85"
+	box.Text = "Hız: 80"
 	box.TextColor3 = Color3.fromRGB(255, 255, 255)
 	box.Font = Enum.Font.Gotham
 	box.TextSize = 14
@@ -460,13 +467,13 @@ local function CreateMainMenu()
 	end)
 
 	local close = Instance.new("TextButton")
-	close.Size = UDim2.new(0, 30, 0, 30)
-	close.Position = UDim2.new(1, -36, 0, 7)
+	close.Size = UDim2.new(0, 28, 0, 28)
+	close.Position = UDim2.new(1, -34, 0, 8)
 	close.BackgroundColor3 = Color3.fromRGB(180, 35, 55)
 	close.Text = "✕"
 	close.TextColor3 = Color3.fromRGB(255, 255, 255)
 	close.Font = Enum.Font.GothamBold
-	close.TextSize = 15
+	close.TextSize = 14
 	close.Parent = main
 	Instance.new("UICorner", close).CornerRadius = UDim.new(0, 8)
 	close.MouseButton1Click:Connect(function()
@@ -474,16 +481,15 @@ local function CreateMainMenu()
 	end)
 
 	local open = Instance.new("TextButton")
-	open.Size = UDim2.new(0, 60, 0, 60)
-	open.Position = UDim2.new(1, -75, 0, 25)
+	open.Size = UDim2.new(0, 58, 0, 58)
+	open.Position = UDim2.new(1, -72, 0, 22)
 	open.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
 	open.Text = "HL"
 	open.TextColor3 = Color3.fromRGB(255, 255, 255)
 	open.Font = Enum.Font.GothamBold
-	open.TextSize = 20
+	open.TextSize = 18
 	open.Parent = gui
 	Instance.new("UICorner", open).CornerRadius = UDim.new(1, 0)
-
 	open.MouseButton1Click:Connect(function()
 		main.Visible = not main.Visible
 	end)
@@ -507,7 +513,7 @@ local function CreateStartScreen()
 
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0, 50)
-	title.Position = UDim2.new(0, 0, 0.28, 0)
+	title.Position = UDim2.new(0, 0, 0.27, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "HAMSTERLİVES"
 	title.TextColor3 = Color3.fromRGB(180, 0, 255)
@@ -516,34 +522,34 @@ local function CreateStartScreen()
 	title.Parent = bg
 
 	local sub = Instance.new("TextLabel")
-	sub.Size = UDim2.new(1, 0, 0, 30)
-	sub.Position = UDim2.new(0, 0, 0.36, 0)
+	sub.Size = UDim2.new(1, 0, 0, 28)
+	sub.Position = UDim2.new(0, 0, 0.35, 0)
 	sub.BackgroundTransparency = 1
 	sub.Text = "Cihazını seç"
 	sub.TextColor3 = Color3.fromRGB(200, 200, 200)
 	sub.Font = Enum.Font.Gotham
-	sub.TextSize = 18
+	sub.TextSize = 17
 	sub.Parent = bg
 
 	local pcBtn = Instance.new("TextButton")
-	pcBtn.Size = UDim2.new(0, 180, 0, 55)
-	pcBtn.Position = UDim2.new(0.5, -200, 0.5, -10)
+	pcBtn.Size = UDim2.new(0, 170, 0, 52)
+	pcBtn.Position = UDim2.new(0.5, -190, 0.5, -10)
 	pcBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 	pcBtn.Text = "PC"
 	pcBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	pcBtn.Font = Enum.Font.GothamBold
-	pcBtn.TextSize = 22
+	pcBtn.TextSize = 20
 	pcBtn.Parent = bg
 	Instance.new("UICorner", pcBtn).CornerRadius = UDim.new(0, 12)
 
 	local mobBtn = Instance.new("TextButton")
-	mobBtn.Size = UDim2.new(0, 180, 0, 55)
+	mobBtn.Size = UDim2.new(0, 170, 0, 52)
 	mobBtn.Position = UDim2.new(0.5, 20, 0.5, -10)
 	mobBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 	mobBtn.Text = "MOBİL"
 	mobBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	mobBtn.Font = Enum.Font.GothamBold
-	mobBtn.TextSize = 22
+	mobBtn.TextSize = 20
 	mobBtn.Parent = bg
 	Instance.new("UICorner", mobBtn).CornerRadius = UDim.new(0, 12)
 
@@ -570,13 +576,14 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 	elseif inp.KeyCode == Enum.KeyCode.F5 then TP()
 	elseif inp.KeyCode == Enum.KeyCode.F6 then ToggleNoclip()
 	elseif inp.KeyCode == Enum.KeyCode.F7 then ToggleGod()
+	elseif inp.KeyCode == Enum.KeyCode.F9 then ToggleCube()
 	end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1.2)
+	task.wait(1.3)
 	if HL.Fly then StartFly() end
 	if not HL.Conn.Protect then ProtectLoop() end
 end)
 
-print("[HL] v9 yüklendi")
+print("[HL] v10 yüklendi")

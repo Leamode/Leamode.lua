@@ -1,5 +1,5 @@
--- HAMSTERLİVES ONLİNE HACK🍑 PART 1/2
--- Xeno Executor Uyumlu
+-- HAMSTERLİVES ONLİNE HACK  (Güçlendirilmiş - Tek Script)
+-- PART 1/2
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,713 +8,536 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 local HamsterLive = {
-    FlyEnabled = false,
-    FlySpeed = 100,
-    SavedPosition = nil,
-    BodyGyro = nil,
-    BodyVelocity = nil,
-    RenderSteppedConnection = nil,
-    Teleporting = false,
-    IsMobile = false,
-    MenuOpen = false,
-    StreamerMode = false,
-    Trail = nil,
-    TrailAttachment = nil,
-    Aura = nil,
-    HiddenGUIs = {},
-    NoclipConnection = nil,
-    NoclipEnabled = false,
-    AutoBadEnabled = false,
-    AutoBadConnection = nil,
-    BadModEnabled = false,
-    BadModConnection = nil,
-    FlyButton = nil,
-    SaveButton = nil,
-    TpButton = nil,
-    NoclipButton = nil,
-    StreamerButton = nil,
-    AutoBadButton = nil,
-    BadModButton = nil,
-    SpeedSlider = nil
+	FlyEnabled = false,
+	FlySpeed = 100,
+	SavedPosition = nil,
+	LinearVelocity = nil,
+	AlignOrientation = nil,
+	Attachment = nil,
+	RenderConnection = nil,
+	Teleporting = false,
+	IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
+	MenuOpen = false,
+	StreamerMode = false,
+	NoclipConnection = nil,
+	NoclipEnabled = false,
+	AutoBadEnabled = false,
+	AutoBadConnection = nil,
+	BadModEnabled = false,
+	BadModConnection = nil,
+	FlyButton = nil,
+	SaveButton = nil,
+	TpButton = nil,
+	NoclipButton = nil,
+	StreamerButton = nil,
+	AutoBadButton = nil,
+	BadModButton = nil,
+	SpeedSlider = nil,
+	AntiSnapConnection = nil,
+	HoldPosition = nil,
+	HoldUntil = 0,
 }
 
-HamsterLive.IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-
-local function safeWait(seconds)
-    local start = os.clock()
-    repeat
-        wait()
-    until os.clock() - start >= seconds
+local function safeWait(t)
+	local start = os.clock()
+	while os.clock() - start < t do
+		task.wait()
+	end
 end
 
-local function GetNearestPlayer()
-    local nearest = nil
-    local shortestDistance = math.huge
-    
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return nil end
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local targetChar = player.Character
-            local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-            local targetHumanoid = targetChar and targetChar:FindFirstChild("Humanoid")
-            
-            if targetRoot and targetHumanoid and targetHumanoid.Health > 0 then
-                local distance = (root.Position - targetRoot.Position).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    nearest = player
-                end
-            end
-        end
-    end
-    
-    return nearest
-end
+local function StartAntiSnap()
+	if HamsterLive.AntiSnapConnection then return end
+	HamsterLive.AntiSnapConnection = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not root or not hum then return end
 
-local function ToggleStreamerMode()
-    HamsterLive.StreamerMode = not HamsterLive.StreamerMode
-    
-    local gui = LocalPlayer:WaitForChild("PlayerGui")
-    local hamsterGUI = gui:FindFirstChild("HamsterLiveGUI")
-    
-    if hamsterGUI then
-        if HamsterLive.StreamerMode then
-            hamsterGUI.Enabled = false
-        else
-            hamsterGUI.Enabled = true
-        end
-    end
-end
+		if not root:IsDescendantOf(workspace) then
+			root.Parent = char
+		end
 
-local function ToggleNoclip()
-    HamsterLive.NoclipEnabled = not HamsterLive.NoclipEnabled
-    
-    if HamsterLive.NoclipEnabled then
-        if HamsterLive.NoclipConnection then
-            HamsterLive.NoclipConnection:Disconnect()
-        end
-        
-        HamsterLive.NoclipConnection = RunService.Stepped:Connect(function()
-            if not HamsterLive.NoclipEnabled then return end
-            local char = LocalPlayer.Character
-            if not char then return end
-            
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") and part.CanCollide then
-                    part.CanCollide = false
-                end
-            end
-        end)
-    else
-        if HamsterLive.NoclipConnection then
-            HamsterLive.NoclipConnection:Disconnect()
-            HamsterLive.NoclipConnection = nil
-        end
-    end
+		if HamsterLive.HoldPosition and os.clock() < HamsterLive.HoldUntil then
+			root.CFrame = CFrame.new(HamsterLive.HoldPosition)
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+		end
+	end)
 end
-
-local function CreateTrail()
-    if HamsterLive.Trail then return end
-    
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    HamsterLive.TrailAttachment = Instance.new("Attachment")
-    HamsterLive.TrailAttachment.Parent = root
-    
-    HamsterLive.Trail = Instance.new("Trail")
-    HamsterLive.Trail.Attachment0 = HamsterLive.TrailAttachment
-    HamsterLive.Trail.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 0))
-    })
-    HamsterLive.Trail.Lifetime = 0.5
-    HamsterLive.Trail.MinWidth = 0.5
-    HamsterLive.Trail.MaxWidth = 1.5
-    HamsterLive.Trail.LightEmission = 1
-    HamsterLive.Trail.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0),
-        NumberSequenceKeypoint.new(1, 1)
-    })
-    HamsterLive.Trail.Parent = root
-end
-
-local function RemoveTrail()
-    if HamsterLive.Trail then
-        pcall(function() HamsterLive.Trail:Destroy() end)
-        HamsterLive.Trail = nil
-    end
-    if HamsterLive.TrailAttachment then
-        pcall(function() HamsterLive.TrailAttachment:Destroy() end)
-        HamsterLive.TrailAttachment = nil
-    end
-end
-
-local function CreateAura()
-    if HamsterLive.Aura then return end
-    
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    HamsterLive.Aura = Instance.new("ParticleEmitter")
-    HamsterLive.Aura.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
-    })
-    HamsterLive.Aura.LightEmission = 1
-    HamsterLive.Aura.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(1, 3)
-    })
-    HamsterLive.Aura.Lifetime = NumberRange.new(0.5, 1)
-    HamsterLive.Aura.Rate = 50
-    HamsterLive.Aura.Speed = NumberRange.new(2, 4)
-    HamsterLive.Aura.SpreadAngle = Vector2.new(360, 360)
-    HamsterLive.Aura.Enabled = true
-    HamsterLive.Aura.Parent = root
-end
-
-local function RemoveAura()
-    if HamsterLive.Aura then
-        pcall(function() HamsterLive.Aura:Destroy() end)
-        HamsterLive.Aura = nil
-    end
-end
+StartAntiSnap()
 
 local function DestroyFly()
-    if HamsterLive.BodyGyro then
-        pcall(function() HamsterLive.BodyGyro:Destroy() end)
-        HamsterLive.BodyGyro = nil
-    end
-    if HamsterLive.BodyVelocity then
-        pcall(function() HamsterLive.BodyVelocity:Destroy() end)
-        HamsterLive.BodyVelocity = nil
-    end
-    if HamsterLive.RenderSteppedConnection then
-        pcall(function() HamsterLive.RenderSteppedConnection:Disconnect() end)
-        HamsterLive.RenderSteppedConnection = nil
-    end
-    RemoveTrail()
-    RemoveAura()
+	if HamsterLive.RenderConnection then
+		HamsterLive.RenderConnection:Disconnect()
+		HamsterLive.RenderConnection = nil
+	end
+	if HamsterLive.LinearVelocity then
+		pcall(function() HamsterLive.LinearVelocity:Destroy() end)
+		HamsterLive.LinearVelocity = nil
+	end
+	if HamsterLive.AlignOrientation then
+		pcall(function() HamsterLive.AlignOrientation:Destroy() end)
+		HamsterLive.AlignOrientation = nil
+	end
+	if HamsterLive.Attachment then
+		pcall(function() HamsterLive.Attachment:Destroy() end)
+		HamsterLive.Attachment = nil
+	end
 end
 
 local function CreateFly()
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    DestroyFly()
-    CreateTrail()
-    CreateAura()
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum then return end
 
-    HamsterLive.BodyGyro = Instance.new("BodyGyro")
-    HamsterLive.BodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    HamsterLive.BodyGyro.D = 0
-    HamsterLive.BodyGyro.P = math.huge
-    HamsterLive.BodyGyro.CFrame = root.CFrame
-    HamsterLive.BodyGyro.Parent = root
+	DestroyFly()
+	hum:ChangeState(Enum.HumanoidStateType.Physics)
+	hum.PlatformStand = true
 
-    HamsterLive.BodyVelocity = Instance.new("BodyVelocity")
-    HamsterLive.BodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    HamsterLive.BodyVelocity.Velocity = Vector3.zero
-    HamsterLive.BodyVelocity.Parent = root
+	local att = Instance.new("Attachment")
+	att.Name = "HamsterFlyAtt"
+	att.Parent = root
+	HamsterLive.Attachment = att
 
-    HamsterLive.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
-        if not HamsterLive.FlyEnabled then return end
-        
-        local currentChar = LocalPlayer.Character
-        local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-        local gyro = HamsterLive.BodyGyro
-        local vel = HamsterLive.BodyVelocity
-        
-        if not currentRoot or not gyro or not vel then
-            CreateFly()
-            return
-        end
+	local lv = Instance.new("LinearVelocity")
+	lv.Name = "HamsterFlyLV"
+	lv.Attachment0 = att
+	lv.MaxForce = math.huge
+	lv.VectorVelocity = Vector3.zero
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.Parent = root
+	HamsterLive.LinearVelocity = lv
 
-        local camCF = Camera.CFrame
-        local direction = camCF.LookVector
-        local right = camCF.RightVector
-        local up = Vector3.new(0, 1, 0)
+	local ao = Instance.new("AlignOrientation")
+	ao.Name = "HamsterFlyAO"
+	ao.Attachment0 = att
+	ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	ao.MaxTorque = math.huge
+	ao.Responsiveness = 200
+	ao.Parent = root
+	HamsterLive.AlignOrientation = ao
 
-        local moveVector = Vector3.zero
+	HamsterLive.RenderConnection = RunService.RenderStepped:Connect(function()
+		if not HamsterLive.FlyEnabled then return end
+		local currentRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if not currentRoot or not HamsterLive.LinearVelocity or not HamsterLive.AlignOrientation then
+			CreateFly()
+			return
+		end
 
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveVector = moveVector + direction
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveVector = moveVector - direction
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveVector = moveVector - right
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveVector = moveVector + right
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveVector = moveVector + up
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            moveVector = moveVector - up
-        end
+		local camCF = Camera.CFrame
+		local move = Vector3.zero
 
-        local speed = HamsterLive.FlySpeed * 2
-        
-        if moveVector.Magnitude > 0 then
-            moveVector = moveVector.Unit * speed
-        end
+		if HamsterLive.IsMobile then
+			local touches = UserInputService:GetTouches()
+			if #touches > 0 then
+				local touch = touches[1]
+				local size = Camera.ViewportSize
+				local dx = (touch.Position.X - size.X/2) / (size.X/2)
+				local dy = (touch.Position.Y - size.Y/2) / (size.Y/2)
+				if math.abs(dx) > 0.15 or math.abs(dy) > 0.15 then
+					move = camCF.LookVector * (-dy) + camCF.RightVector * dx
+				end
+			end
+		else
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += camCF.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= camCF.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= camCF.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += camCF.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.yAxis end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move -= Vector3.yAxis end
+		end
 
-        moveVector = moveVector - Vector3.new(0, speed * 0.02, 0)
+		local speed = HamsterLive.FlySpeed * 2.2
+		if move.Magnitude > 0 then
+			move = move.Unit * speed
+		end
 
-        vel.Velocity = moveVector
-        gyro.CFrame = CFrame.new(currentRoot.Position, currentRoot.Position + camCF.LookVector)
-    end)
+		HamsterLive.LinearVelocity.VectorVelocity = move
+		HamsterLive.AlignOrientation.CFrame = CFrame.lookAt(currentRoot.Position, currentRoot.Position + camCF.LookVector)
+	end)
 end
 
 local function ToggleFly()
-    HamsterLive.FlyEnabled = not HamsterLive.FlyEnabled
-    if HamsterLive.FlyEnabled then
-        if HamsterLive.FlyButton then
-            HamsterLive.FlyButton.Text = "Fly: AÇIK (F8)"
-            HamsterLive.FlyButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        end
-        CreateFly()
-    else
-        if HamsterLive.FlyButton then
-            HamsterLive.FlyButton.Text = "Fly: KAPALI (F8)"
-            HamsterLive.FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-        end
-        DestroyFly()
-    end
-end
-
-local function SavePosition()
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        HamsterLive.SavedPosition = root.Position
-        if HamsterLive.SaveButton then
-            HamsterLive.SaveButton.Text = "Kaydedildi!"
-            HamsterLive.SaveButton.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
-            safeWait(1)
-            HamsterLive.SaveButton.Text = "Yer Belirle (F4)"
-            HamsterLive.SaveButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-        end
-    end
+	HamsterLive.FlyEnabled = not HamsterLive.FlyEnabled
+	if HamsterLive.FlyEnabled then
+		if HamsterLive.FlyButton then
+			HamsterLive.FlyButton.Text = "Fly: AÇIK (F8)"
+			HamsterLive.FlyButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		end
+		CreateFly()
+	else
+		if HamsterLive.FlyButton then
+			HamsterLive.FlyButton.Text = "Fly: KAPALI (F8)"
+			HamsterLive.FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		end
+		DestroyFly()
+		local char = LocalPlayer.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.PlatformStand = false
+			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end
 end
 
 local function TeleportTo(position)
-    if not position then return end
-    
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+	if not position then return end
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 
-    HamsterLive.Teleporting = true
-    root.CFrame = CFrame.new(position)
-    safeWait(0.05)
-    root.CFrame = CFrame.new(position)
-    safeWait(0.05)
-    root.Velocity = Vector3.zero
-    root.RotVelocity = Vector3.zero
-    HamsterLive.Teleporting = false
+	HamsterLive.Teleporting = true
+	HamsterLive.HoldPosition = position
+	HamsterLive.HoldUntil = os.clock() + 2.0
+
+	local wasFlying = HamsterLive.FlyEnabled
+	if wasFlying then
+		HamsterLive.FlyEnabled = false
+		DestroyFly()
+	end
+
+	for i = 1, 10 do
+		root.CFrame = CFrame.new(position)
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+		safeWait(0.012)
+	end
+
+	root.Anchored = true
+	safeWait(0.1)
+	root.Anchored = false
+	root.CFrame = CFrame.new(position)
+
+	HamsterLive.Teleporting = false
+
+	if wasFlying then
+		HamsterLive.FlyEnabled = true
+		CreateFly()
+	end
+end
+
+local function SavePosition()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		HamsterLive.SavedPosition = root.Position
+		if HamsterLive.SaveButton then
+			HamsterLive.SaveButton.Text = "Kaydedildi!"
+			HamsterLive.SaveButton.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+			task.delay(1, function()
+				if HamsterLive.SaveButton then
+					HamsterLive.SaveButton.Text = "Yer Belirle (F4)"
+					HamsterLive.SaveButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+				end
+			end)
+		end
+	end
 end
 
 local function DoTeleport()
-    if HamsterLive.SavedPosition then
-        TeleportTo(HamsterLive.SavedPosition)
-    end
+	if HamsterLive.SavedPosition then
+		TeleportTo(HamsterLive.SavedPosition)
+	end
 end
 
-local function FindToolAndAttack(targetPlayer)
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local tool = char:FindFirstChildOfClass("Tool")
-    if not tool then return end
-    
-    local targetChar = targetPlayer.Character
-    local targetHumanoid = targetChar and targetChar:FindFirstChild("Humanoid")
-    if not targetChar or not targetHumanoid or targetHumanoid.Health <= 0 then return end
-    
-    pcall(function()
-        tool:Activate()
-        safeWait(0.1)
-        tool:Deactivate()
-    end)
+local function ToggleNoclip()
+	HamsterLive.NoclipEnabled = not HamsterLive.NoclipEnabled
+	if HamsterLive.NoclipEnabled then
+		if HamsterLive.NoclipConnection then HamsterLive.NoclipConnection:Disconnect() end
+		HamsterLive.NoclipConnection = RunService.Stepped:Connect(function()
+			if not HamsterLive.NoclipEnabled then return end
+			local char = LocalPlayer.Character
+			if not char then return end
+			for _, part in pairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+		end)
+	else
+		if HamsterLive.NoclipConnection then
+			HamsterLive.NoclipConnection:Disconnect()
+			HamsterLive.NoclipConnection = nil
+		end
+	end
+end
+
+local function GetNearestPlayer()
+	local nearest, shortest = nil, math.huge
+	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr \~= LocalPlayer then
+			local tChar = plr.Character
+			local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+			local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
+			if tRoot and tHum and tHum.Health > 0 then
+				local dist = (root.Position - tRoot.Position).Magnitude
+				if dist < shortest then
+					shortest = dist
+					nearest = plr
+				end
+			end
+		end
+	end
+	return nearest
+end
+
+local function FindToolAndAttack(target)
+	local char = LocalPlayer.Character
+	if not char then return end
+	local tool = char:FindFirstChildOfClass("Tool")
+	if not tool then return end
+	local tHum = target.Character and target.Character:FindFirstChildOfClass("Humanoid")
+	if not tHum or tHum.Health <= 0 then return end
+	pcall(function()
+		tool:Activate()
+		task.wait(0.08)
+		tool:Deactivate()
+	end)
 end
 
 local function ToggleAutoBad()
-    HamsterLive.AutoBadEnabled = not HamsterLive.AutoBadEnabled
-    
-    if HamsterLive.AutoBadEnabled then
-        if HamsterLive.AutoBadConnection then
-            HamsterLive.AutoBadConnection:Disconnect()
-        end
-        
-        HamsterLive.AutoBadConnection = RunService.RenderStepped:Connect(function()
-            if not HamsterLive.AutoBadEnabled then return end
-            
-            local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            
-            local targetPlayer = GetNearestPlayer()
-            if not targetPlayer then return end
-            
-            local targetChar = targetPlayer.Character
-            local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-            if not targetRoot then return end
-            
-            local distance = (root.Position - targetRoot.Position).Magnitude
-            
-            if distance > 5 then
-                if not HamsterLive.FlyEnabled then
-                    HamsterLive.FlyEnabled = true
-                    CreateFly()
-                end
-                
-                local direction = (targetRoot.Position - root.Position).Unit
-                HamsterLive.BodyVelocity.Velocity = direction * (HamsterLive.FlySpeed * 3)
-                HamsterLive.BodyGyro.CFrame = CFrame.new(root.Position, targetRoot.Position)
-            else
-                FindToolAndAttack(targetPlayer)
-            end
-        end)
-    else
-        if HamsterLive.AutoBadConnection then
-            HamsterLive.AutoBadConnection:Disconnect()
-            HamsterLive.AutoBadConnection = nil
-        end
-    end
+	HamsterLive.AutoBadEnabled = not HamsterLive.AutoBadEnabled
+	if HamsterLive.AutoBadEnabled then
+		if HamsterLive.AutoBadConnection then HamsterLive.AutoBadConnection:Disconnect() end
+		HamsterLive.AutoBadConnection = RunService.Heartbeat:Connect(function()
+			if not HamsterLive.AutoBadEnabled then return end
+			local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if not root then return end
+			local target = GetNearestPlayer()
+			if not target then return end
+			local tRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+			if not tRoot then return end
+			local dist = (root.Position - tRoot.Position).Magnitude
+			if dist > 6 then
+				if not HamsterLive.FlyEnabled then
+					HamsterLive.FlyEnabled = true
+					CreateFly()
+				end
+				if HamsterLive.LinearVelocity then
+					local dir = (tRoot.Position - root.Position).Unit
+					HamsterLive.LinearVelocity.VectorVelocity = dir * (HamsterLive.FlySpeed * 3.5)
+				end
+			else
+				FindToolAndAttack(target)
+			end
+		end)
+	else
+		if HamsterLive.AutoBadConnection then
+			HamsterLive.AutoBadConnection:Disconnect()
+			HamsterLive.AutoBadConnection = nil
+		end
+	end
 end
 
 local function ToggleBadMod()
-    HamsterLive.BadModEnabled = not HamsterLive.BadModEnabled
-    
-    if HamsterLive.BadModEnabled then
-        if HamsterLive.BadModConnection then
-            HamsterLive.BadModConnection:Disconnect()
-        end
-        
-        HamsterLive.BadModConnection = RunService.RenderStepped:Connect(function()
-            if not HamsterLive.BadModEnabled then return end
-            
-            local char = LocalPlayer.Character
-            if not char then return end
-            
-            local tool = char:FindFirstChildOfClass("Tool")
-            if not tool then return end
-            
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    local targetChar = player.Character
-                    local targetHumanoid = targetChar and targetChar:FindFirstChild("Humanoid")
-                    
-                    if targetChar and targetHumanoid and targetHumanoid.Health > 0 then
-                        pcall(function()
-                            tool:Activate()
-                            safeWait(0.05)
-                            tool:Deactivate()
-                        end)
-                    end
-                end
-            end
-        end)
-    else
-        if HamsterLive.BadModConnection then
-            HamsterLive.BadModConnection:Disconnect()
-            HamsterLive.BadModConnection = nil
-        end
-    end
-end-- HAMSTERLİVES ONLİNE HACK🍑 PART 2/2
--- Xeno Executor Uyumlu - PART 1'den sonra çalıştır
+	HamsterLive.BadModEnabled = not HamsterLive.BadModEnabled
+	if HamsterLive.BadModEnabled then
+		if HamsterLive.BadModConnection then HamsterLive.BadModConnection:Disconnect() end
+		HamsterLive.BadModConnection = RunService.Heartbeat:Connect(function()
+			if not HamsterLive.BadModEnabled then return end
+			local char = LocalPlayer.Character
+			if not char then return end
+			local tool = char:FindFirstChildOfClass("Tool")
+			if not tool then return end
+			for _, plr in pairs(Players:GetPlayers()) do
+				if plr \~= LocalPlayer then
+					local tHum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+					if tHum and tHum.Health > 0 then
+						pcall(function()
+							tool:Activate()
+							task.wait(0.04)
+							tool:Deactivate()
+						end)
+					end
+				end
+			end
+		end)
+	else
+		if HamsterLive.BadModConnection then
+			HamsterLive.BadModConnection:Disconnect()
+			HamsterLive.BadModConnection = nil
+		end
+	end
+end
+
+local function ToggleStreamerMode()
+	HamsterLive.StreamerMode = not HamsterLive.StreamerMode
+	local gui = LocalPlayer:FindFirstChild("PlayerGui")
+	local hamsterGUI = gui and gui:FindFirstChild("HamsterLiveGUI")
+	if hamsterGUI then
+		hamsterGUI.Enabled = not HamsterLive.StreamerMode
+	end
+end-- PART 2/2  (devamı - aynı scripte yapıştır)
 
 local function CreateMenu()
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "HamsterLiveGUI"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "HamsterLiveGUI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(0, 350, 0, 35)
-    Title.Position = UDim2.new(0.5, -175, 0.03, 0)
-    Title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Title.BackgroundTransparency = 0.3
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.Text = "HAMSTERLİVES ONLİNE HACK🍑"
-    Title.Font = Enum.Font.SourceSansBold
-    Title.TextSize = 20
-    Title.Parent = ScreenGui
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(0, 350, 0, 35)
+	Title.Position = UDim2.new(0.5, -175, 0.03, 0)
+	Title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	Title.BackgroundTransparency = 0.3
+	Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Title.Text = "HAMSTERLİVES ONLİNE HACK"
+	Title.Font = Enum.Font.SourceSansBold
+	Title.TextSize = 20
+	Title.Parent = ScreenGui
 
-    local ToggleButton = Instance.new("TextButton")
-    ToggleButton.Size = UDim2.new(0, 120, 0, 35)
-    ToggleButton.Position = UDim2.new(1, -130, 0, 10)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.Text = "MENÜ"
-    ToggleButton.Font = Enum.Font.SourceSansBold
-    ToggleButton.TextSize = 16
-    ToggleButton.Parent = ScreenGui
+	local ToggleButton = Instance.new("TextButton")
+	ToggleButton.Size = UDim2.new(0, 120, 0, 35)
+	ToggleButton.Position = UDim2.new(1, -130, 0, 10)
+	ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+	ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	ToggleButton.Text = "MENÜ"
+	ToggleButton.Font = Enum.Font.SourceSansBold
+	ToggleButton.TextSize = 16
+	ToggleButton.Parent = ScreenGui
 
-    local MenuFrame = Instance.new("Frame")
-    MenuFrame.Size = UDim2.new(0, 220, 0, 320)
-    MenuFrame.Position = UDim2.new(1, -230, 0, 50)
-    MenuFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    MenuFrame.BackgroundTransparency = 0.1
-    MenuFrame.Visible = false
-    MenuFrame.Parent = ScreenGui
+	local MenuFrame = Instance.new("Frame")
+	MenuFrame.Size = UDim2.new(0, 220, 0, 370)
+	MenuFrame.Position = UDim2.new(1, -230, 0, 50)
+	MenuFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	MenuFrame.BackgroundTransparency = 0.1
+	MenuFrame.Visible = false
+	MenuFrame.Parent = ScreenGui
 
-    local FlyButton = Instance.new("TextButton")
-    FlyButton.Size = UDim2.new(0, 200, 0, 35)
-    FlyButton.Position = UDim2.new(0, 10, 0, 10)
-    FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FlyButton.Text = "Fly: KAPALI (F8)"
-    FlyButton.Font = Enum.Font.SourceSansBold
-    FlyButton.TextSize = 16
-    FlyButton.Parent = MenuFrame
-    HamsterLive.FlyButton = FlyButton
+	local function makeButton(text, y)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, 200, 0, 35)
+		btn.Position = UDim2.new(0, 10, 0, y)
+		btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.Text = text
+		btn.Font = Enum.Font.SourceSansBold
+		btn.TextSize = 15
+		btn.Parent = MenuFrame
+		return btn
+	end
 
-    local SaveButton = Instance.new("TextButton")
-    SaveButton.Size = UDim2.new(0, 200, 0, 35)
-    SaveButton.Position = UDim2.new(0, 10, 0, 55)
-    SaveButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    SaveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SaveButton.Text = "Yer Belirle (F4)"
-    SaveButton.Font = Enum.Font.SourceSansBold
-    SaveButton.TextSize = 16
-    SaveButton.Parent = MenuFrame
-    HamsterLive.SaveButton = SaveButton
+	HamsterLive.FlyButton      = makeButton("Fly: KAPALI (F8)", 10)
+	HamsterLive.SaveButton     = makeButton("Yer Belirle (F4)", 55)
+	HamsterLive.TpButton        = makeButton("TP (F5)", 100)
+	HamsterLive.NoclipButton    = makeButton("Noclip: KAPALI (F6)", 145)
+	HamsterLive.StreamerButton  = makeButton("Yayıncı: KAPALI (F7)", 190)
+	HamsterLive.AutoBadButton   = makeButton("AutoBad: KAPALI (F9)", 235)
+	HamsterLive.BadModButton    = makeButton("Bad Mod: KAPALI (F10)", 280)
 
-    local TpButton = Instance.new("TextButton")
-    TpButton.Size = UDim2.new(0, 200, 0, 35)
-    TpButton.Position = UDim2.new(0, 10, 0, 100)
-    TpButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    TpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TpButton.Text = "TP (F5)"
-    TpButton.Font = Enum.Font.SourceSansBold
-    TpButton.TextSize = 16
-    TpButton.Parent = MenuFrame
-    HamsterLive.TpButton = TpButton
+	local SpeedSlider = Instance.new("TextBox")
+	SpeedSlider.Size = UDim2.new(0, 200, 0, 30)
+	SpeedSlider.Position = UDim2.new(0, 10, 0, 325)
+	SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+	SpeedSlider.Text = "Hız: 100"
+	SpeedSlider.Font = Enum.Font.SourceSansBold
+	SpeedSlider.TextSize = 14
+	SpeedSlider.Parent = MenuFrame
+	HamsterLive.SpeedSlider = SpeedSlider
 
-    local NoclipButton = Instance.new("TextButton")
-    NoclipButton.Size = UDim2.new(0, 200, 0, 35)
-    NoclipButton.Position = UDim2.new(0, 10, 0, 145)
-    NoclipButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    NoclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    NoclipButton.Text = "Noclip: KAPALI (F6)"
-    NoclipButton.Font = Enum.Font.SourceSansBold
-    NoclipButton.TextSize = 16
-    NoclipButton.Parent = MenuFrame
-    HamsterLive.NoclipButton = NoclipButton
+	ToggleButton.MouseButton1Click:Connect(function()
+		HamsterLive.MenuOpen = not HamsterLive.MenuOpen
+		MenuFrame.Visible = HamsterLive.MenuOpen
+	end)
 
-    local StreamerButton = Instance.new("TextButton")
-    StreamerButton.Size = UDim2.new(0, 200, 0, 35)
-    StreamerButton.Position = UDim2.new(0, 10, 0, 190)
-    StreamerButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    StreamerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    StreamerButton.Text = "Yayıncı: KAPALI (F7)"
-    StreamerButton.Font = Enum.Font.SourceSansBold
-    StreamerButton.TextSize = 16
-    StreamerButton.Parent = MenuFrame
-    HamsterLive.StreamerButton = StreamerButton
+	HamsterLive.FlyButton.MouseButton1Click:Connect(ToggleFly)
+	HamsterLive.SaveButton.MouseButton1Click:Connect(SavePosition)
+	HamsterLive.TpButton.MouseButton1Click:Connect(DoTeleport)
 
-    local AutoBadButton = Instance.new("TextButton")
-    AutoBadButton.Size = UDim2.new(0, 200, 0, 35)
-    AutoBadButton.Position = UDim2.new(0, 10, 0, 235)
-    AutoBadButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    AutoBadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AutoBadButton.Text = "AutoBad: KAPALI (F9)"
-    AutoBadButton.Font = Enum.Font.SourceSansBold
-    AutoBadButton.TextSize = 16
-    AutoBadButton.Parent = MenuFrame
-    HamsterLive.AutoBadButton = AutoBadButton
+	HamsterLive.NoclipButton.MouseButton1Click:Connect(function()
+		ToggleNoclip()
+		HamsterLive.NoclipButton.Text = HamsterLive.NoclipEnabled and "Noclip: AÇIK (F6)" or "Noclip: KAPALI (F6)"
+		HamsterLive.NoclipButton.BackgroundColor3 = HamsterLive.NoclipEnabled and Color3.fromRGB(0,200,0) or Color3.fromRGB(70,70,70)
+	end)
 
-    local BadModButton = Instance.new("TextButton")
-    BadModButton.Size = UDim2.new(0, 200, 0, 35)
-    BadModButton.Position = UDim2.new(0, 10, 0, 280)
-    BadModButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    BadModButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    BadModButton.Text = "Bad Mod: KAPALI (F10)"
-    BadModButton.Font = Enum.Font.SourceSansBold
-    BadModButton.TextSize = 16
-    BadModButton.Parent = MenuFrame
-    HamsterLive.BadModButton = BadModButton
+	HamsterLive.StreamerButton.MouseButton1Click:Connect(function()
+		ToggleStreamerMode()
+		HamsterLive.StreamerButton.Text = HamsterLive.StreamerMode and "Yayıncı: AÇIK (F7)" or "Yayıncı: KAPALI (F7)"
+		HamsterLive.StreamerButton.BackgroundColor3 = HamsterLive.StreamerMode and Color3.fromRGB(255,0,0) or Color3.fromRGB(70,70,70)
+	end)
 
-    local SpeedSlider = Instance.new("TextBox")
-    SpeedSlider.Size = UDim2.new(0, 200, 0, 30)
-    SpeedSlider.Position = UDim2.new(0, 10, 0, 325)
-    SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SpeedSlider.Text = "Hız: 100"
-    SpeedSlider.Font = Enum.Font.SourceSansBold
-    SpeedSlider.TextSize = 14
-    SpeedSlider.Parent = MenuFrame
-    HamsterLive.SpeedSlider = SpeedSlider
+	HamsterLive.AutoBadButton.MouseButton1Click:Connect(function()
+		ToggleAutoBad()
+		HamsterLive.AutoBadButton.Text = HamsterLive.AutoBadEnabled and "AutoBad: AÇIK (F9)" or "AutoBad: KAPALI (F9)"
+		HamsterLive.AutoBadButton.BackgroundColor3 = HamsterLive.AutoBadEnabled and Color3.fromRGB(0,200,0) or Color3.fromRGB(70,70,70)
+	end)
 
-    ToggleButton.MouseButton1Click:Connect(function()
-        HamsterLive.MenuOpen = not HamsterLive.MenuOpen
-        MenuFrame.Visible = HamsterLive.MenuOpen
-        
-        if HamsterLive.MenuOpen then
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            ToggleButton.TextColor3 = Color3.fromRGB(255, 0, 255)
-        else
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
-            ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        end
-    end)
+	HamsterLive.BadModButton.MouseButton1Click:Connect(function()
+		ToggleBadMod()
+		HamsterLive.BadModButton.Text = HamsterLive.BadModEnabled and "Bad Mod: AÇIK (F10)" or "Bad Mod: KAPALI (F10)"
+		HamsterLive.BadModButton.BackgroundColor3 = HamsterLive.BadModEnabled and Color3.fromRGB(255,0,0) or Color3.fromRGB(70,70,70)
+	end)
 
-    FlyButton.MouseButton1Click:Connect(function()
-        ToggleFly()
-    end)
-
-    SaveButton.MouseButton1Click:Connect(function()
-        SavePosition()
-    end)
-
-    TpButton.MouseButton1Click:Connect(function()
-        DoTeleport()
-    end)
-
-    NoclipButton.MouseButton1Click:Connect(function()
-        ToggleNoclip()
-        if HamsterLive.NoclipEnabled then
-            NoclipButton.Text = "Noclip: AÇIK (F6)"
-            NoclipButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        else
-            NoclipButton.Text = "Noclip: KAPALI (F6)"
-            NoclipButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-        end
-    end)
-
-    StreamerButton.MouseButton1Click:Connect(function()
-        ToggleStreamerMode()
-        if HamsterLive.StreamerMode then
-            StreamerButton.Text = "Yayıncı: AÇIK (F7)"
-            StreamerButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-        else
-            StreamerButton.Text = "Yayıncı: KAPALI (F7)"
-            StreamerButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-        end
-    end)
-
-    AutoBadButton.MouseButton1Click:Connect(function()
-        ToggleAutoBad()
-        if HamsterLive.AutoBadEnabled then
-            AutoBadButton.Text = "AutoBad: AÇIK (F9)"
-            AutoBadButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        else
-            AutoBadButton.Text = "AutoBad: KAPALI (F9)"
-            AutoBadButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-        end
-    end)
-
-    BadModButton.MouseButton1Click:Connect(function()
-        ToggleBadMod()
-        if HamsterLive.BadModEnabled then
-            BadModButton.Text = "Bad Mod: AÇIK (F10)"
-            BadModButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-        else
-            BadModButton.Text = "Bad Mod: KAPALI (F10)"
-            BadModButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-        end
-    end)
-
-    SpeedSlider.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            local match = string.match(SpeedSlider.Text, "%d+")
-            if match then
-                local newSpeed = tonumber(match)
-                if newSpeed and newSpeed > 0 and newSpeed <= 1000 then
-                    HamsterLive.FlySpeed = newSpeed
-                    SpeedSlider.Text = "Hız: " .. newSpeed
-                else
-                    SpeedSlider.Text = "Hız: 100"
-                    HamsterLive.FlySpeed = 100
-                end
-            else
-                SpeedSlider.Text = "Hız: 100"
-                HamsterLive.FlySpeed = 100
-            end
-        end
-    end)
+	SpeedSlider.FocusLost:Connect(function(enter)
+		if enter then
+			local num = tonumber(string.match(SpeedSlider.Text, "%d+"))
+			if num and num > 0 and num <= 1000 then
+				HamsterLive.FlySpeed = num
+				SpeedSlider.Text = "Hız: " .. num
+			else
+				HamsterLive.FlySpeed = 100
+				SpeedSlider.Text = "Hız: 100"
+			end
+		end
+	end)
 end
 
 local function SetupKeybinds()
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        
-        if input.KeyCode == Enum.KeyCode.F8 then
-            ToggleFly()
-        elseif input.KeyCode == Enum.KeyCode.F4 then
-            SavePosition()
-        elseif input.KeyCode == Enum.KeyCode.F5 then
-            DoTeleport()
-        elseif input.KeyCode == Enum.KeyCode.F6 then
-            ToggleNoclip()
-            if HamsterLive.NoclipButton then
-                if HamsterLive.NoclipEnabled then
-                    HamsterLive.NoclipButton.Text = "Noclip: AÇIK (F6)"
-                    HamsterLive.NoclipButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-                else
-                    HamsterLive.NoclipButton.Text = "Noclip: KAPALI (F6)"
-                    HamsterLive.NoclipButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-                end
-            end
-        elseif input.KeyCode == Enum.KeyCode.F7 then
-            ToggleStreamerMode()
-            if HamsterLive.StreamerButton then
-                if HamsterLive.StreamerMode then
-                    HamsterLive.StreamerButton.Text = "Yayıncı: AÇIK (F7)"
-                    HamsterLive.StreamerButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-                else
-                    HamsterLive.StreamerButton.Text = "Yayıncı: KAPALI (F7)"
-                    HamsterLive.StreamerButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-                end
-            end
-        elseif input.KeyCode == Enum.KeyCode.F9 then
-            ToggleAutoBad()
-            if HamsterLive.AutoBadButton then
-                if HamsterLive.AutoBadEnabled then
-                    HamsterLive.AutoBadButton.Text = "AutoBad: AÇIK (F9)"
-                    HamsterLive.AutoBadButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-                else
-                    HamsterLive.AutoBadButton.Text = "AutoBad: KAPALI (F9)"
-                    HamsterLive.AutoBadButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-                end
-            end
-        elseif input.KeyCode == Enum.KeyCode.F10 then
-            ToggleBadMod()
-            if HamsterLive.BadModButton then
-                if HamsterLive.BadModEnabled then
-                    HamsterLive.BadModButton.Text = "Bad Mod: AÇIK (F10)"
-                    HamsterLive.BadModButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-                else
-                    HamsterLive.BadModButton.Text = "Bad Mod: KAPALI (F10)"
-                    HamsterLive.BadModButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-                end
-            end
-        end
-    end)
+	UserInputService.InputBegan:Connect(function(input, gp)
+		if gp then return end
+		if input.KeyCode == Enum.KeyCode.F8 then
+			ToggleFly()
+		elseif input.KeyCode == Enum.KeyCode.F4 then
+			SavePosition()
+		elseif input.KeyCode == Enum.KeyCode.F5 then
+			DoTeleport()
+		elseif input.KeyCode == Enum.KeyCode.F6 then
+			ToggleNoclip()
+			if HamsterLive.NoclipButton then
+				HamsterLive.NoclipButton.Text = HamsterLive.NoclipEnabled and "Noclip: AÇIK (F6)" or "Noclip: KAPALI (F6)"
+				HamsterLive.NoclipButton.BackgroundColor3 = HamsterLive.NoclipEnabled and Color3.fromRGB(0,200,0) or Color3.fromRGB(70,70,70)
+			end
+		elseif input.KeyCode == Enum.KeyCode.F7 then
+			ToggleStreamerMode()
+			if HamsterLive.StreamerButton then
+				HamsterLive.StreamerButton.Text = HamsterLive.StreamerMode and "Yayıncı: AÇIK (F7)" or "Yayıncı: KAPALI (F7)"
+				HamsterLive.StreamerButton.BackgroundColor3 = HamsterLive.StreamerMode and Color3.fromRGB(255,0,0) or Color3.fromRGB(70,70,70)
+			end
+		elseif input.KeyCode == Enum.KeyCode.F9 then
+			ToggleAutoBad()
+			if HamsterLive.AutoBadButton then
+				HamsterLive.AutoBadButton.Text = HamsterLive.AutoBadEnabled and "AutoBad: AÇIK (F9)" or "AutoBad: KAPALI (F9)"
+				HamsterLive.AutoBadButton.BackgroundColor3 = HamsterLive.AutoBadEnabled and Color3.fromRGB(0,200,0) or Color3.fromRGB(70,70,70)
+			end
+		elseif input.KeyCode == Enum.KeyCode.F10 then
+			ToggleBadMod()
+			if HamsterLive.BadModButton then
+				HamsterLive.BadModButton.Text = HamsterLive.BadModEnabled and "Bad Mod: AÇIK (F10)" or "Bad Mod: KAPALI (F10)"
+				HamsterLive.BadModButton.BackgroundColor3 = HamsterLive.BadModEnabled and Color3.fromRGB(255,0,0) or Color3.fromRGB(70,70,70)
+			end
+		end
+	end)
 end
 
 CreateMenu()
 SetupKeybinds()
 
 LocalPlayer.CharacterAdded:Connect(function()
-    safeWait(1)
-    if HamsterLive.FlyEnabled then
-        CreateFly()
-    end
+	task.wait(1.2)
+	if HamsterLive.FlyEnabled then
+		CreateFly()
+	end
+	if not HamsterLive.AntiSnapConnection then
+		StartAntiSnap()
+	end
 end)
+
+print("[HamsterLive] Script başarıyla yüklendi.")

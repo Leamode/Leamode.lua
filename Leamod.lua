@@ -1,33 +1,301 @@
-local Llo1o00o=(getfenv and getfenv(1)) or _ENV or _G
-local jOo1jl0Ioj0i,ILjLI1ilI=string.byte,string.char
-local function jLljjloOioI00(i0L1jl1LljiOIo,IiO10iLjojO0)
-local LOO0O0oOi0Iji=""
-local lLl0jiiL=#IiO10iLjojO0
-for iiojjOI0ILLiL=1,#i0L1jl1LljiOIo do LOO0O0oOi0Iji=LOO0O0oOi0Iji..ILjLI1ilI((jOo1jl0Ioj0i(i0L1jl1LljiOIo,iiojjOI0ILLiL)-jOo1jl0Ioj0i(IiO10iLjojO0,(iiojjOI0ILLiL-1)%lLl0jiiL+1))%256) end
-return LOO0O0oOi0Iji
+-- HAMSTERLİVES ONLİNE HACK🍑
+-- Palofsc // Roblox Executor Payload
+-- Fly + Yer Belirle + TP + Bypass
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- // ANA TABLO
+local HamsterLive = {
+    Enabled = false,
+    FlyEnabled = false,
+    FlySpeed = 50,
+    SavedPosition = nil,
+    BypassActive = false,
+    Connections = {},
+    BodyGyro = nil,
+    BodyVelocity = nil
+}
+
+-- // BYPASS SISTEMI
+local function EnableBypass()
+    if HamsterLive.BypassActive then return end
+    HamsterLive.BypassActive = true
+
+    -- Anti-teleport geri atma için network sahte paket geciktirme
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+        if HamsterLive.BypassActive and self == LocalPlayer.Character and key == "Position" then
+            if HamsterLive.Teleporting then
+                return HamsterLive.TeleportTarget or oldIndex(self, key)
+            end
+        end
+        return oldIndex(self, key)
+    end))
+
+    -- Anti-cheat tespitini atlatmak için RemoteEvent karartması
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if HamsterLive.BypassActive and method == "FireServer" and tostring(self) == "MainRemote" then
+            -- Kritik pozisyon verilerini geciktir
+            task.wait(0.03)
+            return oldNamecall(self, ...)
+        end
+        return oldNamecall(self, ...)
+    end))
+
+    -- Karakter physics bypass
+    HamsterLive.Connections.CharacterAdded = LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        local root = char:WaitForChild("HumanoidRootPart", 5)
+        if root then
+            root:SetAttribute("HamsterBypass", true)
+        end
+    end)
 end
-local ILjILjiiojOj0o=Llo1o00o[jLljjloOioI00("\014\182\005~\246\015","\155Q\153\025\147")]
-local i11lI0LOj0L=Llo1o00o[jLljjloOioI00("\160\173P\027\155\160","-9\222\178")][jLljjloOioI00("D\029z","\209\168\024")]
-local jLl0iollL=Llo1o00o[jLljjloOioI00("\012\017\153\215\253","\152\1767k")][jLljjloOioI00("\140\241\189Hg\157",")\130O\229\006")]
-local l0j01oo1jliO=Llo1o00o[jLljjloOioI00("\255\161k\002","\146@\247\154")][jLljjloOioI00("\235\n\175!\018","\133\158@\178\160\154\253")]
-local joIjILlO0=Llo1o00o[jLljjloOioI00("\150\245j\203\162\175\135\248","\"\134\252V5M")]
-local i0lLiLlII10I11=Llo1o00o[jLljjloOioI00("&\193)0\193","\193O\183")]
-local jjiOLoOj0I=(ILjLI1ilI(90,75)=="ZK" and 4980 or 10)+joIjILlO0("4244")*1+jOo1jl0Ioj0i("Z")+ILjILjiiojOj0o("#",0,0,0,0)*8
-local lLI1i11=Llo1o00o[jLljjloOioI00("\235\218}\019X","wy\027\167\243\182")][jLljjloOioI00("\138\012\156\023","\026\1719\172Jy")] or function(...) return {n=ILjILjiiojOj0o("#",...),...} end
-local Io00I1=Llo1o00o[jLljjloOioI00("\144F\187\136J","\028\229Y")][jLljjloOioI00("d\149\251\025R\146","\239'\139\184")] or Llo1o00o[jLljjloOioI00("y\232\171\242g\229","\004z;\145")]
-local L1IIOj1iIi1Ii="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-local function ljo10OjILl(jioi1i1joi)
-local LOiI0i={}
-for iOOLI0LoIlOOo0=1,64 do LOiI0i[jOo1jl0Ioj0i(L1IIOj1iIi1Ii,iOOLI0LoIlOOo0)]=iOOLI0LoIlOOo0-1 end
-local ljji1jooL,LOOIjjLjoiIjii,IoLIlll,Lo01LjlIO={},0,0,0
-for iOOLI0LoIlOOo0=1,#jioi1i1joi do
-local li01Io=LOiI0i[jOo1jl0Ioj0i(jioi1i1joi,iOOLI0LoIlOOo0)]
-if li01Io then
-LOOIjjLjoiIjii=LOOIjjLjoiIjii*64+li01Io
-IoLIlll=IoLIlll+6
-if IoLIlll>=8 then IoLIlll=IoLIlll-8 Lo01LjlIO=Lo01LjlIO+1 ljji1jooL[Lo01LjlIO]=ILjLI1ilI(l0j01oo1jliO(LOOIjjLjoiIjii/(2^IoLIlll))%256) LOOIjjLjoiIjii=LOOIjjLjoiIjii%(2^IoLIlll) end
+
+-- // FLY MOTORU
+local function CreateFlyPhysics()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    local humanoid = char:WaitForChild("Humanoid", 5)
+    if not root or not humanoid then return end
+
+    -- Eski physics temizle
+    if HamsterLive.BodyGyro then HamsterLive.BodyGyro:Destroy() end
+    if HamsterLive.BodyVelocity then HamsterLive.BodyVelocity:Destroy() end
+
+    -- BodyGyro - dönüş kontrolü
+    HamsterLive.BodyGyro = Instance.new("BodyGyro")
+    HamsterLive.BodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    HamsterLive.BodyGyro.D = 0
+    HamsterLive.BodyGyro.P = 1e6
+    HamsterLive.BodyGyro.CFrame = root.CFrame
+    HamsterLive.BodyGyro.Parent = root
+
+    -- BodyVelocity - hareket kontrolü
+    HamsterLive.BodyVelocity = Instance.new("BodyVelocity")
+    HamsterLive.BodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    HamsterLive.BodyVelocity.Velocity = Vector3.zero
+    HamsterLive.BodyVelocity.Parent = root
+
+    -- Düşme animasyonu simülasyonu (ziplamada kalmış gibi)
+    HamsterLive.Connections.RenderStepped = RunService.RenderStepped:Connect(function()
+        if not HamsterLive.FlyEnabled then return end
+        local currentChar = LocalPlayer.Character
+        local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
+        if not currentRoot then return end
+
+        -- Sürekli hafif aşağı ivme = düşüyormuş hissi
+        local vel = Vector3.zero
+        local direction = Camera.CFrame.LookVector
+        local right = Camera.CFrame.RightVector
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            vel = vel + direction
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            vel = vel - direction
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            vel = vel - right
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            vel = vel + right
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            vel = vel + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            vel = vel - Vector3.new(0, 1, 0)
+        end
+
+        -- Hız ayarlama
+        local speed = HamsterLive.FlySpeed
+        vel = vel * speed
+
+        -- Sürekli hafif düşme efekti
+        vel = vel - Vector3.new(0, speed * 0.15, 0)
+
+        HamsterLive.BodyVelocity.Velocity = vel
+        HamsterLive.BodyGyro.CFrame = Camera.CFrame
+    end)
 end
+
+-- // TELEPORT BYPASS
+local function TeleportTo(position)
+    HamsterLive.Teleporting = true
+    HamsterLive.TeleportTarget = position
+
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then
+        HamsterLive.Teleporting = false
+        return
+    end
+
+    -- Karakteri geçici olarak network'ten ayır
+    root.Anchored = false
+    local oldPos = root.Position
+
+    -- Tween ile yumuşak geçiş (anti tespit)
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(position)})
+    tween:Play()
+    tween.Completed:Wait()
+
+    -- Pozisyonu zorla sabitle
+    root.CFrame = CFrame.new(position)
+    root.Velocity = Vector3.zero
+    root.RotVelocity = Vector3.zero
+
+    task.wait(0.1)
+    HamsterLive.Teleporting = false
 end
-return jLl0iollL(ljji1jooL)
+
+-- // MENU OLUŞTURMA
+local function CreateMenu()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "HamsterLiveGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    -- Başlık
+    local Title = Instance.new("TextLabel")
+    Title.Name = "Title"
+    Title.Size = UDim2.new(0, 350, 0, 35)
+    Title.Position = UDim2.new(0.5, -175, 0.03, 0)
+    Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Title.BackgroundTransparency = 0.2
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Text = "HAMSTERLİVES ONLİNE HACK🍑"
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 20
+    Title.Parent = ScreenGui
+
+    -- Buton
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "ToggleButton"
+    ToggleButton.Size = UDim2.new(0, 120, 0, 35)
+    ToggleButton.Position = UDim2.new(1, -130, 0, 10)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleButton.Text = "MENÜ"
+    ToggleButton.Font = Enum.Font.SourceSansBold
+    ToggleButton.TextSize = 16
+    ToggleButton.Parent = ScreenGui
+
+    -- Menu Frame
+    local MenuFrame = Instance.new("Frame")
+    MenuFrame.Name = "MenuFrame"
+    MenuFrame.Size = UDim2.new(0, 200, 0, 150)
+    MenuFrame.Position = UDim2.new(1, -210, 0, 50)
+    MenuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MenuFrame.BackgroundTransparency = 0.1
+    MenuFrame.Visible = false
+    MenuFrame.Parent = ScreenGui
+
+    -- Fly Butonu
+    local FlyButton = Instance.new("TextButton")
+    FlyButton.Name = "FlyButton"
+    FlyButton.Size = UDim2.new(0, 180, 0, 30)
+    FlyButton.Position = UDim2.new(0, 10, 0, 10)
+    FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FlyButton.Text = "Fly: KAPALI"
+    FlyButton.Parent = MenuFrame
+
+    -- Yer Belirle Butonu
+    local SaveButton = Instance.new("TextButton")
+    SaveButton.Name = "SaveButton"
+    SaveButton.Size = UDim2.new(0, 180, 0, 30)
+    SaveButton.Position = UDim2.new(0, 10, 0, 50)
+    SaveButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    SaveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SaveButton.Text = "Yer Belirle"
+    SaveButton.Parent = MenuFrame
+
+    -- TP Butonu
+    local TpButton = Instance.new("TextButton")
+    TpButton.Name = "TpButton"
+    TpButton.Size = UDim2.new(0, 180, 0, 30)
+    TpButton.Position = UDim2.new(0, 10, 0, 90)
+    TpButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    TpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TpButton.Text = "TP"
+    TpButton.Parent = MenuFrame
+
+    -- Hız Ayarı
+    local SpeedSlider = Instance.new("TextBox")
+    SpeedSlider.Name = "SpeedSlider"
+    SpeedSlider.Size = UDim2.new(0, 180, 0, 25)
+    SpeedSlider.Position = UDim2.new(0, 10, 0, 125)
+    SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SpeedSlider.Text = "Hız: 50"
+    SpeedSlider.Parent = MenuFrame
+
+    -- Toggle buton
+    ToggleButton.MouseButton1Click:Connect(function()
+        MenuFrame.Visible = not MenuFrame.Visible
+    end)
+
+    -- Fly toggle
+    FlyButton.MouseButton1Click:Connect(function()
+        HamsterLive.FlyEnabled = not HamsterLive.FlyEnabled
+        if HamsterLive.FlyEnabled then
+            FlyButton.Text = "Fly: AÇIK"
+            FlyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+            CreateFlyPhysics()
+        else
+            FlyButton.Text = "Fly: KAPALI"
+            FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            if HamsterLive.BodyGyro then HamsterLive.BodyGyro:Destroy() end
+            if HamsterLive.BodyVelocity then HamsterLive.BodyVelocity:Destroy() end
+            if HamsterLive.Connections.RenderStepped then
+                HamsterLive.Connections.RenderStepped:Disconnect()
+            end
+        end
+    end)
+
+    -- Yer belirle
+    SaveButton.MouseButton1Click:Connect(function()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            HamsterLive.SavedPosition = root.Position
+            SaveButton.Text = "Kaydedildi!"
+            task.wait(1)
+            SaveButton.Text = "Yer Belirle"
+        end
+    end)
+
+    -- TP
+    TpButton.MouseButton1Click:Connect(function()
+        if HamsterLive.SavedPosition then
+            TeleportTo(HamsterLive.SavedPosition)
+        end
+    end)
+
+    -- Hız ayarı
+    SpeedSlider.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local newSpeed = tonumber(SpeedSlider.Text:match("%d+"))
+            if newSpeed then
+                HamsterLive.FlySpeed = newSpeed
+                SpeedSlider.Text = "Hız: " .. newSpeed
+            end
+        end
+    end)
 end
-local LIIlIjiiL="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
+
+-- // BAŞLAT
+EnableBypass()
+CreateMenu()

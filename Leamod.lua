@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v28 - PART 1/3
--- TAM İNFAZ BYPASS - ANTICHEAT ÇÖKERTME
+-- HAMSTERLİVES v29 - PART 1/3
+-- EGG OTOMATİK TOPLAMA SİSTEMİ
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -27,339 +27,187 @@ local HL = {
 	GlideVelocity = Vector3.zero,
 	EggTimer = 0,
 	EggPauseUntil = 0,
+	EggCollectZone = nil,
+	EggCollectActive = false,
+	EggCollectTarget = nil,
 	Conn = {},
 	Buttons = {}
 }
 
--- ==================== TAM İNFAZ BYPASS ====================
+-- ==================== BASİT BYPASS (ANİMASYON BOZMAZ) ====================
 local Bypass = {
 	Active = false,
 	LastSafePosition = nil,
-	FakePosition = nil,
-	GroundY = nil,
-	GroundCacheTime = 0,
-	GroundCacheTTL = 0.02,
-	KickAttempts = 0,
-	Shields = {},
-	AntiResetActive = false,
-	AntiKickActive = false,
-	AntiDetectionActive = false,
-	AntiRealInfoActive = false,
-	ServerSpoofActive = false,
-	RealPosition = nil,
-	RealWalkSpeed = nil,
-	RealJumpPower = nil,
-	FakeWalkSpeed = 16,
-	FakeJumpPower = 50,
-	LastServerUpdate = 0,
-	ServerUpdateInterval = 0.005
+	Shields = {}
 }
 
-local function FindGroundYFast(pos)
-	local now = os.clock()
-	if Bypass.GroundY and (now - Bypass.GroundCacheTime) < Bypass.GroundCacheTTL then
-		return Bypass.GroundY
-	end
-	
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	if LocalPlayer.Character then
-		params.FilterDescendantsInstances = {LocalPlayer.Character}
-	end
-	
-	local result = workspace:Raycast(pos + Vector3.new(0, 60, 0), Vector3.new(0, -600, 0), params)
-	if result then
-		Bypass.GroundY = result.Position.Y + 3.2
-		Bypass.GroundCacheTime = now
-		return Bypass.GroundY
-	end
-	return pos.Y - 10
-end
+local function StartBypass()
+	if Bypass.Active then return end
+	Bypass.Active = true
 
--- ==================== ANTI-RESET ====================
-local function AntiResetSystem()
-	Bypass.AntiResetActive = true
-	
-	Bypass.Shields.AntiReset = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-		
-		-- Karakter workspace dışına atılırsa
-		if not root:IsDescendantOf(workspace) then
-			pcall(function() root.Parent = char end)
-		end
-		
-		-- Ani pozisyon değişimini düzelt
-		if Bypass.LastSafePosition and not HL.Fly and not HL.PullActive then
-			local dist = (root.Position - Bypass.LastSafePosition).Magnitude
-			if dist > 50 then
-				pcall(function() root.CFrame = CFrame.new(Bypass.LastSafePosition) end)
-			end
-		end
-		
-		-- Void'e düşerse kurtar
-		if root.Position.Y < -30 then
-			pcall(function()
-				if Bypass.LastSafePosition then
-					root.CFrame = CFrame.new(Bypass.LastSafePosition)
-				end
-			end)
-		end
-		
-		Bypass.LastSafePosition = root.Position
-	end)
-end
-
--- ==================== ANTI-KICK ====================
-local function AntiKickSystem()
-	Bypass.AntiKickActive = true
-	
-	-- LocalPlayer Parent değişimini izle
-	Bypass.Shields.AntiKick1 = LocalPlayer.Changed:Connect(function(prop)
-		if prop == "Parent" then
-			Bypass.KickAttempts = Bypass.KickAttempts + 1
-			if not LocalPlayer:IsDescendantOf(Players) then
-				pcall(function() LocalPlayer.Parent = Players end)
-			end
-		end
-	end)
-	
-	-- Karakter değişimini izle
-	Bypass.Shields.AntiKick2 = LocalPlayer.CharacterAdded:Connect(function(char)
-		task.wait(0.3)
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.Died:Connect(function()
-				pcall(function()
-					hum.Health = hum.MaxHealth
-					hum:ChangeState(Enum.HumanoidStateType.Running)
-				end)
-			end)
-		end
-	end)
-	
-	-- Sürekli Parent kontrolü
-	task.spawn(function()
-		while Bypass.Active do
-			task.wait(0.005)
-			if not LocalPlayer:IsDescendantOf(Players) then
-				pcall(function() LocalPlayer.Parent = Players end)
-			end
-		end
-	end)
-	
-	-- Sürekli Health kontrolü
-	Bypass.Shields.AntiKick3 = RunService.Heartbeat:Connect(function()
+	-- SADECE HEALTH VE KICK KORUMASI - ANİMASYONA DOKUNMAZ
+	Bypass.Shields.Main = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not hum then return end
 		
 		pcall(function()
-			if hum.Health <= 0 then
+			if hum.Health <= 0 or hum.Health < hum.MaxHealth * 0.9 or HL.God then
+				hum.Health = hum.MaxHealth
+			end
+			if hum:GetState() == Enum.HumanoidStateType.Dead then
 				hum.Health = hum.MaxHealth
 				hum:ChangeState(Enum.HumanoidStateType.Running)
 			end
 		end)
 	end)
+
+	-- KICK ENGELLEYİCİ
+	Bypass.Shields.Kick = LocalPlayer.Changed:Connect(function(prop)
+		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
+			pcall(function() LocalPlayer.Parent = Players end)
+		end
+	end)
+
+	print("🍑 v29 BYPASS AKTİF - ANİMASYON BOZULMAZ")
 end
 
--- ==================== ANTI-DETECTION ====================
-local function AntiDetectionSystem()
-	Bypass.AntiDetectionActive = true
+-- ==================== EGG TOPLAMA ALANI BULMA ====================
+local function FindEggCollectZone()
+	-- Haritadaki özel bölgeyi bul (egg toplama alanı)
+	local zones = {}
 	
-	Bypass.Shields.AntiDetection = RunService.Heartbeat:Connect(function()
-		pcall(function()
-			local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-			if playerGui then
-				for _, child in pairs(playerGui:GetChildren()) do
-					local name = string.lower(child.Name)
-					if string.find(name, "anticheat") or 
-					   string.find(name, "ban") or 
-					   string.find(name, "kick") or
-					   string.find(name, "warning") or
-					   string.find(name, "detect") or
-					   string.find(name, "flag") or
-					   string.find(name, "report") then
-						child.Enabled = false
-					end
-				end
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") or obj:IsA("Model") then
+			local name = string.lower(obj.Name)
+			
+			-- Egg toplama alanı ile ilgili isimler
+			if string.find(name, "egg") or 
+			   string.find(name, "collect") or 
+			   string.find(name, "zone") or 
+			   string.find(name, "area") or 
+			   string.find(name, "spawn") or
+			   string.find(name, "hatch") or
+			   string.find(name, "nest") or
+			   string.find(name, "yumurta") or
+			   string.find(name, "topla") then
+				
+				local pos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+				local size = obj:IsA("BasePart") and obj.Size.Magnitude or 10
+				
+				table.insert(zones, {
+					Position = pos,
+					Size = size,
+					Name = obj.Name
+				})
 			end
-		end)
-		
-		-- Anticheat scriptlerini sustur
-		pcall(function()
-			local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-			if playerScripts then
-				for _, script in pairs(playerScripts:GetDescendants()) do
-					if script:IsA("LocalScript") then
-						local name = string.lower(script.Name)
-						if string.find(name, "anticheat") or 
-						   string.find(name, "ban") or 
-						   string.find(name, "detect") or
-						   string.find(name, "flag") then
-							script.Enabled = false
+		end
+	end
+	
+	-- En büyük zone'u bul
+	local bestZone = nil
+	local bestSize = 0
+	
+	for _, zone in pairs(zones) do
+		if zone.Size > bestSize then
+			bestSize = zone.Size
+			bestZone = zone
+		end
+	end
+	
+	return bestZone
+end
+
+-- ==================== EGG TOPLAMA OTOMASYONU ====================
+local function StartEggCollect()
+	if HL.EggCollectActive then return end
+	HL.EggCollectActive = true
+	
+	-- Egg toplama alanını bul
+	local zone = FindEggCollectZone()
+	if not zone then
+		print("Egg toplama alanı bulunamadı")
+		HL.EggCollectActive = false
+		return
+	end
+	
+	HL.EggCollectZone = zone
+	HL.EggCollectTarget = zone.Position
+	
+	print("Egg toplama alanı bulundu: " .. zone.Name)
+	
+	-- Karakteri egg alanına götür
+	HL.EggCollectActive = true
+	
+	task.spawn(function()
+		while HL.EggCollectActive do
+			task.wait(0.5)
+			
+			local char = LocalPlayer.Character
+			if not char then continue end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then continue end
+			
+			-- Egg alanına olan mesafe
+			local distance = (root.Position - HL.EggCollectTarget).Magnitude
+			
+			if distance > 30 then
+				-- Egg alanına koş
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum then
+					pcall(function()
+						hum:MoveTo(HL.EggCollectTarget)
+					end)
+				end
+			else
+				-- Egg alanındayız, egg'leri topla
+				-- Yakındaki egg'leri bul ve topla
+				for _, obj in ipairs(workspace:GetDescendants()) do
+					if obj:IsA("BasePart") or obj:IsA("Model") then
+						local name = string.lower(obj.Name)
+						if string.find(name, "egg") or string.find(name, "yumurta") then
+							local eggPos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+							local eggDist = (root.Position - eggPos).Magnitude
+							
+							if eggDist < 20 then
+								-- Egg'e dokun
+								pcall(function()
+									local hum = char:FindFirstChildOfClass("Humanoid")
+									if hum then
+										hum:MoveTo(eggPos)
+									end
+								end)
+								
+								-- Egg'i toplamaya çalış
+								pcall(function()
+									local tool = char:FindFirstChildOfClass("Tool")
+									if tool then
+										tool:Activate()
+										task.wait(0.1)
+										tool:Deactivate()
+									end
+								end)
+								
+								-- Eğer egg BasePart ise doğrudan al
+								if obj:IsA("BasePart") then
+									pcall(function()
+										obj.Parent = char
+									end)
+								end
+							end
 						end
 					end
 				end
 			end
-		end)
-	end)
-end
-
--- ==================== ANTI-REAL BİLGİ ====================
-local function AntiRealInfoSystem()
-	Bypass.AntiRealInfoActive = true
-	
-	Bypass.Shields.AntiRealInfo = RunService.RenderStepped:Connect(function()
-		if not Bypass.Active then return end
-		
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not root or not hum then return end
-		
-		-- Gerçek bilgileri kaydet
-		local realPos = root.Position
-		local realWalkSpeed = hum.WalkSpeed
-		local realJumpPower = hum.JumpPower
-		
-		Bypass.RealPosition = realPos
-		Bypass.RealWalkSpeed = realWalkSpeed
-		Bypass.RealJumpPower = realJumpPower
-		
-		-- Sahte pozisyon hesapla
-		local fakePos = realPos
-		
-		if realPos.Y > 10 then
-			local gy = Bypass.FakePosition and Bypass.FakePosition.Y or FindGroundYFast(realPos)
-			Bypass.FakePosition = Vector3.new(realPos.X, gy, realPos.Z)
-			fakePos = Bypass.FakePosition
-		else
-			Bypass.FakePosition = realPos
 		end
-		
-		-- SUNUCUYA SAHTE BİLGİ GÖNDER
-		pcall(function()
-			Bypass.ServerSpoofActive = true
-			
-			-- Sahte pozisyon
-			root.CFrame = CFrame.new(fakePos)
-			root.AssemblyLinearVelocity = Vector3.new(0, -0.01, 0)
-			root.AssemblyAngularVelocity = Vector3.zero
-			
-			-- Sahte hız
-			hum.WalkSpeed = Bypass.FakeWalkSpeed
-			hum.JumpPower = Bypass.FakeJumpPower
-			
-			-- 1 frame sonra geri al
-			task.defer(function()
-				pcall(function()
-					Bypass.ServerSpoofActive = false
-					root.CFrame = CFrame.new(realPos)
-					hum.WalkSpeed = Bypass.RealWalkSpeed or 16
-					hum.JumpPower = Bypass.RealJumpPower or 50
-				end)
-			end)
-		end)
 	end)
 end
 
--- ==================== AĞ SAHİPLİĞİ ====================
-local function NetworkOwnershipSystem()
-	Bypass.Shields.Network = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-		
-		pcall(function()
-			if root:GetNetworkOwner() ~= LocalPlayer then
-				root:SetNetworkOwner(LocalPlayer)
-			end
-		end)
-	end)
+local function StopEggCollect()
+	HL.EggCollectActive = false
+	HL.EggCollectTarget = nil
 end
-
--- ==================== HIZ KORUMASI ====================
-local function SpeedProtectionSystem()
-	Bypass.Shields.Speed = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hum then return end
-		
-		pcall(function()
-			-- Oyun hızı düşürmeye çalışırsa geri al
-			if hum.WalkSpeed < 16 and not HL.Fly and not Bypass.ServerSpoofActive then
-				hum.WalkSpeed = 16
-			end
-			if hum.JumpPower < 50 and not HL.Fly and not Bypass.ServerSpoofActive then
-				hum.JumpPower = 50
-			end
-			if hum.PlatformStand and not HL.Fly then
-				hum.PlatformStand = false
-			end
-			hum.AutoRotate = true
-		end)
-	end)
-end
-
--- ==================== KARAKTER ETKİLENMEZ ====================
-local function CharacterProtectionSystem()
-	Bypass.Shields.Character = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hum then return end
-		
-		pcall(function()
-			-- WalkSpeed koruması
-			if hum.WalkSpeed < 16 and not HL.Fly and not Bypass.ServerSpoofActive then
-				hum.WalkSpeed = 16
-			end
-			
-			-- JumpPower koruması
-			if hum.JumpPower < 50 and not HL.Fly and not Bypass.ServerSpoofActive then
-				hum.JumpPower = 50
-			end
-			
-			-- PlatformStand kilidi
-			if hum.PlatformStand and not HL.Fly then
-				hum.PlatformStand = false
-			end
-		end)
-	end)
-end
-
-local function StartBypass()
-	if Bypass.Active then return end
-	Bypass.Active = true
-	
-	AntiResetSystem()
-	AntiKickSystem()
-	AntiDetectionSystem()
-	AntiRealInfoSystem()
-	NetworkOwnershipSystem()
-	SpeedProtectionSystem()
-	CharacterProtectionSystem()
-	
-	print("🍑 v28 TAM İNFAZ BYPASS AKTİF")
-	print("🍑 ANTIRESET: AKTİF")
-	print("🍑 ANTIKICK: AKTİF")
-	print("🍑 ANTIDETECTION: AKTİF")
-	print("🍑 ANTIREALBİLGİ: AKTİF")
-end
-
-StartBypass()
-
-print("[HL] PART 1/3 YÜKLENDİ - TAM İNFAZ")-- ============================================================
--- HAMSTERLİVES v28 - PART 2/3
--- MOD SİSTEMLERİ
--- ============================================================
 
 -- ==================== FLY ====================
 local function StopFly()
@@ -656,6 +504,21 @@ local function ToggleAutoEgg()
 	end
 end
 
+-- ==================== EGG COLLECT BUTONU ====================
+local function ToggleEggCollect()
+	HL.EggCollectActive = not HL.EggCollectActive
+	local b = HL.Buttons.EggCollect
+	if b then
+		b.Text = HL.EggCollectActive and "EGG TOPLA  ●" or "EGG TOPLA  ○"
+		b.BackgroundColor3 = HL.EggCollectActive and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
+	end
+	if HL.EggCollectActive then
+		StartEggCollect()
+	else
+		StopEggCollect()
+	end
+end
+
 -- ==================== NOCLIP ====================
 local function ToggleNoclip()
 	HL.Noclip = not HL.Noclip
@@ -677,9 +540,168 @@ local function ToggleGod()
 end
 
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
+StartBypass()
 
-print("[HL] PART 2/3 YÜKLENDİ")-- ============================================================
--- HAMSTERLİVES v28 - PART 3/3
+print("[HL] PART 1/3 YÜKLENDİ - EGG TOPLAMA")-- ============================================================
+-- HAMSTERLİVES v29 - PART 2/3
+-- EGG TOPLAMA GELİŞMİŞ SİSTEM
+-- ============================================================
+
+-- EGG ALANINI BÜYÜTME SİSTEMİ
+local function ExpandEggZone()
+	task.spawn(function()
+		while HL.EggCollectActive do
+			task.wait(0.2)
+			
+			local char = LocalPlayer.Character
+			if not char then continue end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then continue end
+			
+			-- Egg toplama alanını büyüt
+			-- Yakındaki tüm egg'leri kendine çek
+			for _, obj in ipairs(workspace:GetDescendants()) do
+				if obj:IsA("BasePart") or obj:IsA("Model") then
+					local name = string.lower(obj.Name)
+					if string.find(name, "egg") or string.find(name, "yumurta") then
+						local eggPos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+						local dist = (root.Position - eggPos).Magnitude
+						
+						-- 50 stud içindeki tüm egg'leri çek
+						if dist < 50 then
+							pcall(function()
+								if obj:IsA("BasePart") then
+									-- Egg'i karaktere doğru çek
+									local direction = (root.Position - eggPos).Unit
+									obj.Position = eggPos + direction * 0.5
+									
+									-- Çok yakınsa doğrudan al
+									if dist < 5 then
+										obj.Parent = char
+									end
+								elseif obj:IsA("Model") then
+									-- Model'i karaktere çek
+									local pivot = obj:GetPivot()
+									local newPivot = pivot:Lerp(CFrame.new(root.Position), 0.1)
+									obj:PivotTo(newPivot)
+								end
+							end)
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+
+-- EGG TOPLAMA ALANINA IŞINLANMA
+local function TeleportToEggZone()
+	if not HL.EggCollectZone then return end
+	
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	
+	-- Egg alanına direkt ışınlan
+	pcall(function()
+		root.CFrame = CFrame.new(HL.EggCollectTarget)
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+	end)
+end
+
+-- EGG TOPLAMA OTOMASYONU GÜNCELLE
+local function StartEggCollectEnhanced()
+	if HL.EggCollectActive then return end
+	HL.EggCollectActive = true
+	
+	local zone = FindEggCollectZone()
+	if not zone then
+		print("Egg toplama alanı bulunamadı - otomatik aranıyor")
+		-- Zone bulunamazsa en yakın egg'e git
+		zone = {Position = FindBestEgg() or LocalPlayer.Character:FindFirstChild("HumanoidRootPart").Position, Size = 10, Name = "NearestEgg"}
+	end
+	
+	HL.EggCollectZone = zone
+	HL.EggCollectTarget = zone.Position
+	
+	print("Egg alanı: " .. zone.Name)
+	
+	-- Direkt ışınlan
+	TeleportToEggZone()
+	
+	-- Egg çekme sistemini başlat
+	ExpandEggZone()
+	
+	-- Sürekli egg topla
+	task.spawn(function()
+		while HL.EggCollectActive do
+			task.wait(0.1)
+			
+			local char = LocalPlayer.Character
+			if not char then continue end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then continue end
+			
+			-- En yakın egg'e git
+			local bestEgg = FindBestEgg()
+			if bestEgg then
+				local dist = (root.Position - bestEgg).Magnitude
+				
+				if dist > 10 then
+					-- Egg'e ışınlan
+					pcall(function()
+						root.CFrame = CFrame.new(bestEgg)
+					end)
+				else
+					-- Egg'i topla
+					for _, obj in ipairs(workspace:GetDescendants()) do
+						if obj:IsA("BasePart") or obj:IsA("Model") then
+							local name = string.lower(obj.Name)
+							if string.find(name, "egg") or string.find(name, "yumurta") then
+								local eggPos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+								local eggDist = (root.Position - eggPos).Magnitude
+								
+								if eggDist < 8 then
+									pcall(function()
+										if obj:IsA("BasePart") then
+											obj.Parent = char
+										elseif obj:IsA("Model") then
+											-- Modele dokun
+											local hum = char:FindFirstChildOfClass("Humanoid")
+											if hum then
+												hum:MoveTo(eggPos)
+											end
+										end
+									end)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+
+-- EGG COLLECT TOGGLE GÜNCELLE
+local function ToggleEggCollectEnhanced()
+	HL.EggCollectActive = not HL.EggCollectActive
+	local b = HL.Buttons.EggCollect
+	if b then
+		b.Text = HL.EggCollectActive and "EGG TOPLA  ●" or "EGG TOPLA  ○"
+		b.BackgroundColor3 = HL.EggCollectActive and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
+	end
+	if HL.EggCollectActive then
+		StartEggCollectEnhanced()
+	else
+		StopEggCollect()
+	end
+end
+
+print("[HL] PART 2/3 YÜKLENDİ - EGG TOPLAMA GELİŞMİŞ")-- ============================================================
+-- HAMSTERLİVES v29 - PART 3/3
 -- MENÜ + TUŞLAR
 -- ============================================================
 
@@ -696,7 +718,7 @@ local function CreateMainMenu()
 	gui.Parent = playerGui
 
 	local main = Instance.new("Frame")
-	main.Size = UDim2.new(0, 240, 0, 430)
+	main.Size = UDim2.new(0, 240, 0, 470)
 	main.Position = UDim2.new(0.5, -120, 0.5, -120)
 	main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 	main.BorderSizePixel = 0
@@ -712,7 +734,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v28"
+	title.Text = "  HAMSTERLİVES  v29"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -757,13 +779,14 @@ local function CreateMainMenu()
 	end
 
 	HL.Buttons = {}
-	HL.Buttons.Fly     = makeBtn("FLY  ○ KAPALI", 50, ToggleFly)
-	HL.Buttons.Save    = makeBtn("YER BELİLE", 88, SavePos)
-	HL.Buttons.TP      = makeBtn("TP ET (DÜZ)", 126, TP)
-	HL.Buttons.Noclip  = makeBtn("NOCLIP  ○ KAPALI", 164, ToggleNoclip)
-	HL.Buttons.God     = makeBtn("ANTİ-YAKALANMA  ○", 202, ToggleGod)
-	HL.Buttons.Cube    = makeBtn("CUBE  ○ KAPALI", 240, ToggleCube)
-	HL.Buttons.AutoEgg = makeBtn("AUTO EGG  ○", 278, ToggleAutoEgg)
+	HL.Buttons.Fly         = makeBtn("FLY  ○ KAPALI", 50, ToggleFly)
+	HL.Buttons.Save        = makeBtn("YER BELİLE", 88, SavePos)
+	HL.Buttons.TP          = makeBtn("TP ET (DÜZ)", 126, TP)
+	HL.Buttons.EggCollect  = makeBtn("EGG TOPLA  ○", 164, ToggleEggCollectEnhanced)
+	HL.Buttons.Noclip      = makeBtn("NOCLIP  ○ KAPALI", 202, ToggleNoclip)
+	HL.Buttons.God         = makeBtn("ANTİ-YAKALANMA  ○", 240, ToggleGod)
+	HL.Buttons.Cube        = makeBtn("CUBE  ○ KAPALI", 278, ToggleCube)
+	HL.Buttons.AutoEgg     = makeBtn("AUTO EGG  ○", 316, ToggleAutoEgg)
 
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 28, 0, 28)
@@ -863,8 +886,9 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 	if inp.KeyCode == Enum.KeyCode.F8 then ToggleFly()
 	elseif inp.KeyCode == Enum.KeyCode.F4 then SavePos()
 	elseif inp.KeyCode == Enum.KeyCode.F5 then TP()
-	elseif inp.KeyCode == Enum.KeyCode.F6 then ToggleNoclip()
-	elseif inp.KeyCode == Enum.KeyCode.F7 then ToggleGod()
+	elseif inp.KeyCode == Enum.KeyCode.F6 then ToggleEggCollectEnhanced()
+	elseif inp.KeyCode == Enum.KeyCode.F7 then ToggleNoclip()
+	elseif inp.KeyCode == Enum.KeyCode.F8 then ToggleGod()
 	elseif inp.KeyCode == Enum.KeyCode.F9 then ToggleCube()
 	elseif inp.KeyCode == Enum.KeyCode.F10 then ToggleAutoEgg()
 	end
@@ -876,4 +900,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if not Bypass.Active then StartBypass() end
 end)
 
-print("[HL] PART 3/3 YÜKLENDİ")
+print("[HL] PART 3/3 YÜKLENDİ - EGG TOPLAMA HAZIR")

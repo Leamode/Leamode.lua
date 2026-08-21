@@ -1,4 +1,4 @@
--- HAMSTERLİVES v13 + Bypass v2.0
+-- HAMSTERLİVES v15 (Bypass içte uyumlu)
 -- PART 1/2
 
 local Players = game:GetService("Players")
@@ -15,25 +15,101 @@ local HL = {
 	God = false,
 	Cube = false,
 	AutoEgg = false,
-	Conn = {},
-	Buttons = {},
 	IsMobile = false,
+	ModeSelected = false,
 	HoldPos = nil,
 	HoldUntil = 0,
-	ModeSelected = false,
-	LocalCube = nil,
-	OscTimer = 0,
 	PullTarget = nil,
 	PullActive = false,
+	LocalCube = nil,
+	OscTimer = 0,
+	Conn = {}
 }
 
-local function wait(t)
-	local s = os.clock()
-	while os.clock() - s < t do
-		task.wait()
+-- ==================== BYPASS (içte) ====================
+local Bypass = {
+	Active = false,
+	FakeGroundY = nil,
+	LastSafePosition = nil,
+	CachedGroundY = nil,
+	GroundCacheTime = 0,
+	GroundCacheTTL = 1.2,
+}
+
+local function FindGroundY(pos)
+	local now = os.clock()
+	if Bypass.CachedGroundY and (now - Bypass.GroundCacheTime) < Bypass.GroundCacheTTL then
+		return Bypass.CachedGroundY
 	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	if LocalPlayer.Character then
+		params.FilterDescendantsInstances = {LocalPlayer.Character}
+	end
+	local result = workspace:Raycast(pos + Vector3.new(0, 25, 0), Vector3.new(0, -250, 0), params)
+	if result then
+		Bypass.CachedGroundY = result.Position.Y + 3.2
+		Bypass.GroundCacheTime = now
+		return Bypass.CachedGroundY
+	end
+	return pos.Y - 8
 end
 
+local function StartBypass()
+	if Bypass.Active then return end
+	Bypass.Active = true
+
+	-- Pozisyon spoof (hafif)
+	task.spawn(function()
+		while Bypass.Active do
+			task.wait(0.18)
+			local char = LocalPlayer.Character
+			if not char then continue end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then continue end
+
+			Bypass.LastSafePosition = root.Position
+
+			if root.Position.Y > 18 then
+				local gy = Bypass.FakeGroundY or FindGroundY(root.Position)
+				Bypass.FakeGroundY = gy
+				local fake = Vector3.new(root.Position.X, gy, root.Position.Z)
+				pcall(function()
+					local real = root.CFrame
+					root.CFrame = CFrame.new(fake)
+					root.AssemblyLinearVelocity = Vector3.zero
+					task.wait()
+					root.CFrame = real
+				end)
+			else
+				Bypass.FakeGroundY = root.Position.Y
+			end
+		end
+	end)
+
+	-- State + health koruması
+	task.spawn(function()
+		while Bypass.Active do
+			task.wait(0.35)
+			local char = LocalPlayer.Character
+			if not char then continue end
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if not hum then continue end
+			pcall(function()
+				if hum:GetState() == Enum.HumanoidStateType.Freefall and not HL.Fly then
+					hum:ChangeState(Enum.HumanoidStateType.Running)
+				end
+				if hum.Health <= 0 then
+					hum.Health = hum.MaxHealth
+				end
+			end)
+		end
+	end)
+
+	print("[HL] Bypass v2 içte aktif")
+end
+
+-- ==================== ANA SİSTEM ====================
 local function ProtectLoop()
 	if HL.Conn.Protect then return end
 	HL.Conn.Protect = RunService.Heartbeat:Connect(function()
@@ -43,7 +119,7 @@ local function ProtectLoop()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not root or not hum then return end
 
-		if HL.God or hum.Health < hum.MaxHealth * 0.93 then
+		if HL.God or hum.Health < hum.MaxHealth * 0.9 then
 			hum.Health = hum.MaxHealth
 		end
 		if hum:GetState() == Enum.HumanoidStateType.Dead then
@@ -56,11 +132,9 @@ local function ProtectLoop()
 		if HL.HoldPos and os.clock() < HL.HoldUntil then
 			root.CFrame = CFrame.new(HL.HoldPos)
 			root.AssemblyLinearVelocity = Vector3.zero
-			root.AssemblyAngularVelocity = Vector3.zero
 		end
 	end)
 end
-ProtectLoop()
 
 local function DestroyCube()
 	if HL.LocalCube then
@@ -80,25 +154,23 @@ local function UpdateCube()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum then return end
 
-	local state = hum:GetState()
 	local moving = hum.MoveDirection.Magnitude > 0.05
-	local air = state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall
+	local air = hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall
 
 	if not HL.LocalCube then
 		local p = Instance.new("Part")
-		p.Name = "HL_C"
-		p.Size = Vector3.new(4.2, 0.9, 4.2)
+		p.Name = "HL_Cube"
+		p.Size = Vector3.new(4, 1, 4)
 		p.Anchored = true
 		p.CanCollide = true
-		p.Transparency = 0.88
-		p.Material = Enum.Material.SmoothPlastic
-		p.Color = Color3.fromRGB(70, 70, 110)
+		p.Transparency = 0.9
+		p.Color = Color3.fromRGB(80, 80, 120)
 		p.Parent = workspace
 		HL.LocalCube = p
 	end
 
 	if moving or air or HL.Fly then
-		HL.LocalCube.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.05, root.Position.Z)
+		HL.LocalCube.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3, root.Position.Z)
 		HL.LocalCube.CanCollide = true
 	else
 		HL.LocalCube.CanCollide = false
@@ -107,13 +179,12 @@ end
 
 local function ToggleCube()
 	HL.Cube = not HL.Cube
-	local b = HL.Buttons.Cube
-	if HL.Cube then
-		if b then b.Text = "CUBE  ● AÇIK" b.BackgroundColor3 = Color3.fromRGB(0, 190, 90) end
-	else
-		if b then b.Text = "CUBE  ○ KAPALI" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
-		DestroyCube()
+	local b = HL.Buttons and HL.Buttons.Cube
+	if b then
+		b.Text = HL.Cube and "CUBE  ● AÇIK" or "CUBE  ○ KAPALI"
+		b.BackgroundColor3 = HL.Cube and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
 	end
+	if not HL.Cube then DestroyCube() end
 end
 
 local function StopFly()
@@ -158,7 +229,7 @@ local function StartFly()
 				local size = Camera.ViewportSize
 				local dx = (t.Position.X - size.X/2) / (size.X/2)
 				local dy = (t.Position.Y - size.Y/2) / (size.Y/2)
-				if math.abs(dx) > 0.08 or math.abs(dy) > 0.08 then
+				if math.abs(dx) > 0.1 or math.abs(dy) > 0.1 then
 					move = cf.LookVector * (-dy) + cf.RightVector * dx
 				end
 			end
@@ -172,31 +243,24 @@ local function StartFly()
 		end
 
 		local speed = HL.Speed * 1.8
-		if move.Magnitude > 0 then
-			move = move.Unit * speed
-		end
+		if move.Magnitude > 0 then move = move.Unit * speed end
 
 		HL.OscTimer = HL.OscTimer + dt
-		local osc = math.sin(HL.OscTimer * 2.7) * 0.28
-		local downBias = (math.sin(HL.OscTimer * 0.6) > 0.7) and -0.15 or 0
-
-		local newPos = r.Position + move * dt + Vector3.new(0, osc * dt * 6 + downBias, 0)
+		local osc = math.sin(HL.OscTimer * 2.5) * 0.25
+		local newPos = r.Position + move * dt + Vector3.new(0, osc * dt * 5, 0)
 		r.CFrame = CFrame.new(newPos, newPos + cf.LookVector)
-		r.AssemblyLinearVelocity = Vector3.new(0, -0.9, 0)
-		r.AssemblyAngularVelocity = Vector3.zero
+		r.AssemblyLinearVelocity = Vector3.new(0, -0.8, 0)
 	end)
 end
 
 local function ToggleFly()
 	HL.Fly = not HL.Fly
-	local b = HL.Buttons.Fly
-	if HL.Fly then
-		if b then b.Text = "FLY  ● AÇIK" b.BackgroundColor3 = Color3.fromRGB(0, 190, 90) end
-		StartFly()
-	else
-		if b then b.Text = "FLY  ○ KAPALI" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
-		StopFly()
+	local b = HL.Buttons and HL.Buttons.Fly
+	if b then
+		b.Text = HL.Fly and "FLY  ● AÇIK" or "FLY  ○ KAPALI"
+		b.BackgroundColor3 = HL.Fly and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
 	end
+	if HL.Fly then StartFly() else StopFly() end
 end
 
 local function StopPull()
@@ -219,88 +283,50 @@ local function StartPull(targetPos)
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum then return end
 
-	local baseSpeed = hum.WalkSpeed
-	if baseSpeed < 1 then baseSpeed = 16 end
-
 	local startTime = os.clock()
 
 	HL.Conn.Pull = RunService.Heartbeat:Connect(function(dt)
 		if not HL.PullActive or not HL.PullTarget then return end
-
 		local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 		local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if not r or not h then
-			StopPull()
-			return
-		end
+		if not r or not h then StopPull() return end
 
-		local currentSpeed = h.WalkSpeed
-		if currentSpeed < 1 then currentSpeed = baseSpeed end
-
+		local currentSpeed = math.max(h.WalkSpeed, 16)
 		local dir = HL.PullTarget - r.Position
 		local dist = dir.Magnitude
 
-		if dist < 3.5 then
+		if dist < 4 then
 			r.CFrame = CFrame.new(HL.PullTarget)
 			r.AssemblyLinearVelocity = Vector3.zero
-			r.AssemblyAngularVelocity = Vector3.zero
 			StopPull()
 			HL.HoldPos = HL.PullTarget
-			HL.HoldUntil = os.clock() + 3.0
+			HL.HoldUntil = os.clock() + 2.5
 			return
 		end
 
 		local targetY = r.Position.Y
 		local ray = workspace:Raycast(r.Position + Vector3.new(0, 3, 0), Vector3.new(0, -15, 0))
-		if ray then
-			targetY = ray.Position.Y + 3.05
-		end
+		if ray then targetY = ray.Position.Y + 3 end
 
 		local flat = Vector3.new(dir.X, 0, dir.Z)
-		if flat.Magnitude < 0.1 then
-			flat = Vector3.new(0, 0, -1)
-		else
-			flat = flat.Unit
-		end
-
+		if flat.Magnitude < 0.1 then flat = Vector3.new(0, 0, -1) else flat = flat.Unit end
 		local right = Vector3.new(-flat.Z, 0, flat.X)
-		local time = os.clock() - startTime
-		local swayAmount = math.sin(time * 1.35) * 2.1 + math.sin(time * 2.7) * 0.7
-		local sway = right * swayAmount
+		local sway = right * math.sin(os.clock() - startTime) * 1.5
+		local moveDir = (flat + sway * 0.3).Unit
 
-		local moveDir = (flat + sway * 0.28).Unit
-		local speed = currentSpeed * 0.92
-
-		local newPos = r.Position + moveDir * speed * dt
+		local newPos = r.Position + moveDir * currentSpeed * 0.9 * dt
 		newPos = Vector3.new(newPos.X, targetY, newPos.Z)
-
 		r.CFrame = CFrame.new(newPos, newPos + moveDir)
-		r.AssemblyLinearVelocity = moveDir * (speed * 0.15)
-		r.AssemblyAngularVelocity = Vector3.zero
-
-		pcall(function()
-			if h:GetState() \~= Enum.HumanoidStateType.Running then
-				h:ChangeState(Enum.HumanoidStateType.Running)
-			end
-		end)
+		r.AssemblyLinearVelocity = Vector3.zero
+		pcall(function() h:ChangeState(Enum.HumanoidStateType.Running) end)
 	end)
-end
-
-local function DoTeleport(pos)
-	if not pos then return end
-	local was = HL.Fly
-	if was then
-		HL.Fly = false
-		StopFly()
-	end
-	StartPull(pos)
 end
 
 local function SavePos()
 	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	HL.Saved = root.Position
-	local b = HL.Buttons.Save
+	local b = HL.Buttons and HL.Buttons.Save
 	if b then
 		b.Text = "KAYDEDİLDİ ✓"
 		b.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
@@ -315,34 +341,23 @@ end
 
 local function TP()
 	if HL.Saved then
-		DoTeleport(HL.Saved)
+		if HL.Fly then HL.Fly = false StopFly() end
+		StartPull(HL.Saved)
 	end
 end
 
 local function FindBestEgg()
-	local best = nil
-	local bestScore = -1
+	local best, bestScore = nil, -1
 	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return nil end
-
 	for _, obj in ipairs(workspace:GetDescendants()) do
 		if obj:IsA("BasePart") or obj:IsA("Model") then
 			local name = string.lower(obj.Name)
 			if string.find(name, "egg") or string.find(name, "yumurta") then
 				local pos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
-				local size = 0
-				if obj:IsA("BasePart") then
-					size = obj.Size.Magnitude
-				elseif obj:IsA("Model") then
-					local cf, sz = obj:GetBoundingBox()
-					size = sz.Magnitude
-				end
-				local dist = (pos - root.Position).Magnitude
-				local score = size * 10 - dist * 0.05
-				if score > bestScore then
-					bestScore = score
-					best = pos
-				end
+				local size = obj:IsA("BasePart") and obj.Size.Magnitude or 5
+				local score = size * 8 - (pos - root.Position).Magnitude * 0.1
+				if score > bestScore then bestScore = score best = pos end
 			end
 		end
 	end
@@ -351,33 +366,32 @@ end
 
 local function ToggleAutoEgg()
 	HL.AutoEgg = not HL.AutoEgg
-	local b = HL.Buttons.AutoEgg
+	local b = HL.Buttons and HL.Buttons.AutoEgg
+	if b then
+		b.Text = HL.AutoEgg and "AUTO EGG  ●" or "AUTO EGG  ○"
+		b.BackgroundColor3 = HL.AutoEgg and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
+	end
 	if HL.AutoEgg then
-		if b then b.Text = "AUTO EGG  ●" b.BackgroundColor3 = Color3.fromRGB(0, 190, 90) end
 		if HL.Conn.AutoEgg then HL.Conn.AutoEgg:Disconnect() end
 		HL.Conn.AutoEgg = RunService.Heartbeat:Connect(function()
-			if not HL.AutoEgg then return end
-			if HL.PullActive then return end
-			local target = FindBestEgg()
-			if target then
-				StartPull(target)
-			end
+			if not HL.AutoEgg or HL.PullActive then return end
+			local t = FindBestEgg()
+			if t then StartPull(t) end
 		end)
 	else
-		if b then b.Text = "AUTO EGG  ○" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
-		if HL.Conn.AutoEgg then
-			HL.Conn.AutoEgg:Disconnect()
-			HL.Conn.AutoEgg = nil
-		end
+		if HL.Conn.AutoEgg then HL.Conn.AutoEgg:Disconnect() HL.Conn.AutoEgg = nil end
 		StopPull()
 	end
 end
 
 local function ToggleNoclip()
 	HL.Noclip = not HL.Noclip
-	local b = HL.Buttons.Noclip
+	local b = HL.Buttons and HL.Buttons.Noclip
+	if b then
+		b.Text = HL.Noclip and "NOCLIP  ● AÇIK" or "NOCLIP  ○ KAPALI"
+		b.BackgroundColor3 = HL.Noclip and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
+	end
 	if HL.Noclip then
-		if b then b.Text = "NOCLIP  ● AÇIK" b.BackgroundColor3 = Color3.fromRGB(0, 190, 90) end
 		if HL.Conn.Noclip then HL.Conn.Noclip:Disconnect() end
 		HL.Conn.Noclip = RunService.Stepped:Connect(function()
 			if not HL.Noclip then return end
@@ -388,60 +402,61 @@ local function ToggleNoclip()
 			end
 		end)
 	else
-		if b then b.Text = "NOCLIP  ○ KAPALI" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
 		if HL.Conn.Noclip then HL.Conn.Noclip:Disconnect() HL.Conn.Noclip = nil end
 	end
 end
 
 local function ToggleGod()
 	HL.God = not HL.God
-	local b = HL.Buttons.God
-	if HL.God then
-		if b then b.Text = "ANTİ-YAKALANMA  ●" b.BackgroundColor3 = Color3.fromRGB(0, 190, 90) end
-	else
-		if b then b.Text = "ANTİ-YAKALANMA  ○" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
+	local b = HL.Buttons and HL.Buttons.God
+	if b then
+		b.Text = HL.God and "ANTİ-YAKALANMA  ●" or "ANTİ-YAKALANMA  ○"
+		b.BackgroundColor3 = HL.God and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
 	end
 end
 
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
+ProtectLoop()
+StartBypass() -- Bypass burada, sistemle birlikte başlıyor
 
 print("[HL] Part 1 hazır")-- PART 2/2
 
 local function CreateMainMenu()
-	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 8)
 	if not playerGui then return end
+
+	local old = playerGui:FindFirstChild("HamsterLiveGUI")
+	if old then old:Destroy() end
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HamsterLiveGUI"
 	gui.ResetOnSpawn = false
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = playerGui
 
 	local main = Instance.new("Frame")
-	main.Name = "Main"
-	main.Size = UDim2.new(0, 250, 0, 460)
-	main.Position = UDim2.new(0.5, -125, 0.5, -120)
-	main.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+	main.Size = UDim2.new(0, 240, 0, 430)
+	main.Position = UDim2.new(0.5, -120, 0.5, -120)
+	main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 	main.BorderSizePixel = 0
 	main.Active = true
 	main.Parent = gui
+	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
 
-	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
 	local stroke = Instance.new("UIStroke", main)
 	stroke.Color = Color3.fromRGB(140, 0, 255)
-	stroke.Thickness = 2.5
+	stroke.Thickness = 2
 
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 42)
-	title.BackgroundColor3 = Color3.fromRGB(28, 18, 42)
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v13"
+	title.Text = "  HAMSTERLİVES  v15"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Parent = main
-	Instance.new("UICorner", title).CornerRadius = UDim.new(0, 14)
+	Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
 
 	local dragging, dragStart, startPos
 	title.InputBegan:Connect(function(inp)
@@ -449,12 +464,14 @@ local function CreateMainMenu()
 			dragging = true
 			dragStart = inp.Position
 			startPos = main.Position
-			inp.Changed:Connect(function()
-				if inp.UserInputState == Enum.UserInputState.End then dragging = false end
-			end)
 		end
 	end)
-	title.InputChanged:Connect(function(inp)
+	title.InputEnded:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(inp)
 		if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
 			local d = inp.Position - dragStart
 			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
@@ -463,44 +480,43 @@ local function CreateMainMenu()
 
 	local function makeBtn(text, y, callback)
 		local b = Instance.new("TextButton")
-		b.Size = UDim2.new(1, -24, 0, 32)
-		b.Position = UDim2.new(0, 12, 0, y)
+		b.Size = UDim2.new(1, -20, 0, 32)
+		b.Position = UDim2.new(0, 10, 0, y)
 		b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 		b.BorderSizePixel = 0
 		b.Text = text
 		b.TextColor3 = Color3.fromRGB(240, 240, 240)
 		b.Font = Enum.Font.GothamSemibold
-		b.TextSize = 12
-		b.AutoButtonColor = false
+		b.TextSize = 13
 		b.Parent = main
 		Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
 		b.MouseButton1Click:Connect(callback)
 		return b
 	end
 
+	HL.Buttons = {}
 	HL.Buttons.Fly     = makeBtn("FLY  ○ KAPALI", 50, ToggleFly)
 	HL.Buttons.Save    = makeBtn("YER BELİLE", 88, SavePos)
-	HL.Buttons.TP      = makeBtn("TP ET (İp Çekme)", 126, TP)
+	HL.Buttons.TP      = makeBtn("TP ET", 126, TP)
 	HL.Buttons.Noclip  = makeBtn("NOCLIP  ○ KAPALI", 164, ToggleNoclip)
 	HL.Buttons.God     = makeBtn("ANTİ-YAKALANMA  ○", 202, ToggleGod)
 	HL.Buttons.Cube    = makeBtn("CUBE  ○ KAPALI", 240, ToggleCube)
 	HL.Buttons.AutoEgg = makeBtn("AUTO EGG  ○", 278, ToggleAutoEgg)
 
 	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -24, 0, 30)
-	box.Position = UDim2.new(0, 12, 0, 325)
-	box.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+	box.Size = UDim2.new(1, -20, 0, 30)
+	box.Position = UDim2.new(0, 10, 0, 320)
+	box.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 	box.BorderSizePixel = 0
 	box.Text = "Hız: 18"
 	box.TextColor3 = Color3.fromRGB(255, 255, 255)
 	box.Font = Enum.Font.Gotham
 	box.TextSize = 13
-	box.ClearTextOnFocus = false
 	box.Parent = main
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
 	box.FocusLost:Connect(function()
 		local n = tonumber(string.match(box.Text, "%d+"))
-		if n and n >= 10 and n <= 50 then
+		if n and n >= 10 and n <= 40 then
 			HL.Speed = n
 			box.Text = "Hız: " .. n
 		else
@@ -510,34 +526,34 @@ local function CreateMainMenu()
 
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 28, 0, 28)
-	close.Position = UDim2.new(1, -34, 0, 7)
-	close.BackgroundColor3 = Color3.fromRGB(180, 35, 55)
-	close.Text = "✕"
+	close.Position = UDim2.new(1, -34, 0, 6)
+	close.BackgroundColor3 = Color3.fromRGB(180, 40, 50)
+	close.Text = "X"
 	close.TextColor3 = Color3.fromRGB(255, 255, 255)
 	close.Font = Enum.Font.GothamBold
 	close.TextSize = 14
 	close.Parent = main
-	Instance.new("UICorner", close).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
 	close.MouseButton1Click:Connect(function() main.Visible = false end)
 
 	local open = Instance.new("TextButton")
-	open.Size = UDim2.new(0, 56, 0, 56)
-	open.Position = UDim2.new(1, -70, 0, 20)
+	open.Size = UDim2.new(0, 50, 0, 50)
+	open.Position = UDim2.new(1, -65, 0, 20)
 	open.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
 	open.Text = "HL"
 	open.TextColor3 = Color3.fromRGB(255, 255, 255)
 	open.Font = Enum.Font.GothamBold
-	open.TextSize = 17
+	open.TextSize = 16
 	open.Parent = gui
 	Instance.new("UICorner", open).CornerRadius = UDim.new(1, 0)
-	open.MouseButton1Click:Connect(function()
-		main.Visible = not main.Visible
-	end)
+	open.MouseButton1Click:Connect(function() main.Visible = not main.Visible end)
 end
 
 local function CreateStartScreen()
-	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 8)
 	if not playerGui then return end
+	local old = playerGui:FindFirstChild("HL_Start")
+	if old then old:Destroy() end
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HL_Start"
@@ -552,8 +568,8 @@ local function CreateStartScreen()
 	bg.Parent = gui
 
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 48)
-	title.Position = UDim2.new(0, 0, 0.27, 0)
+	title.Size = UDim2.new(1, 0, 0, 50)
+	title.Position = UDim2.new(0, 0, 0.3, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "HAMSTERLİVES"
 	title.TextColor3 = Color3.fromRGB(180, 0, 255)
@@ -562,8 +578,8 @@ local function CreateStartScreen()
 	title.Parent = bg
 
 	local sub = Instance.new("TextLabel")
-	sub.Size = UDim2.new(1, 0, 0, 26)
-	sub.Position = UDim2.new(0, 0, 0.35, 0)
+	sub.Size = UDim2.new(1, 0, 0, 30)
+	sub.Position = UDim2.new(0, 0, 0.38, 0)
 	sub.BackgroundTransparency = 1
 	sub.Text = "Cihazını seç"
 	sub.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -571,40 +587,35 @@ local function CreateStartScreen()
 	sub.TextSize = 16
 	sub.Parent = bg
 
-	local pcBtn = Instance.new("TextButton")
-	pcBtn.Size = UDim2.new(0, 160, 0, 50)
-	pcBtn.Position = UDim2.new(0.5, -180, 0.5, -10)
-	pcBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	pcBtn.Text = "PC"
-	pcBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	pcBtn.Font = Enum.Font.GothamBold
-	pcBtn.TextSize = 19
-	pcBtn.Parent = bg
-	Instance.new("UICorner", pcBtn).CornerRadius = UDim.new(0, 11)
+	local function makeChoice(text, x)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, 150, 0, 50)
+		btn.Position = UDim2.new(0.5, x, 0.5, -10)
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.Text = text
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.Font = Enum.Font.GothamBold
+		btn.TextSize = 18
+		btn.Parent = bg
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+		return btn
+	end
 
-	local mobBtn = Instance.new("TextButton")
-	mobBtn.Size = UDim2.new(0, 160, 0, 50)
-	mobBtn.Position = UDim2.new(0.5, 20, 0.5, -10)
-	mobBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	mobBtn.Text = "MOBİL"
-	mobBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	mobBtn.Font = Enum.Font.GothamBold
-	mobBtn.TextSize = 19
-	mobBtn.Parent = bg
-	Instance.new("UICorner", mobBtn).CornerRadius = UDim.new(0, 11)
+	local pcBtn = makeChoice("PC", -170)
+	local mobBtn = makeChoice("MOBİL", 20)
 
-	local function selectMode(isMobile)
+	local function select(isMobile)
 		HL.IsMobile = isMobile
 		HL.ModeSelected = true
 		gui:Destroy()
 		CreateMainMenu()
 	end
 
-	pcBtn.MouseButton1Click:Connect(function() selectMode(false) end)
-	mobBtn.MouseButton1Click:Connect(function() selectMode(true) end)
+	pcBtn.MouseButton1Click:Connect(function() select(false) end)
+	mobBtn.MouseButton1Click:Connect(function() select(true) end)
 end
 
-pcall(CreateStartScreen)
+CreateStartScreen()
 
 UserInputService.InputBegan:Connect(function(inp, gp)
 	if gp or not HL.ModeSelected then return end
@@ -619,260 +630,10 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1.3)
+	task.wait(1.2)
 	if HL.Fly then StartFly() end
-	if not HL.Conn.Protect then ProtectLoop() end
+	-- Bypass karakter değişince devam etsin diye
+	if not Bypass.Active then StartBypass() end
 end)
 
-print("[HL] v13 yüklendi")
-
--- ============================================================
---                    BYPASS ALANI (v2.0)
--- ============================================================
-
-local Bypass = {
-    Active = false,
-    FakeGroundY = nil,
-    RealPosition = nil,
-    LastSyncTime = 0,
-    SyncInterval = 0.15,
-    GroundCacheTime = 0,
-    GroundCacheTTL = 1.0,
-    CachedGroundY = nil,
-    LastSafePosition = nil,
-    HumanoidOverride = false,
-    Connections = {}
-}
-
-local function safeWait(seconds)
-    local start = os.clock()
-    repeat
-        task.wait()
-    until os.clock() - start >= seconds
-end
-
-local function FindGroundY(position)
-    local currentTime = os.clock()
-    
-    if Bypass.CachedGroundY and (currentTime - Bypass.GroundCacheTime) < Bypass.GroundCacheTTL then
-        return Bypass.CachedGroundY
-    end
-    
-    local rayOrigin = position + Vector3.new(0, 30, 0)
-    local rayDirection = Vector3.new(0, -300, 0)
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    local char = LocalPlayer.Character
-    if char then
-        raycastParams.FilterDescendantsInstances = {char}
-    end
-    
-    local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
-    
-    if result then
-        Bypass.CachedGroundY = result.Position.Y + 3.5
-        Bypass.GroundCacheTime = currentTime
-        return Bypass.CachedGroundY
-    end
-    
-    return position.Y - 10
-end
-
-local function NormalizeCharacter()
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-    
-    pcall(function()
-        if humanoid.WalkSpeed > 20 then
-            humanoid.WalkSpeed = 16
-        end
-        if humanoid.JumpPower > 60 then
-            humanoid.JumpPower = 50
-        end
-    end)
-end
-
-local function PositionSpoofLoop()
-    task.spawn(function()
-        while Bypass.Active do
-            task.wait(Bypass.SyncInterval)
-            
-            local char = LocalPlayer.Character
-            if not char then continue end
-            
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then continue end
-            
-            Bypass.RealPosition = root.Position
-            
-            if root.Position.Y > 15 then
-                local groundY = Bypass.FakeGroundY or FindGroundY(root.Position)
-                Bypass.FakeGroundY = groundY
-                
-                Bypass.LastSafePosition = Vector3.new(root.Position.X, groundY, root.Position.Z)
-                
-                pcall(function()
-                    local realCFrame = root.CFrame
-                    local fakeCFrame = CFrame.new(Bypass.LastSafePosition)
-                    
-                    root.CFrame = fakeCFrame
-                    root.AssemblyLinearVelocity = Vector3.zero
-                    
-                    task.wait()
-                    
-                    root.CFrame = realCFrame
-                end)
-            else
-                Bypass.LastSafePosition = root.Position
-                Bypass.FakeGroundY = root.Position.Y
-            end
-            
-            NormalizeCharacter()
-        end
-    end)
-end
-
-local function HumanoidStateProtection()
-    task.spawn(function()
-        while Bypass.Active do
-            task.wait(0.3)
-            
-            local char = LocalPlayer.Character
-            if not char then continue end
-            
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if not humanoid then continue end
-            
-            pcall(function()
-                if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
-                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                end
-                
-                if humanoid.Health <= 0 then
-                    humanoid.Health = humanoid.MaxHealth
-                end
-            end)
-        end
-    end)
-end
-
-local function AntiDetectionLoop()
-    task.spawn(function()
-        while Bypass.Active do
-            task.wait(1)
-            
-            pcall(function()
-                local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-                if playerGui then
-                    for _, child in pairs(playerGui:GetChildren()) do
-                        local name = string.lower(child.Name)
-                        if string.find(name, "anticheat") or 
-                           string.find(name, "ban") or 
-                           string.find(name, "kick") or
-                           string.find(name, "warning") or
-                           string.find(name, "detect") then
-                            child.Enabled = false
-                        end
-                    end
-                end
-            end)
-            
-            pcall(function()
-                local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-                if playerScripts then
-                    for _, script in pairs(playerScripts:GetDescendants()) do
-                        if script:IsA("LocalScript") then
-                            local name = string.lower(script.Name)
-                            if string.find(name, "anticheat") or 
-                               string.find(name, "ban") or 
-                               string.find(name, "detect") then
-                                script.Enabled = false
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    end)
-end
-
-local function PositionProtectionLoop()
-    task.spawn(function()
-        while Bypass.Active do
-            task.wait(0.05)
-            
-            local char = LocalPlayer.Character
-            if not char then continue end
-            
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then continue end
-            
-            if not root:IsDescendantOf(workspace) then
-                pcall(function()
-                    root.Parent = char
-                end)
-            end
-            
-            if Bypass.LastSafePosition then
-                local distance = (root.Position - Bypass.LastSafePosition).Magnitude
-                if distance > 200 and not HL.Fly then
-                    pcall(function()
-                        root.CFrame = CFrame.new(Bypass.LastSafePosition)
-                    end)
-                end
-            end
-        end
-    end)
-end
-
-local function NetworkThrottle()
-    task.spawn(function()
-        while Bypass.Active do
-            task.wait(0.1)
-            
-            local char = LocalPlayer.Character
-            if not char then continue end
-            
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then continue end
-            
-            pcall(function()
-                if root.AssemblyLinearVelocity.Magnitude > 100 then
-                    root.AssemblyLinearVelocity = Vector3.zero
-                end
-            end)
-        end
-    end)
-end
-
-local function StartBypass()
-    if Bypass.Active then return end
-    Bypass.Active = true
-    
-    print("🍑 BYPASS v2.0 BAŞLATILIYOR...")
-    
-    NormalizeCharacter()
-    
-    PositionSpoofLoop()
-    HumanoidStateProtection()
-    AntiDetectionLoop()
-    PositionProtectionLoop()
-    NetworkThrottle()
-    
-    print("🍑 BYPASS AKTİF - Güvenli Mod")
-end
-
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(1)
-    Bypass.FakeGroundY = nil
-    Bypass.CachedGroundY = nil
-    Bypass.LastSafePosition = nil
-    Bypass.RealPosition = nil
-    StartBypass()
-end)
-
-StartBypass()
+print("[HL] v15 yüklendi - Bypass içte uyumlu")

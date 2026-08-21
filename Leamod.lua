@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v22 TAM SÜRÜM - PART 1/2
--- GÜÇLÜ BYPASS + ANTIKICK + TÜM MODLAR
+-- HAMSTERLİVES v23 - KESİN ÇÖZÜM
+-- PART 1/2 - TÜM HATALAR GİDERİLDİ
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -31,7 +31,7 @@ local HL = {
 	Buttons = {}
 }
 
--- ==================== AŞIRI GÜÇLÜ BYPASS ====================
+-- ==================== HER MOD İÇİN AYRI KORUMA ====================
 local Bypass = {
 	Active = false,
 	LastSafePosition = nil,
@@ -43,13 +43,13 @@ local Bypass = {
 	ProtectConn = nil,
 	KickBlocker = nil,
 	SpoofConn = nil,
-	HealthConn = nil,
-	StateConn = nil,
-	PosConn = nil,
-	SpeedConn = nil,
 	AntiDetectConn = nil,
-	CloneConn = nil,
-	NetConn = nil
+	NetConn = nil,
+	FlyShield = nil,
+	TPShield = nil,
+	EggShield = nil,
+	NoclipShield = nil,
+	GodShield = nil
 }
 
 local function FindGroundYFast(pos)
@@ -77,7 +77,7 @@ local function StartBypass()
 	if Bypass.Active then return end
 	Bypass.Active = true
 
-	-- ANA KORUMA DÖNGÜSÜ - HEPSİ BİR ARADA
+	-- ANA KORUMA
 	Bypass.ProtectConn = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
@@ -85,14 +85,14 @@ local function StartBypass()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not root or not hum then return end
 
-		-- HEALTH KORUMASI
+		-- HEALTH
 		pcall(function()
 			if hum.Health < hum.MaxHealth * 0.98 or HL.God then
 				hum.Health = hum.MaxHealth
 			end
 		end)
 
-		-- ÖLÜM ENGELLEME
+		-- ÖLÜM ENGELLE
 		pcall(function()
 			if hum:GetState() == Enum.HumanoidStateType.Dead then
 				hum.Health = hum.MaxHealth
@@ -126,16 +126,13 @@ local function StartBypass()
 			end)
 		end
 
-		-- HIZ KORUMASI - ASLA KISITLAMA
+		-- HIZ KORUMASI
 		pcall(function()
 			if hum.WalkSpeed < 16 and not HL.Fly then
 				hum.WalkSpeed = 16
 			end
 			if hum.JumpPower < 50 and not HL.Fly then
 				hum.JumpPower = 50
-			end
-			if hum.WalkSpeed == 0 then
-				hum.WalkSpeed = 16
 			end
 		end)
 
@@ -147,38 +144,7 @@ local function StartBypass()
 			hum.AutoRotate = true
 		end)
 
-		-- GÜVENLİ POZİSYON KAYDET
 		Bypass.LastSafePosition = root.Position
-	end)
-
-	-- POZİSYON SPOOF - HAVADAYKEN YERDE GÖSTER
-	Bypass.SpoofConn = RunService.RenderStepped:Connect(function()
-		if not Bypass.Active then return end
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-
-		if root.Position.Y > 15 then
-			local gy = Bypass.FakePosition and Bypass.FakePosition.Y or FindGroundYFast(root.Position)
-			Bypass.FakePosition = Vector3.new(root.Position.X, gy, root.Position.Z)
-
-			pcall(function()
-				local realCFrame = root.CFrame
-				root.CFrame = CFrame.new(Bypass.FakePosition)
-				root.AssemblyLinearVelocity = Vector3.new(0, -0.1, 0)
-				
-				task.defer(function()
-					pcall(function()
-						if HL.Fly then
-							root.CFrame = realCFrame
-						end
-					end)
-				end)
-			end)
-		else
-			Bypass.FakePosition = root.Position
-		end
 	end)
 
 	-- KICK ENGELLEYİCİ
@@ -216,7 +182,6 @@ local function StartBypass()
 		if not char then return end
 		local root = char:FindFirstChild("HumanoidRootPart")
 		if not root then return end
-		
 		pcall(function()
 			if root:GetNetworkOwner() ~= LocalPlayer then
 				root:SetNetworkOwner(LocalPlayer)
@@ -224,7 +189,93 @@ local function StartBypass()
 		end)
 	end)
 
-	print("🍑 GÜÇLÜ BYPASS AKTİF - 100 TRİLYON HIZ BİLE YAKALANMAZ")
+	-- FLY KORUMA KALKANI
+	Bypass.FlyShield = RunService.RenderStepped:Connect(function()
+		if not HL.Fly then return end
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+		
+		-- Havadayken sunucuya yerde göster
+		if root.Position.Y > 15 then
+			local gy = Bypass.FakePosition and Bypass.FakePosition.Y or FindGroundYFast(root.Position)
+			Bypass.FakePosition = Vector3.new(root.Position.X, gy, root.Position.Z)
+			
+			pcall(function()
+				local realCFrame = root.CFrame
+				root.CFrame = CFrame.new(Bypass.FakePosition)
+				root.AssemblyLinearVelocity = Vector3.new(0, -0.1, 0)
+				
+				task.defer(function()
+					pcall(function()
+						if HL.Fly then
+							root.CFrame = realCFrame
+						end
+					end)
+				end)
+			end)
+		end
+	end)
+
+	-- TP KORUMA KALKANI
+	Bypass.TPShield = RunService.Heartbeat:Connect(function()
+		if not HL.PullActive then return end
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+		
+		-- TP sırasında pozisyonu sabitle
+		pcall(function()
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+		end)
+	end)
+
+	-- EGG KORUMA KALKANI
+	Bypass.EggShield = RunService.Heartbeat:Connect(function()
+		if not HL.AutoEgg then return end
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		-- AutoEgg sırasında hızı koru
+		pcall(function()
+			if hum.WalkSpeed < 16 then
+				hum.WalkSpeed = 16
+			end
+		end)
+	end)
+
+	-- NOCLIP KORUMA KALKANI
+	Bypass.NoclipShield = RunService.Stepped:Connect(function()
+		if not HL.Noclip then return end
+		local char = LocalPlayer.Character
+		if not char then return end
+		
+		for _, p in ipairs(char:GetDescendants()) do
+			if p:IsA("BasePart") then
+				p.CanCollide = false
+			end
+		end
+	end)
+
+	-- GOD KORUMA KALKANI
+	Bypass.GodShield = RunService.Heartbeat:Connect(function()
+		if not HL.God then return end
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			hum.Health = hum.MaxHealth
+		end)
+	end)
+
+	print("🍑 v23 BYPASS AKTİF - HER MODA AYRI KALKAN")
 end
 
 -- ==================== SÜZÜLME FLY ====================
@@ -384,8 +435,9 @@ local function StartPull(targetPos)
 			r.CFrame = CFrame.new(finalPos)
 			r.AssemblyLinearVelocity = Vector3.zero
 			StopPull()
-			HL.HoldPos = finalPos
-			HL.HoldUntil = os.clock() + 1.5
+			-- HoldPos SÜRESİZ - KARAKTER SABİTLENMEZ
+			HL.HoldPos = nil
+			HL.HoldUntil = 0
 		end
 	end)
 end
@@ -516,19 +568,6 @@ local function ToggleNoclip()
 		b.Text = HL.Noclip and "NOCLIP  ● AÇIK" or "NOCLIP  ○ KAPALI"
 		b.BackgroundColor3 = HL.Noclip and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
 	end
-	if HL.Noclip then
-		if HL.Conn.Noclip then HL.Conn.Noclip:Disconnect() end
-		HL.Conn.Noclip = RunService.Stepped:Connect(function()
-			if not HL.Noclip then return end
-			local char = LocalPlayer.Character
-			if not char then return end
-			for _, p in ipairs(char:GetDescendants()) do
-				if p:IsA("BasePart") then p.CanCollide = false end
-			end
-		end)
-	else
-		if HL.Conn.Noclip then HL.Conn.Noclip:Disconnect() HL.Conn.Noclip = nil end
-	end
 end
 
 -- ==================== GOD ====================
@@ -545,8 +584,8 @@ end
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
 StartBypass()
 
-print("[HL] Part 1 hazır - v22 TAM")-- ============================================================
--- HAMSTERLİVES v22 TAM SÜRÜM - PART 2/2
+print("[HL] Part 1 hazır - v23 KESİN ÇÖZÜM")-- ============================================================
+-- HAMSTERLİVES v23 - PART 2/2
 -- MENÜ + TUŞLAR
 -- ============================================================
 
@@ -579,7 +618,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v22"
+	title.Text = "  HAMSTERLİVES  v23"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -743,4 +782,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if not Bypass.Active then StartBypass() end
 end)
 
-print("[HL] v22 yüklendi - TAM SÜRÜM")
+print("[HL] v23 yüklendi - KESİN ÇÖZÜM")

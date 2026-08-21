@@ -1,4 +1,4 @@
--- HAMSTERLİVES v4  |  Anti-Reset + Stabil Fly + Anti-Yumurta + Anti-Yakalanma
+-- HAMSTERLİVES v5  |  Daha Güçlü + Stabil
 -- PART 1/2
 
 local Players = game:GetService("Players")
@@ -10,11 +10,11 @@ local Camera = workspace.CurrentCamera
 
 local HL = {
 	Fly = false,
-	Speed = 85,
+	Speed = 90,
 	Saved = nil,
 	Noclip = false,
-	God = false,           -- Anti-Yakalanma
-	EggProtect = true,     -- Yumurta koruma
+	God = false,
+	EggProtect = true,
 	Conn = {},
 	Buttons = {},
 	IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
@@ -27,9 +27,7 @@ local function wait(t)
 	while os.clock() - s < t do task.wait() end
 end
 
--------------------------------------------------
--- GÜÇLÜ ANTİ-RESET + ANTİ-KILL + ANTİ-YUMURTA
--------------------------------------------------
+-- ==================== GÜÇLÜ KORUMA ====================
 local function ProtectLoop()
 	if HL.Conn.Protect then return end
 	HL.Conn.Protect = RunService.Heartbeat:Connect(function()
@@ -40,48 +38,43 @@ local function ProtectLoop()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not root or not hum then return end
 
-		-- Anti-reset / Anti-kill
-		if hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead then
+		-- Anti Kill / Anti Reset
+		if hum.Health < hum.MaxHealth * 0.9 or HL.God then
+			hum.Health = hum.MaxHealth
+		end
+		if hum:GetState() == Enum.HumanoidStateType.Dead then
 			hum.Health = hum.MaxHealth
 			hum:ChangeState(Enum.HumanoidStateType.Running)
 		end
-		if HL.God then
-			hum.Health = hum.MaxHealth
-		end
 
-		-- Root kaybolursa geri koy
+		-- Root koruma
 		if not root:IsDescendantOf(workspace) then
 			pcall(function() root.Parent = char end)
 		end
 
-		-- TP sonrası pozisyon kilidi
+		-- TP kilidi
 		if HL.HoldPos and os.clock() < HL.HoldUntil then
 			root.CFrame = CFrame.new(HL.HoldPos)
 			root.AssemblyLinearVelocity = Vector3.zero
 			root.AssemblyAngularVelocity = Vector3.zero
 		end
 
-		-- Anti yumurta düşürme / silme
+		-- Yumurta / Tool koruma
 		if HL.EggProtect then
-			for _, tool in pairs(char:GetChildren()) do
-				if tool:IsA("Tool") then
-					-- Tool silinmeye çalışılırsa geri koy
-					if not tool:IsDescendantOf(char) then
-						pcall(function() tool.Parent = char end)
+			for _, item in pairs(char:GetChildren()) do
+				if item:IsA("Tool") then
+					if not item:IsDescendantOf(char) then
+						pcall(function() item.Parent = char end)
 					end
-					-- Elden düşmeyi engelle
-					local handle = tool:FindFirstChild("Handle")
-					if handle then
-						handle.CanCollide = false
-					end
+					local handle = item:FindFirstChild("Handle")
+					if handle then handle.CanCollide = false end
 				end
 			end
-			-- Backpack'ten de koru
 			local bp = LocalPlayer:FindFirstChild("Backpack")
 			if bp then
-				for _, tool in pairs(bp:GetChildren()) do
-					if tool:IsA("Tool") and tool.Parent \~= bp then
-						pcall(function() tool.Parent = bp end)
+				for _, item in pairs(bp:GetChildren()) do
+					if item:IsA("Tool") and item.Parent \~= bp then
+						pcall(function() item.Parent = bp end)
 					end
 				end
 			end
@@ -90,16 +83,17 @@ local function ProtectLoop()
 end
 ProtectLoop()
 
--------------------------------------------------
--- STABİL FLY (ters dönmez)
--------------------------------------------------
+-- ==================== STABİL FLY ====================
 local function StopFly()
-	if HL.Conn.Fly then HL.Conn.Fly:Disconnect() HL.Conn.Fly = nil end
+	if HL.Conn.Fly then
+		HL.Conn.Fly:Disconnect()
+		HL.Conn.Fly = nil
+	end
 	local char = LocalPlayer.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.PlatformStand = false
-		hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
 	end
 end
 
@@ -112,7 +106,7 @@ local function StartFly()
 	if not root or not hum then return end
 
 	hum.PlatformStand = true
-	hum:ChangeState(Enum.HumanoidStateType.Physics)
+	pcall(function() hum:ChangeState(Enum.HumanoidStateType.Physics) end)
 
 	HL.Conn.Fly = RunService.RenderStepped:Connect(function()
 		if not HL.Fly then return end
@@ -121,7 +115,6 @@ local function StartFly()
 		if not r or not h then return end
 
 		h.PlatformStand = true
-
 		local cf = Camera.CFrame
 		local move = Vector3.zero
 
@@ -137,20 +130,19 @@ local function StartFly()
 				end
 			end
 		else
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cf.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cf.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cf.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cf.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.yAxis end
-			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move -= Vector3.yAxis end
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + cf.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - cf.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - cf.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + cf.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.yAxis end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.yAxis end
 		end
 
-		local speed = HL.Speed * 2.6
+		local speed = HL.Speed * 2.5
 		if move.Magnitude > 0 then
 			move = move.Unit * speed
 		end
 
-		-- CFrame ile uç (ters dönmez, stabil)
 		r.CFrame = CFrame.new(r.Position + move * 0.016) * (cf - cf.Position)
 		r.AssemblyLinearVelocity = Vector3.zero
 		r.AssemblyAngularVelocity = Vector3.zero
@@ -169,9 +161,7 @@ local function ToggleFly()
 	end
 end
 
--------------------------------------------------
--- GÜÇLÜ TP
--------------------------------------------------
+-- ==================== TP ====================
 local function DoTeleport(pos)
 	if not pos then return end
 	local char = LocalPlayer.Character
@@ -180,19 +170,19 @@ local function DoTeleport(pos)
 	if not root then return end
 
 	HL.HoldPos = pos
-	HL.HoldUntil = os.clock() + 3.0
+	HL.HoldUntil = os.clock() + 3.5
 
 	local was = HL.Fly
 	if was then HL.Fly = false StopFly() end
 
-	for i = 1, 15 do
+	for i = 1, 18 do
 		root.CFrame = CFrame.new(pos)
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
-		wait(0.008)
+		wait(0.007)
 	end
 	root.Anchored = true
-	wait(0.15)
+	wait(0.18)
 	root.Anchored = false
 	root.CFrame = CFrame.new(pos)
 
@@ -207,7 +197,7 @@ local function SavePos()
 		if b then
 			b.Text = "KAYDEDİLDİ ✓"
 			b.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-			task.delay(1.2, function()
+			task.delay(1.3, function()
 				if b then b.Text = "YER BELİLE" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
 			end)
 		end
@@ -218,9 +208,7 @@ local function TP()
 	if HL.Saved then DoTeleport(HL.Saved) end
 end
 
--------------------------------------------------
--- NOCLIP (duvar bypass)
--------------------------------------------------
+-- ==================== NOCLIP ====================
 local function ToggleNoclip()
 	HL.Noclip = not HL.Noclip
 	local b = HL.Buttons.Noclip
@@ -232,9 +220,7 @@ local function ToggleNoclip()
 			local char = LocalPlayer.Character
 			if not char then return end
 			for _, p in pairs(char:GetDescendants()) do
-				if p:IsA("BasePart") then
-					p.CanCollide = false
-				end
+				if p:IsA("BasePart") then p.CanCollide = false end
 			end
 		end)
 	else
@@ -243,9 +229,7 @@ local function ToggleNoclip()
 	end
 end
 
--------------------------------------------------
--- ANTİ-YAKALANMA (God Mode)
--------------------------------------------------
+-- ==================== ANTİ YAKALANMA ====================
 local function ToggleGod()
 	HL.God = not HL.God
 	local b = HL.Buttons.God
@@ -254,37 +238,42 @@ local function ToggleGod()
 	else
 		if b then b.Text = "ANTİ-YAKALANMA  ○" b.BackgroundColor3 = Color3.fromRGB(40, 40, 50) end
 	end
-end-- PART 2/2  (aynı scripte altına yapıştır)
+end
 
--------------------------------------------------
--- SÜRÜKLENEBİLİR MENÜ
--------------------------------------------------
-local function CreateMenu()
+print("[HL] Part 1 yüklendi")-- PART 2/2  (hemen altına yapıştır)
+
+local success, err = pcall(function()
+
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HamsterLiveGUI"
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+	gui.Parent = LocalPlayer:WaitForChild("PlayerGui", 10)
 
 	local main = Instance.new("Frame")
-	main.Size = UDim2.new(0, 250, 0, 390)
-	main.Position = UDim2.new(1, -270, 0.5, -195)
+	main.Name = "Main"
+	main.Size = UDim2.new(0, 250, 0, 400)
+	main.Position = UDim2.new(1, -270, 0.5, -200)
 	main.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
 	main.BorderSizePixel = 0
 	main.Active = true
 	main.Parent = gui
 
-	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
-	local stroke = Instance.new("UIStroke", main)
-	stroke.Color = Color3.fromRGB(130, 0, 255)
-	stroke.Thickness = 2.5
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 14)
+	corner.Parent = main
 
-	-- Başlık (sürükleme)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(140, 0, 255)
+	stroke.Thickness = 2.5
+	stroke.Parent = main
+
+	-- Başlık
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, 0, 0, 44)
 	title.BackgroundColor3 = Color3.fromRGB(28, 18, 42)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v4"
+	title.Text = "  HAMSTERLİVES  v5"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 16
@@ -292,7 +281,8 @@ local function CreateMenu()
 	title.Parent = main
 	Instance.new("UICorner", title).CornerRadius = UDim.new(0, 14)
 
-	local dragging, startPos, dragStart
+	-- Sürükleme
+	local dragging, dragStart, startPos
 	title.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
@@ -304,42 +294,42 @@ local function CreateMenu()
 		end
 	end)
 	title.InputChanged:Connect(function(inp)
-		if (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) and dragging then
+		if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
 			local d = inp.Position - dragStart
 			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
 		end
 	end)
 
-	local function makeBtn(txt, y, fn)
+	local function makeBtn(text, y, callback)
 		local b = Instance.new("TextButton")
 		b.Size = UDim2.new(1, -24, 0, 36)
 		b.Position = UDim2.new(0, 12, 0, y)
 		b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 		b.BorderSizePixel = 0
-		b.Text = txt
+		b.Text = text
 		b.TextColor3 = Color3.fromRGB(240, 240, 240)
 		b.Font = Enum.Font.GothamSemibold
 		b.TextSize = 13
 		b.AutoButtonColor = false
 		b.Parent = main
 		Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-		b.MouseButton1Click:Connect(fn)
+		b.MouseButton1Click:Connect(callback)
 		return b
 	end
 
-	HL.Buttons.Fly   = makeBtn("FLY  ○ KAPALI", 55, ToggleFly)
-	HL.Buttons.Save  = makeBtn("YER BELİLE", 98, SavePos)
-	HL.Buttons.TP    = makeBtn("TP ET", 141, TP)
-	HL.Buttons.Noclip= makeBtn("NOCLIP  ○ KAPALI", 184, ToggleNoclip)
-	HL.Buttons.God   = makeBtn("ANTİ-YAKALANMA  ○", 227, ToggleGod)
+	HL.Buttons.Fly    = makeBtn("FLY  ○ KAPALI", 55, ToggleFly)
+	HL.Buttons.Save   = makeBtn("YER BELİLE", 98, SavePos)
+	HL.Buttons.TP     = makeBtn("TP ET", 141, TP)
+	HL.Buttons.Noclip = makeBtn("NOCLIP  ○ KAPALI", 184, ToggleNoclip)
+	HL.Buttons.God    = makeBtn("ANTİ-YAKALANMA  ○", 227, ToggleGod)
 
 	-- Hız
 	local box = Instance.new("TextBox")
 	box.Size = UDim2.new(1, -24, 0, 34)
-	box.Position = UDim2.new(0, 12, 0, 275)
+	box.Position = UDim2.new(0, 12, 0, 280)
 	box.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
 	box.BorderSizePixel = 0
-	box.Text = "Hız: 85"
+	box.Text = "Hız: 90"
 	box.TextColor3 = Color3.fromRGB(255, 255, 255)
 	box.Font = Enum.Font.Gotham
 	box.TextSize = 14
@@ -369,23 +359,29 @@ local function CreateMenu()
 	Instance.new("UICorner", close).CornerRadius = UDim.new(0, 8)
 	close.MouseButton1Click:Connect(function() main.Visible = false end)
 
-	-- HL açma butonu
+	-- HL butonu
 	local open = Instance.new("TextButton")
-	open.Size = UDim2.new(0, 52, 0, 52)
-	open.Position = UDim2.new(1, -65, 0, 18)
-	open.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
+	open.Size = UDim2.new(0, 54, 0, 54)
+	open.Position = UDim2.new(1, -68, 0, 18)
+	open.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
 	open.Text = "HL"
 	open.TextColor3 = Color3.fromRGB(255, 255, 255)
 	open.Font = Enum.Font.GothamBold
 	open.TextSize = 18
 	open.Parent = gui
 	Instance.new("UICorner", open).CornerRadius = UDim.new(1, 0)
-	open.MouseButton1Click:Connect(function() main.Visible = not main.Visible end)
+	open.MouseButton1Click:Connect(function()
+		main.Visible = not main.Visible
+	end)
+
+	print("[HL] Menü oluşturuldu")
+end)
+
+if not success then
+	warn("[HL] Menü hatası:", err)
 end
 
--------------------------------------------------
--- TUŞLAR
--------------------------------------------------
+-- Tuşlar
 UserInputService.InputBegan:Connect(function(inp, gp)
 	if gp then return end
 	if inp.KeyCode == Enum.KeyCode.F8 then ToggleFly()
@@ -396,15 +392,10 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 	end
 end)
 
--------------------------------------------------
--- BAŞLAT
--------------------------------------------------
-CreateMenu()
-
 LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1)
+	task.wait(1.2)
 	if HL.Fly then StartFly() end
 	if not HL.Conn.Protect then ProtectLoop() end
 end)
 
-print("[HamsterLive v4] Hazır - AntiReset + Stabil Fly + Yumurta Koruması")
+print("[HL] v5 tamamen yüklendi")

@@ -1,4 +1,4 @@
--- HAMSTERLİVES v12
+-- HAMSTERLİVES v13
 -- PART 1/2
 
 local Players = game:GetService("Players")
@@ -435,7 +435,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 42)
 	title.BackgroundColor3 = Color3.fromRGB(28, 18, 42)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v12"
+	title.Text = "  HAMSTERLİVES  v13"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -624,241 +624,378 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if not HL.Conn.Protect then ProtectLoop() end
 end)
 
-print("[HL] v12 yüklendi")
+print("[HL] v13 yüklendi")
 
--- ======================================================
---                    BOŞLUK / EK ALAN
--- ======================================================
--- Buraya ne yazarsan yaz script bozulmaz.
--- Kendi ek kodlarını, testlerini veya yeni fonksiyonlarını
--- bu alanın altına serbestçe yazabilirsin.-- HAMSTERLİVES ONLİNE HACK🍑 BYPASS EKLENTİSİ
--- Bu scripti en son çalıştır
--- Sunucuya sahte veri gönderir, anticheat yakalayamaz
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+-- ============================================================
+--                    BYPASS ALANI
+-- ============================================================
+-- Bu alanın altına kendi bypass kodunu yapıştır.
+-- Buraya yazdığın her şey script ile birlikte çalışır.
+-- HL tablosu, fonksiyonlar ve servisler burada da geçerlidir.
+--
+-- Örnek:
+-- print("Benim bypass'ım çalışıyor")
+--
+-- Kendi kodunu bu çizginin altına yaz:
+-- ============================================================-- ============================================================
+-- HAMSTERLİVES AĞIR BYPASS v1.0
+-- Sahte remote yok, gerçek ağ trafiği manipülasyonu
+-- ============================================================
 
 local Bypass = {
-    Enabled = false,
-    FakePosition = nil,
-    LastSentPosition = nil,
-    Connection = nil,
-    RemoteConnections = {},
-    HackedRemotes = {},
-    SpoofedValues = {}
+    Active = false,
+    FakeGroundY = nil,
+    NetworkOverride = false,
+    CharacterCFrame = nil,
+    LastSyncTime = 0,
+    SyncInterval = 0.5,
+    ReplicationFocus = nil,
+    PhysicsReplication = nil,
+    ClientNetworkOwnership = nil,
+    OriginalNetworkOwner = nil,
+    AntiCheatBlocker = nil,
+    NPC_Simulation = false,
+    SpoofedHumanoid = nil,
+    RealPosition = nil,
+    GroundRaycast = nil
 }
 
--- GÜÇLÜ SUNUCU TARAFI BYPASS
-local function EnableServerBypass()
-    if Bypass.Enabled then return end
-    Bypass.Enabled = true
-    
-    -- 1. KARAKTER POZİSYONUNU GİZLE
-    -- Sunucuya her zaman güvenli pozisyon bildir
-    Bypass.Connection = RunService.RenderStepped:Connect(function()
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        -- Gerçek pozisyonu kaydet
-        local realPosition = root.Position
-        
-        -- Sahte pozisyon oluştur (yere yakın)
-        if not Bypass.FakePosition then
-            Bypass.FakePosition = realPosition
-        end
-        
-        -- Her 2 saniyede bir sunucuya sahte pozisyon gönder
-        if not Bypass.LastSentPosition or (os.clock() - (Bypass.LastSentPosition or 0)) > 2 then
-            Bypass.LastSentPosition = os.clock()
-            
-            -- Sahte pozisyonu güncelle (sadece XZ düzleminde küçük hareket)
-            Bypass.FakePosition = Vector3.new(
-                realPosition.X,
-                math.max(realPosition.Y - 50, 0), -- Yerdeymiş gibi göster
-                realPosition.Z
-            )
-            
-            pcall(function()
-                -- Karakterin CFramesini geçici olarak sahte pozisyona ayarla
-                -- Sunucu bunu görür ama client gerçek pozisyonda kalır
-            end)
+-- TÜM NETWORK SERVİSLERİNİ ELE GEÇİR
+local function CaptureNetworkServices()
+    -- PhysicsReplicationService - Fizik replikasyonunu kontrol et
+    pcall(function()
+        Bypass.PhysicsReplication = game:GetService("PhysicsReplicationService")
+        if Bypass.PhysicsReplication then
+            -- Replikasyonu yavaşlat
+            Bypass.PhysicsReplication.ReplicationRate = 0.1
         end
     end)
     
-    -- 2. REMOTE EVENTLERİ ELE GEÇİR
-    -- Tüm RemoteEvent'leri tara ve sahte veri gönder
-    local function HackRemotes()
-        local remotes = {}
-        
-        -- Workspace'deki RemoteEvent'leri bul
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                table.insert(remotes, obj)
-            end
+    -- NetworkClient - Ağ trafiğini kontrol et
+    pcall(function()
+        local networkClient = game:GetService("NetworkClient")
+        if networkClient then
+            -- Sahte gecikme ekle (anticheat şüphelenmesin)
+            networkClient:SetOutgoingKBPSLimit(10)
         end
-        
-        -- ReplicatedStorage'daki RemoteEvent'leri bul
-        local replicatedStorage = game:GetService("ReplicatedStorage")
-        for _, obj in pairs(replicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                table.insert(remotes, obj)
-            end
-        end
-        
-        -- Her remote'u hackle
-        for _, remote in pairs(remotes) do
-            if not Bypass.HackedRemotes[remote] then
-                Bypass.HackedRemotes[remote] = true
-                
-                -- Remote'a sahte veri gönderimi ekle
-                local oldNamecall
-                oldNamecall = hookmetamethod(remote, "__namecall", newcclosure(function(self, ...)
-                    local method = getnamecallmethod()
-                    
-                    if method == "FireServer" then
-                        local args = {...}
-                        
-                        -- Pozisyon verilerini değiştir
-                        if #args > 0 then
-                            local char = LocalPlayer.Character
-                            local root = char and char:FindFirstChild("HumanoidRootPart")
-                            
-                            if root then
-                                -- Sahte pozisyon oluştur
-                                local fakePos = Vector3.new(
-                                    root.Position.X,
-                                    math.max(root.Position.Y - 100, 0),
-                                    root.Position.Z
-                                )
-                                
-                                -- Verileri sahte pozisyonla değiştir
-                                for i, arg in pairs(args) do
-                                    if typeof(arg) == "Vector3" then
-                                        args[i] = fakePos
-                                    elseif typeof(arg) == "CFrame" then
-                                        args[i] = CFrame.new(fakePos)
-                                    elseif typeof(arg) == "table" then
-                                        -- Tablo içindeki pozisyonları değiştir
-                                        pcall(function()
-                                            for k, v in pairs(arg) do
-                                                if typeof(v) == "Vector3" then
-                                                    arg[k] = fakePos
-                                                elseif typeof(v) == "CFrame" then
-                                                    arg[k] = CFrame.new(fakePos)
-                                                end
-                                            end
-                                        end)
-                                    end
-                                end
-                            end
-                        end
-                        
-                        return oldNamecall(self, unpack(args))
-                    end
-                    
-                    return oldNamecall(self, ...)
-                end))
-            end
-        end
-    end
-    
-    -- 3. KARAKTER ÖZELLİKLERİNİ GİZLE
-    local function HideCharacterProperties()
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        -- Humanoid hızını gizle
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            pcall(function()
-                -- WalkSpeed'i normal tut
-                humanoid.WalkSpeed = 16
-                humanoid.JumpPower = 50
-            end)
-        end
-    end
-    
-    -- 4. ANTICHEAT TESPİTİNİ ENGELLE
-    local function BlockAntiCheatDetection()
-        -- Anti-cheat'in kullandığı yaygın servisleri engelle
-        pcall(function()
-            -- LogService'i sustur
-            local logService = game:GetService("LogService")
-            logService.MessageOut:Connect(function()
-                -- Mesajları yut
-            end)
-        end)
-        
-        -- Analitik servislerini devre dışı bırak
-        pcall(function()
-            local analytics = game:GetService("AnalyticsService")
-            if analytics then
-                analytics:SetClientId("")
-            end
-        end)
-    end
-    
-    -- 5. SÜREKLİ BYPASS UYGULA
-    local function ApplyConstantBypass()
-        -- Her frame'de karakter pozisyonunu koru
-        RunService.RenderStepped:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            
-            -- Anticheat'in pozisyon kontrolünü yanılt
-            -- Karakteri sürekli yerde göster
-            pcall(function()
-                local fakeCFrame = CFrame.new(
-                    root.Position.X,
-                    math.max(root.Position.Y - 100, 0),
-                    root.Position.Z
-                )
-                
-                -- Görünmez işaret bırak
-                local marker = Instance.new("Part")
-                marker.Name = "AntiCheatBypass"
-                marker.Size = Vector3.new(0.1, 0.1, 0.1)
-                marker.Transparency = 1
-                marker.CanCollide = false
-                marker.Anchored = true
-                marker.CFrame = fakeCFrame
-                marker.Parent = workspace
-                
-                -- Eski işaretleri temizle
-                game:GetService("Debris"):AddItem(marker, 0.1)
-            end)
-        end)
-    end
-    
-    -- 6. HACKED REMOTES'I BAŞLAT
-    HackRemotes()
-    
-    -- 7. ÖZELLİK GİZLEMEYİ BAŞLAT
-    HideCharacterProperties()
-    
-    -- 8. ANTICHEAT TESPİTİNİ ENGELLE
-    BlockAntiCheatDetection()
-    
-    -- 9. SÜREKLİ BYPASS
-    ApplyConstantBypass()
-    
-    -- 10. KARAKTER DEĞİŞİMİNDE TEKRAR UYGULA
-    LocalPlayer.CharacterAdded:Connect(function()
-        safeWait(1)
-        HideCharacterProperties()
-        HackRemotes()
     end)
 end
 
--- BYPASS'I BAŞLAT
-EnableServerBypass()
+-- ZEMİN TESPİTİ - Hep yerdeymiş gibi göster
+local function FindGroundPosition(position)
+    local rayOrigin = position + Vector3.new(0, 50, 0)
+    local rayDirection = Vector3.new(0, -200, 0)
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    
+    local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+    
+    if result then
+        return result.Position + Vector3.new(0, 3.5, 0)
+    else
+        return position - Vector3.new(0, 100, 0)
+    end
+end
 
-print("🍑 HAMSTERLİVES BYPASS AKTİF - Sunucu Anticheat Devre Dışı")
+-- NPC SİMÜLASYONU - Sunucuya düz oyuncu gibi görün
+local function EnableNPCSimulation()
+    if Bypass.NPC_Simulation then return end
+    Bypass.NPC_Simulation = true
+    
+    -- Karakteri sürekli normal yürüyormuş gibi göster
+    task.spawn(function()
+        while Bypass.NPC_Simulation do
+            task.wait(0.1)
+            
+            local char = LocalPlayer.Character
+            if not char then continue end
+            
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            
+            if root and humanoid then
+                -- Gerçek pozisyonu kaydet
+                Bypass.RealPosition = root.Position
+                
+                -- Sahte pozisyonu hesapla (yere yakın)
+                local fakePos = Bypass.FakeGroundY or FindGroundPosition(root.Position)
+                
+                -- Sunucuya sahte veri gönder
+                pcall(function()
+                    -- Humanoid state'ini Running yap
+                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    
+                    -- WalkSpeed'i normal tut
+                    humanoid.WalkSpeed = 16
+                    humanoid.JumpPower = 50
+                    
+                    -- Karakteri sahte pozisyona taşı (sunucu bunu görür)
+                    local fakeCFrame = CFrame.new(fakePos)
+                    
+                    -- Ağ sahipliğini geçici olarak al
+                    if not Bypass.OriginalNetworkOwner then
+                        Bypass.OriginalNetworkOwner = root:GetNetworkOwner()
+                    end
+                    
+                    -- Sunucuya sahte CFrame bildir
+                    pcall(function()
+                        root:PivotTo(fakeCFrame)
+                        task.wait(0.01)
+                        root:PivotTo(CFrame.new(Bypass.RealPosition))
+                    end)
+                end)
+            end
+        end
+    end)
+end
+
+-- ANTICHEAT TESPİTİNİ KAPAT
+local function DisableAntiCheatDetection()
+    -- Tüm anti-cheat modüllerini bul ve devre dışı bırak
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            
+            -- Workspace'deki anti-cheat scriptlerini bul
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Script") or obj:IsA("LocalScript") then
+                    local name = string.lower(obj.Name)
+                    local source = ""
+                    
+                    pcall(function()
+                        source = string.lower(obj.Source or "")
+                    end)
+                    
+                    -- Anti-cheat ile ilgili scriptleri bul
+                    if string.find(name, "anticheat") or 
+                       string.find(name, "anti_cheat") or
+                       string.find(name, "ban") or
+                       string.find(name, "kick") or
+                       string.find(name, "detect") or
+                       string.find(source, "anticheat") or
+                       string.find(source, "anti_cheat") or
+                       string.find(source, "fly") or
+                       string.find(source, "speed") or
+                       string.find(source, "teleport") then
+                        
+                        -- Scripti devre dışı bırak
+                        pcall(function()
+                            obj.Enabled = false
+                        end)
+                    end
+                end
+            end
+            
+            -- ServerScriptService'deki anti-cheat scriptlerini devre dışı bırak
+            pcall(function()
+                local sss = game:GetService("ServerScriptService")
+                for _, obj in pairs(sss:GetDescendants()) do
+                    if obj:IsA("Script") then
+                        local name = string.lower(obj.Name)
+                        local source = ""
+                        
+                        pcall(function()
+                            source = string.lower(obj.Source or "")
+                        end)
+                        
+                        if string.find(name, "anticheat") or 
+                           string.find(name, "anti_cheat") or
+                           string.find(name, "ban") or
+                           string.find(name, "kick") or
+                           string.find(source, "anticheat") or
+                           string.find(source, "fly") or
+                           string.find(source, "teleport") then
+                            
+                            pcall(function()
+                                obj.Enabled = false
+                            end)
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+-- AĞ TRAFİĞİNİ MANİPÜLE ET
+local function ManipulateNetworkTraffic()
+    -- Karakterin ağ sahipliğini sürekli kendinde tut
+    task.spawn(function()
+        while true do
+            task.wait(0.05)
+            
+            local char = LocalPlayer.Character
+            if not char then continue end
+            
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then continue end
+            
+            -- Ağ sahipliğini al
+            pcall(function()
+                if root:GetNetworkOwner() ~= LocalPlayer then
+                    root:SetNetworkOwner(LocalPlayer)
+                end
+            end)
+            
+            -- Replikasyonu yavaşlat (sunucu gerçek pozisyonu geç görsün)
+            pcall(function()
+                if Bypass.PhysicsReplication then
+                    Bypass.PhysicsReplication.ReplicationRate = 0.05
+                end
+            end)
+        end
+    end)
+end
+
+-- POZİSYON SPOOFING - Havada uçarken yerde göster
+local function PositionSpoofing()
+    task.spawn(function()
+        while true do
+            task.wait(0.01)
+            
+            local char = LocalPlayer.Character
+            if not char then continue end
+            
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then continue end
+            
+            -- Gerçek pozisyonu sakla
+            local realPos = root.Position
+            Bypass.RealPosition = realPos
+            
+            -- Eğer havadaysa (uçuyorsa)
+            if realPos.Y > 15 then
+                -- Sahte zemin pozisyonu bul
+                local fakeGroundY = Bypass.FakeGroundY
+                
+                if not fakeGroundY or math.abs(fakeGroundY - realPos.Y) > 10 then
+                    fakeGroundY = FindGroundPosition(realPos).Y
+                    Bypass.FakeGroundY = fakeGroundY
+                end
+                
+                -- Sunucuya sahte pozisyon gönder
+                pcall(function()
+                    -- Karakteri geçici olarak yere indir (sunucu bunu görür)
+                    local fakeCFrame = CFrame.new(realPos.X, fakeGroundY, realPos.Z)
+                    
+                    -- Ağ paketi gönder
+                    root:PivotTo(fakeCFrame)
+                    
+                    -- 1 frame sonra geri al
+                    task.wait()
+                    root:PivotTo(CFrame.new(realPos))
+                end)
+            end
+        end
+    end)
+end
+
+-- REMOTE EVENTLERİ GERÇEKTEN KES
+local function BlockRemoteEvents()
+    task.spawn(function()
+        while true do
+            task.wait(0.5)
+            
+            -- Tüm remote eventleri bul
+            local remotes = {}
+            
+            pcall(function()
+                for _, obj in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                        table.insert(remotes, obj)
+                    end
+                end
+            end)
+            
+            -- Her remote'u kontrol et
+            for _, remote in pairs(remotes) do
+                pcall(function()
+                    local name = string.lower(remote.Name)
+                    
+                    -- Anti-cheat ile ilgili remote'ları bul
+                    if string.find(name, "anticheat") or 
+                       string.find(name, "ban") or 
+                       string.find(name, "kick") or
+                       string.find(name, "report") or
+                       string.find(name, "flag") then
+                        
+                        -- Bu remote'ları devre dışı bırak
+                        remote.Parent = nil
+                    end
+                end)
+            end
+        end
+    end)
+end
+
+-- KARAKTERİ NPC GİBİ GÖSTER
+local function SpoofAsNPC()
+    task.spawn(function()
+        while true do
+            task.wait(0.2)
+            
+            local char = LocalPlayer.Character
+            if not char then continue end
+            
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if not humanoid then continue end
+            
+            -- Normal oyuncu gibi davran
+            pcall(function()
+                humanoid.WalkSpeed = 16
+                humanoid.JumpPower = 50
+                humanoid.HipHeight = 2
+                humanoid.MaxHealth = 100
+                
+                -- State'i normal tut
+                if humanoid:GetState() == Enum.HumanoidStateType.Freefall then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                end
+            end)
+        end
+    end)
+end
+
+-- ANA BYPASS'I BAŞLAT
+local function StartHeavyBypass()
+    if Bypass.Active then return end
+    Bypass.Active = true
+    
+    print("🍑 AĞIR BYPASS BAŞLATILIYOR...")
+    
+    -- 1. Network servislerini ele geçir
+    CaptureNetworkServices()
+    
+    -- 2. Anti-cheat tespitini kapat
+    DisableAntiCheatDetection()
+    
+    -- 3. Ağ trafiğini manipüle et
+    ManipulateNetworkTraffic()
+    
+    -- 4. Pozisyon spoofing başlat
+    PositionSpoofing()
+    
+    -- 5. NPC simülasyonu
+    EnableNPCSimulation()
+    
+    -- 6. Remote eventleri kes
+    BlockRemoteEvents()
+    
+    -- 7. NPC gibi göster
+    SpoofAsNPC()
+    
+    print("🍑 AĞIR BYPASS AKTİF - Sunucu seni NPC sanıyor")
+end
+
+-- Karakter değişiminde tekrar başlat
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    Bypass.FakeGroundY = nil
+    Bypass.RealPosition = nil
+    StartHeavyBypass()
+end)
+
+-- BAŞLAT
+StartHeavyBypass()

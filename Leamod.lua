@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v16 - ULTRA SÜZÜLME FLY
--- PART 1/2 - BYPASS + FLY SİSTEMİ
+-- HAMSTERLİVES v16.1 - KICK KORUMALI
+-- PART 1/2 - SESSİZ BYPASS + FLY
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -31,101 +31,34 @@ local HL = {
 	Buttons = {}
 }
 
--- ==================== ULTRA BYPASS ====================
+-- ==================== SESSİZ BYPASS ====================
+-- İN-KALK YOK - SADECE GÖRÜNMEZ KORUMA
 local Bypass = {
 	Active = false,
-	FakeGroundY = nil,
 	LastSafePosition = nil,
-	CachedGroundY = nil,
-	GroundCacheTime = 0,
-	GroundCacheTTL = 0.3,
-	AntiKick = false,
-	SpoofConn = nil,
 	ProtectConn = nil,
 	KickBlocker = nil,
-	LastServerSync = 0,
-	SyncRate = 0.05
+	HealthConn = nil
 }
-
-local function FindGroundY(pos)
-	local now = os.clock()
-	if Bypass.CachedGroundY and (now - Bypass.GroundCacheTime) < Bypass.GroundCacheTTL then
-		return Bypass.CachedGroundY
-	end
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	if LocalPlayer.Character then
-		params.FilterDescendantsInstances = {LocalPlayer.Character}
-	end
-	local result = workspace:Raycast(pos + Vector3.new(0, 50, 0), Vector3.new(0, -500, 0), params)
-	if result then
-		Bypass.CachedGroundY = result.Position.Y + 3.2
-		Bypass.GroundCacheTime = now
-		return Bypass.CachedGroundY
-	end
-	return pos.Y - 10
-end
 
 local function StartBypass()
 	if Bypass.Active then return end
 	Bypass.Active = true
-	Bypass.AntiKick = true
 
-	-- SÜREKLİ POZİSYON SPOOF - SUNUCUYA SAHTE VERİ
-	Bypass.SpoofConn = RunService.RenderStepped:Connect(function()
-		if not Bypass.Active then return end
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-
-		Bypass.LastSafePosition = root.Position
-
-		-- Havadaysa sunucuya yerde göster
-		if root.Position.Y > 18 then
-			local gy = Bypass.FakeGroundY or FindGroundY(root.Position)
-			Bypass.FakeGroundY = gy
-
-			pcall(function()
-				-- Sunucuya sahte pozisyon gönder (her frame)
-				local fakeCFrame = CFrame.new(root.Position.X, gy, root.Position.Z)
-
-				-- Karakteri yere indir - sunucu bunu görür
-				root.CFrame = fakeCFrame
-				root.AssemblyLinearVelocity = Vector3.new(0, -0.1, 0)
-				root.AssemblyAngularVelocity = Vector3.zero
-
-				-- 1 frame sonra geri al
-				task.defer(function()
-					pcall(function()
-						if HL.Fly then
-							-- Fly aktifse gerçek pozisyona dön
-							local realPos = Bypass.LastSafePosition or root.Position
-							root.CFrame = CFrame.new(realPos)
-						end
-					end)
-				end)
-			end)
-		else
-			Bypass.FakeGroundY = root.Position.Y
-		end
-	end)
-
-	-- ANTİ-KICK KORUMASI
+	-- SESSİZ KORUMA - SADECE HEALTH + ÖLÜM + ANTI-RESET
 	Bypass.ProtectConn = RunService.Heartbeat:Connect(function()
-		if not Bypass.AntiKick then return end
 		local char = LocalPlayer.Character
 		if not char then return end
 		local root = char:FindFirstChild("HumanoidRootPart")
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not root or not hum then return end
 
-		-- Health sürekli dolu
-		if hum.Health < hum.MaxHealth * 0.9 or HL.God then
+		-- Health koruması (sessiz)
+		if hum.Health < hum.MaxHealth * 0.8 or HL.God then
 			hum.Health = hum.MaxHealth
 		end
 
-		-- Ölümü engelle
+		-- Ölümü sessizce engelle
 		if hum:GetState() == Enum.HumanoidStateType.Dead then
 			hum.Health = hum.MaxHealth
 			pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
@@ -136,45 +69,38 @@ local function StartBypass()
 			pcall(function() root.Parent = char end)
 		end
 
-		-- Ani pozisyon değişimini düzelt
+		-- Anti-reset (sessiz)
 		if Bypass.LastSafePosition and not HL.Fly and not HL.PullActive then
 			local dist = (root.Position - Bypass.LastSafePosition).Magnitude
-			if dist > 100 then
+			if dist > 200 then
 				root.CFrame = CFrame.new(Bypass.LastSafePosition)
 			end
 		end
 
-		-- WalkSpeed gizle
+		-- WalkSpeed gizle (sessiz)
 		if hum.WalkSpeed > 18 then
 			hum.WalkSpeed = 16
 		end
 
-		-- JumpPower gizle
+		-- JumpPower gizle (sessiz)
 		if hum.JumpPower > 60 then
 			hum.JumpPower = 50
 		end
+
+		-- Güvenli pozisyonu kaydet
+		Bypass.LastSafePosition = root.Position
 	end)
 
-	-- KICK ENGELLEYİCİ - Tüm kick olaylarını yakala
+	-- KICK ENGELLEYİCİ
 	Bypass.KickBlocker = LocalPlayer.Changed:Connect(function(prop)
 		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
-			-- Kick edilmeye çalışılıyor
 			pcall(function()
-				-- Kendini geri ekle
 				LocalPlayer.Parent = Players
 			end)
 		end
 	end)
 
-	-- Karakter değişiminde kick koruması
-	LocalPlayer.CharacterAdded:Connect(function()
-		task.wait(0.5)
-		Bypass.FakeGroundY = nil
-		Bypass.CachedGroundY = nil
-		Bypass.LastSafePosition = nil
-	end)
-
-	print("[HL] ULTRA BYPASS AKTİF")
+	print("[HL] SESSİZ BYPASS AKTİF")
 end
 
 -- ==================== SÜZÜLME FLY ====================
@@ -241,38 +167,31 @@ local function StartFly()
 			move = move.Unit * speed
 		end
 
-		-- SÜZÜLME FİZİĞİ
 		HL.OscTimer = HL.OscTimer + dt
 		HL.GlideTimer = HL.GlideTimer + dt
 
-		-- Yumuşak süzülme ivmesi
 		local targetVelocity = move
-		local lerpFactor = 1 - math.exp(-8 * dt) -- Yumuşak geçiş
+		local lerpFactor = 1 - math.exp(-8 * dt)
 
 		HL.GlideVelocity = HL.GlideVelocity:Lerp(targetVelocity, lerpFactor)
 
-		-- Sürekli aşağı süzülme efekti
 		local downwardGlide = Vector3.new(0, -2.5, 0)
 		HL.GlideVelocity = HL.GlideVelocity + downwardGlide * dt
 
-		-- Hız sınırı
 		if HL.GlideVelocity.Magnitude > speed * 1.5 then
 			HL.GlideVelocity = HL.GlideVelocity.Unit * speed * 1.5
 		end
 
-		-- Salınım efekti - kuş gibi süzülme
 		local oscY = math.sin(HL.OscTimer * 1.8) * 0.4
 		local oscX = math.cos(HL.OscTimer * 1.3) * 0.15
 
-		-- Yeni pozisyon
 		local newPos = r.Position + HL.GlideVelocity * dt + Vector3.new(oscX * dt * 3, oscY * dt * 3, 0)
 
-		-- Yumuşak dönüş
 		local lookDir = HL.GlideVelocity.Magnitude > 0.5 and HL.GlideVelocity.Unit or cf.LookVector
 		local smoothCFrame = CFrame.new(newPos, newPos + lookDir:Lerp(cf.LookVector, 0.3))
 
 		r.CFrame = smoothCFrame
-		r.AssemblyLinearVelocity = Vector3.new(0, -1.5, 0) -- Düşüyormuş gibi
+		r.AssemblyLinearVelocity = Vector3.new(0, -1.5, 0)
 		r.AssemblyAngularVelocity = Vector3.zero
 	end)
 end
@@ -324,7 +243,6 @@ local function StartPull(targetPos)
 		local elapsed = os.clock() - startTime
 		local t = math.clamp(elapsed / duration, 0, 1)
 
-		-- Dümdüz çizgide ilerle
 		local currentPos = startPos:Lerp(flatTarget, t)
 		currentPos = Vector3.new(currentPos.X, startPos.Y, currentPos.Z)
 
@@ -500,8 +418,8 @@ end
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
 StartBypass()
 
-print("[HL] Part 1 hazır - v16 ULTRA")-- ============================================================
--- HAMSTERLİVES v16 - PART 2/2
+print("[HL] Part 1 hazır - v16.1 SESSİZ")-- ============================================================
+-- HAMSTERLİVES v16.1 - PART 2/2
 -- MENÜ + TUŞLAR
 -- ============================================================
 
@@ -534,7 +452,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v16"
+	title.Text = "  HAMSTERLİVES  v16.1"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -719,4 +637,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if not Bypass.Active then StartBypass() end
 end)
 
-print("[HL] v16 yüklendi - ULTRA SÜZÜLME")
+print("[HL] v16.1 yüklendi - SESSİZ MOD")

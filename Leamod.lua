@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v16.1 - KICK KORUMALI
--- PART 1/2 - SESSİZ BYPASS + FLY
+-- HAMSTERLİVES v18 - KATMANLI ANTI-KICK
+-- PART 1/2 - SINIRSIZ HIZ + ÇOK KATMANLI KORUMA
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -31,68 +31,78 @@ local HL = {
 	Buttons = {}
 }
 
--- ==================== SESSİZ BYPASS ====================
--- İN-KALK YOK - SADECE GÖRÜNMEZ KORUMA
+-- ==================== KATMANLI ANTI-KICK ====================
 local Bypass = {
 	Active = false,
 	LastSafePosition = nil,
 	ProtectConn = nil,
 	KickBlocker = nil,
-	HealthConn = nil
+	SpeedUnlocker = nil,
+	Layer1 = nil, -- Health koruması
+	Layer2 = nil, -- Ölüm engelleme
+	Layer3 = nil, -- Anti-reset
+	Layer4 = nil, -- Kick engelleme
+	Layer5 = nil, -- Hız koruma
+	Layer6 = nil, -- Pozisyon koruma
+	Layer7 = nil, -- Karakter koruma
+	Layer8 = nil, -- State koruma
+	Layer9 = nil, -- Parent koruma
+	Layer10 = nil -- Sonsuz döngü koruması
 }
 
 local function StartBypass()
 	if Bypass.Active then return end
 	Bypass.Active = true
 
-	-- SESSİZ KORUMA - SADECE HEALTH + ÖLÜM + ANTI-RESET
-	Bypass.ProtectConn = RunService.Heartbeat:Connect(function()
+	-- KATMAN 1: HEALTH KORUMASI
+	Bypass.Layer1 = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			if hum.Health < hum.MaxHealth * 0.95 or HL.God then
+				hum.Health = hum.MaxHealth
+			end
+		end)
+	end)
+
+	-- KATMAN 2: ÖLÜM ENGELLEME
+	Bypass.Layer2 = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			if hum:GetState() == Enum.HumanoidStateType.Dead then
+				hum.Health = hum.MaxHealth
+				hum:ChangeState(Enum.HumanoidStateType.Running)
+			end
+		end)
+	end)
+
+	-- KATMAN 3: ANTI-RESET
+	Bypass.Layer3 = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
 		local root = char:FindFirstChild("HumanoidRootPart")
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not root or not hum then return end
-
-		-- Health koruması (sessiz)
-		if hum.Health < hum.MaxHealth * 0.8 or HL.God then
-			hum.Health = hum.MaxHealth
-		end
-
-		-- Ölümü sessizce engelle
-		if hum:GetState() == Enum.HumanoidStateType.Dead then
-			hum.Health = hum.MaxHealth
-			pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
-		end
-
-		-- Karakter atılırsa geri getir
-		if not root:IsDescendantOf(workspace) then
-			pcall(function() root.Parent = char end)
-		end
-
-		-- Anti-reset (sessiz)
+		if not root then return end
+		
 		if Bypass.LastSafePosition and not HL.Fly and not HL.PullActive then
 			local dist = (root.Position - Bypass.LastSafePosition).Magnitude
-			if dist > 200 then
-				root.CFrame = CFrame.new(Bypass.LastSafePosition)
+			if dist > 150 then
+				pcall(function()
+					root.CFrame = CFrame.new(Bypass.LastSafePosition)
+				end)
 			end
 		end
-
-		-- WalkSpeed gizle (sessiz)
-		if hum.WalkSpeed > 18 then
-			hum.WalkSpeed = 16
-		end
-
-		-- JumpPower gizle (sessiz)
-		if hum.JumpPower > 60 then
-			hum.JumpPower = 50
-		end
-
-		-- Güvenli pozisyonu kaydet
 		Bypass.LastSafePosition = root.Position
 	end)
 
-	-- KICK ENGELLEYİCİ
-	Bypass.KickBlocker = LocalPlayer.Changed:Connect(function(prop)
+	-- KATMAN 4: KICK ENGELLEME
+	Bypass.Layer4 = LocalPlayer.Changed:Connect(function(prop)
 		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
 			pcall(function()
 				LocalPlayer.Parent = Players
@@ -100,10 +110,102 @@ local function StartBypass()
 		end
 	end)
 
-	print("[HL] SESSİZ BYPASS AKTİF")
+	-- KATMAN 5: HIZ KORUMA - ASLA KISITLAMA
+	Bypass.Layer5 = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			-- Oyun hızı düşürmeye çalışırsa geri al
+			if hum.WalkSpeed < 16 and not HL.Fly then
+				hum.WalkSpeed = 16
+			end
+			if hum.JumpPower < 50 and not HL.Fly then
+				hum.JumpPower = 50
+			end
+			-- Oyun hızı sıfırlamaya çalışırsa düzelt
+			if hum.WalkSpeed == 0 then
+				hum.WalkSpeed = 16
+			end
+		end)
+	end)
+
+	-- KATMAN 6: POZİSYON KORUMA
+	Bypass.Layer6 = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+		
+		-- Karakter void'e düşerse kurtar
+		if root.Position.Y < -100 then
+			pcall(function()
+				if Bypass.LastSafePosition then
+					root.CFrame = CFrame.new(Bypass.LastSafePosition)
+				end
+			end)
+		end
+	end)
+
+	-- KATMAN 7: KARAKTER KORUMA
+	Bypass.Layer7 = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+		
+		if not root:IsDescendantOf(workspace) then
+			pcall(function()
+				root.Parent = char
+			end)
+		end
+	end)
+
+	-- KATMAN 8: STATE KORUMA
+	Bypass.Layer8 = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			-- Kilitlenmeyi önle
+			if hum:GetState() == Enum.HumanoidStateType.Dead then
+				hum:ChangeState(Enum.HumanoidStateType.Running)
+			end
+			-- PlatformStand kilitlenmesini önle
+			if hum.PlatformStand and not HL.Fly then
+				hum.PlatformStand = false
+			end
+		end)
+	end)
+
+	-- KATMAN 9: PARENT KORUMA
+	Bypass.Layer9 = RunService.Heartbeat:Connect(function()
+		if not LocalPlayer:IsDescendantOf(Players) then
+			pcall(function()
+				LocalPlayer.Parent = Players
+			end)
+		end
+	end)
+
+	-- KATMAN 10: SONSUZ DÖNGÜ KORUMASI
+	Bypass.Layer10 = RunService.Stepped:Connect(function()
+		pcall(function()
+			-- Her frame'de koruma tazele
+			if not Bypass.Active then return end
+			if not Bypass.Layer1 or not Bypass.Layer1.Connected then
+				StartBypass()
+			end
+		end)
+	end)
+
+	print("[HL] 10 KATMANLI ANTI-KICK AKTİF")
 end
 
--- ==================== SÜZÜLME FLY ====================
+-- ==================== SÜZÜLME FLY (GÜÇLENDİRİLMİŞ) ====================
 local function StopFly()
 	if HL.Conn.Fly then
 		HL.Conn.Fly:Disconnect()
@@ -149,7 +251,7 @@ local function StartFly()
 				local size = Camera.ViewportSize
 				local dx = (t.Position.X - size.X/2) / (size.X/2)
 				local dy = (t.Position.Y - size.Y/2) / (size.Y/2)
-				if math.abs(dx) > 0.06 or math.abs(dy) > 0.06 then
+				if math.abs(dx) > 0.04 or math.abs(dy) > 0.04 then
 					move = cf.LookVector * (-dy) + cf.RightVector * dx
 				end
 			end
@@ -162,7 +264,8 @@ local function StartFly()
 			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.yAxis end
 		end
 
-		local speed = HL.Speed * 2.5
+		-- OYUNUN VERDİĞİ HIZI KULLAN - ÇARPAN YOK
+		local speed = HL.Speed * 3
 		if move.Magnitude > 0 then
 			move = move.Unit * speed
 		end
@@ -171,27 +274,27 @@ local function StartFly()
 		HL.GlideTimer = HL.GlideTimer + dt
 
 		local targetVelocity = move
-		local lerpFactor = 1 - math.exp(-8 * dt)
+		local lerpFactor = 1 - math.exp(-12 * dt)
 
 		HL.GlideVelocity = HL.GlideVelocity:Lerp(targetVelocity, lerpFactor)
 
-		local downwardGlide = Vector3.new(0, -2.5, 0)
+		local downwardGlide = Vector3.new(0, -1, 0)
 		HL.GlideVelocity = HL.GlideVelocity + downwardGlide * dt
 
-		if HL.GlideVelocity.Magnitude > speed * 1.5 then
-			HL.GlideVelocity = HL.GlideVelocity.Unit * speed * 1.5
+		if HL.GlideVelocity.Magnitude > speed * 2 then
+			HL.GlideVelocity = HL.GlideVelocity.Unit * speed * 2
 		end
 
-		local oscY = math.sin(HL.OscTimer * 1.8) * 0.4
-		local oscX = math.cos(HL.OscTimer * 1.3) * 0.15
+		local oscY = math.sin(HL.OscTimer * 1.5) * 0.25
+		local oscX = math.cos(HL.OscTimer * 1.1) * 0.08
 
-		local newPos = r.Position + HL.GlideVelocity * dt + Vector3.new(oscX * dt * 3, oscY * dt * 3, 0)
+		local newPos = r.Position + HL.GlideVelocity * dt + Vector3.new(oscX * dt * 2, oscY * dt * 2, 0)
 
 		local lookDir = HL.GlideVelocity.Magnitude > 0.5 and HL.GlideVelocity.Unit or cf.LookVector
-		local smoothCFrame = CFrame.new(newPos, newPos + lookDir:Lerp(cf.LookVector, 0.3))
+		local smoothCFrame = CFrame.new(newPos, newPos + lookDir:Lerp(cf.LookVector, 0.15))
 
 		r.CFrame = smoothCFrame
-		r.AssemblyLinearVelocity = Vector3.new(0, -1.5, 0)
+		r.AssemblyLinearVelocity = Vector3.new(0, -0.5, 0)
 		r.AssemblyAngularVelocity = Vector3.zero
 	end)
 end
@@ -231,7 +334,7 @@ local function StartPull(targetPos)
 	local flatTarget = Vector3.new(targetPos.X, startPos.Y, targetPos.Z)
 	local totalDist = (flatTarget - startPos).Magnitude
 	local startTime = os.clock()
-	local duration = math.clamp(totalDist / (hum.WalkSpeed * 1.8), 0.3, 4)
+	local duration = math.clamp(totalDist / (hum.WalkSpeed * 2), 0.2, 3)
 
 	HL.Conn.Pull = RunService.Heartbeat:Connect(function(dt)
 		if not HL.PullActive then return end
@@ -418,8 +521,8 @@ end
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
 StartBypass()
 
-print("[HL] Part 1 hazır - v16.1 SESSİZ")-- ============================================================
--- HAMSTERLİVES v16.1 - PART 2/2
+print("[HL] Part 1 hazır - v18 KATMANLI")-- ============================================================
+-- HAMSTERLİVES v18 - PART 2/2
 -- MENÜ + TUŞLAR
 -- ============================================================
 
@@ -452,7 +555,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v16.1"
+	title.Text = "  HAMSTERLİVES  v18"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -504,27 +607,6 @@ local function CreateMainMenu()
 	HL.Buttons.God     = makeBtn("ANTİ-YAKALANMA  ○", 202, ToggleGod)
 	HL.Buttons.Cube    = makeBtn("CUBE  ○ KAPALI", 240, ToggleCube)
 	HL.Buttons.AutoEgg = makeBtn("AUTO EGG  ○", 278, ToggleAutoEgg)
-
-	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -20, 0, 30)
-	box.Position = UDim2.new(0, 10, 0, 320)
-	box.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-	box.BorderSizePixel = 0
-	box.Text = "Hız: 18"
-	box.TextColor3 = Color3.fromRGB(255, 255, 255)
-	box.Font = Enum.Font.Gotham
-	box.TextSize = 13
-	box.Parent = main
-	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
-	box.FocusLost:Connect(function()
-		local n = tonumber(string.match(box.Text, "%d+"))
-		if n and n >= 10 and n <= 50 then
-			HL.Speed = n
-			box.Text = "Hız: " .. n
-		else
-			box.Text = "Hız: " .. HL.Speed
-		end
-	end)
 
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 28, 0, 28)
@@ -637,4 +719,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if not Bypass.Active then StartBypass() end
 end)
 
-print("[HL] v16.1 yüklendi - SESSİZ MOD")
+print("[HL] v18 yüklendi - KATMANLI KORUMA")

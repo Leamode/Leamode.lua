@@ -1,7 +1,8 @@
 -- HAMSTERLİVES ONLİNE HACK🍑
--- Palofsc // Roblox Executor Payload
--- Fly + Yer Belirle + TP + Bypass
+-- Palofsc // PC Executor Uyumlu v3.0
+-- Tüm executor'larda çalışır
 
+-- // SERVİSLER
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -12,155 +13,164 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- // ANA TABLO
 local HamsterLive = {
-    Enabled = false,
     FlyEnabled = false,
     FlySpeed = 50,
     SavedPosition = nil,
-    BypassActive = false,
-    Connections = {},
     BodyGyro = nil,
-    BodyVelocity = nil
+    BodyVelocity = nil,
+    RenderSteppedConnection = nil,
+    Teleporting = false
 }
 
--- // BYPASS SISTEMI
-local function EnableBypass()
-    if HamsterLive.BypassActive then return end
-    HamsterLive.BypassActive = true
-
-    -- Anti-teleport geri atma için network sahte paket geciktirme
-    local oldIndex
-    oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-        if HamsterLive.BypassActive and self == LocalPlayer.Character and key == "Position" then
-            if HamsterLive.Teleporting then
-                return HamsterLive.TeleportTarget or oldIndex(self, key)
-            end
-        end
-        return oldIndex(self, key)
-    end))
-
-    -- Anti-cheat tespitini atlatmak için RemoteEvent karartması
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        if HamsterLive.BypassActive and method == "FireServer" and tostring(self) == "MainRemote" then
-            -- Kritik pozisyon verilerini geciktir
-            task.wait(0.03)
-            return oldNamecall(self, ...)
-        end
-        return oldNamecall(self, ...)
-    end))
-
-    -- Karakter physics bypass
-    HamsterLive.Connections.CharacterAdded = LocalPlayer.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        local root = char:WaitForChild("HumanoidRootPart", 5)
-        if root then
-            root:SetAttribute("HamsterBypass", true)
-        end
-    end)
+-- // GÜVENLİ BEKLEME
+local function wait(seconds)
+    local start = tick()
+    repeat
+        task.wait()
+    until tick() - start >= seconds
 end
 
--- // FLY MOTORU
-local function CreateFlyPhysics()
+-- // FLY FİZİK
+local function DestroyFly()
+    if HamsterLive.BodyGyro then
+        pcall(function() HamsterLive.BodyGyro:Destroy() end)
+        HamsterLive.BodyGyro = nil
+    end
+    if HamsterLive.BodyVelocity then
+        pcall(function() HamsterLive.BodyVelocity:Destroy() end)
+        HamsterLive.BodyVelocity = nil
+    end
+    if HamsterLive.RenderSteppedConnection then
+        pcall(function() HamsterLive.RenderSteppedConnection:Disconnect() end)
+        HamsterLive.RenderSteppedConnection = nil
+    end
+end
+
+local function CreateFly()
     local char = LocalPlayer.Character
     if not char then return end
-    local root = char:WaitForChild("HumanoidRootPart", 5)
-    local humanoid = char:WaitForChild("Humanoid", 5)
-    if not root or not humanoid then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    DestroyFly()
 
-    -- Eski physics temizle
-    if HamsterLive.BodyGyro then HamsterLive.BodyGyro:Destroy() end
-    if HamsterLive.BodyVelocity then HamsterLive.BodyVelocity:Destroy() end
-
-    -- BodyGyro - dönüş kontrolü
+    -- BodyGyro
     HamsterLive.BodyGyro = Instance.new("BodyGyro")
-    HamsterLive.BodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    HamsterLive.BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
     HamsterLive.BodyGyro.D = 0
-    HamsterLive.BodyGyro.P = 1e6
+    HamsterLive.BodyGyro.P = 9e5
     HamsterLive.BodyGyro.CFrame = root.CFrame
     HamsterLive.BodyGyro.Parent = root
 
-    -- BodyVelocity - hareket kontrolü
+    -- BodyVelocity
     HamsterLive.BodyVelocity = Instance.new("BodyVelocity")
-    HamsterLive.BodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    HamsterLive.BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     HamsterLive.BodyVelocity.Velocity = Vector3.zero
     HamsterLive.BodyVelocity.Parent = root
 
-    -- Düşme animasyonu simülasyonu (ziplamada kalmış gibi)
-    HamsterLive.Connections.RenderStepped = RunService.RenderStepped:Connect(function()
+    -- RenderStepped döngüsü
+    HamsterLive.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
         if not HamsterLive.FlyEnabled then return end
+        
         local currentChar = LocalPlayer.Character
         local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-        if not currentRoot then return end
+        local gyro = HamsterLive.BodyGyro
+        local vel = HamsterLive.BodyVelocity
+        
+        if not currentRoot or not gyro or not vel then
+            CreateFly()
+            return
+        end
 
-        -- Sürekli hafif aşağı ivme = düşüyormuş hissi
-        local vel = Vector3.zero
-        local direction = Camera.CFrame.LookVector
-        local right = Camera.CFrame.RightVector
+        local camCF = Camera.CFrame
+        local direction = camCF.LookVector
+        local right = camCF.RightVector
+        local up = Vector3.new(0, 1, 0)
+
+        local moveVector = Vector3.zero
 
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            vel = vel + direction
+            moveVector = moveVector + direction
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            vel = vel - direction
+            moveVector = moveVector - direction
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            vel = vel - right
+            moveVector = moveVector - right
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            vel = vel + right
+            moveVector = moveVector + right
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            vel = vel + Vector3.new(0, 1, 0)
+            moveVector = moveVector + up
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            vel = vel - Vector3.new(0, 1, 0)
+            moveVector = moveVector - up
         end
 
-        -- Hız ayarlama
         local speed = HamsterLive.FlySpeed
-        vel = vel * speed
+        
+        if moveVector.Magnitude > 0 then
+            moveVector = moveVector.Unit * speed
+        end
 
-        -- Sürekli hafif düşme efekti
-        vel = vel - Vector3.new(0, speed * 0.15, 0)
+        -- Düşme hissi
+        moveVector = moveVector - Vector3.new(0, speed * 0.05, 0)
 
-        HamsterLive.BodyVelocity.Velocity = vel
-        HamsterLive.BodyGyro.CFrame = Camera.CFrame
+        vel.Velocity = moveVector
+        gyro.CFrame = CFrame.new(currentRoot.Position, currentRoot.Position + camCF.LookVector)
     end)
 end
 
--- // TELEPORT BYPASS
+-- // TELEPORT
 local function TeleportTo(position)
-    HamsterLive.Teleporting = true
-    HamsterLive.TeleportTarget = position
-
+    if not position then return end
+    
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then
-        HamsterLive.Teleporting = false
-        return
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    HamsterLive.Teleporting = true
+
+    -- Fly'ı kapat
+    local wasFlying = HamsterLive.FlyEnabled
+    if wasFlying then
+        HamsterLive.FlyEnabled = false
+        DestroyFly()
     end
 
-    -- Karakteri geçici olarak network'ten ayır
-    root.Anchored = false
-    local oldPos = root.Position
-
-    -- Tween ile yumuşak geçiş (anti tespit)
-    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(position)})
-    tween:Play()
-    tween.Completed:Wait()
-
-    -- Pozisyonu zorla sabitle
+    -- İlk ışınlanma
     root.CFrame = CFrame.new(position)
+    wait(0.05)
+    
+    -- Geri atıldıysa tekrar ışınlan
+    if (root.Position - position).Magnitude > 10 then
+        root.CFrame = CFrame.new(position)
+        wait(0.05)
+    end
+    
+    -- İkinci kontrol
+    if (root.Position - position).Magnitude > 10 then
+        root.CFrame = CFrame.new(position)
+        wait(0.05)
+    end
+
     root.Velocity = Vector3.zero
     root.RotVelocity = Vector3.zero
 
-    task.wait(0.1)
     HamsterLive.Teleporting = false
+
+    -- Fly'ı geri aç
+    if wasFlying then
+        HamsterLive.FlyEnabled = true
+        CreateFly()
+    end
 end
 
--- // MENU OLUŞTURMA
+-- // MENÜ
 local function CreateMenu()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "HamsterLiveGUI"
@@ -169,7 +179,6 @@ local function CreateMenu()
 
     -- Başlık
     local Title = Instance.new("TextLabel")
-    Title.Name = "Title"
     Title.Size = UDim2.new(0, 350, 0, 35)
     Title.Position = UDim2.new(0.5, -175, 0.03, 0)
     Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -180,9 +189,8 @@ local function CreateMenu()
     Title.TextSize = 20
     Title.Parent = ScreenGui
 
-    -- Buton
+    -- Toggle Buton
     local ToggleButton = Instance.new("TextButton")
-    ToggleButton.Name = "ToggleButton"
     ToggleButton.Size = UDim2.new(0, 120, 0, 35)
     ToggleButton.Position = UDim2.new(1, -130, 0, 10)
     ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -192,9 +200,8 @@ local function CreateMenu()
     ToggleButton.TextSize = 16
     ToggleButton.Parent = ScreenGui
 
-    -- Menu Frame
+    -- Menü Frame
     local MenuFrame = Instance.new("Frame")
-    MenuFrame.Name = "MenuFrame"
     MenuFrame.Size = UDim2.new(0, 200, 0, 150)
     MenuFrame.Position = UDim2.new(1, -210, 0, 50)
     MenuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -204,7 +211,6 @@ local function CreateMenu()
 
     -- Fly Butonu
     local FlyButton = Instance.new("TextButton")
-    FlyButton.Name = "FlyButton"
     FlyButton.Size = UDim2.new(0, 180, 0, 30)
     FlyButton.Position = UDim2.new(0, 10, 0, 10)
     FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
@@ -214,7 +220,6 @@ local function CreateMenu()
 
     -- Yer Belirle Butonu
     local SaveButton = Instance.new("TextButton")
-    SaveButton.Name = "SaveButton"
     SaveButton.Size = UDim2.new(0, 180, 0, 30)
     SaveButton.Position = UDim2.new(0, 10, 0, 50)
     SaveButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
@@ -224,7 +229,6 @@ local function CreateMenu()
 
     -- TP Butonu
     local TpButton = Instance.new("TextButton")
-    TpButton.Name = "TpButton"
     TpButton.Size = UDim2.new(0, 180, 0, 30)
     TpButton.Position = UDim2.new(0, 10, 0, 90)
     TpButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
@@ -234,7 +238,6 @@ local function CreateMenu()
 
     -- Hız Ayarı
     local SpeedSlider = Instance.new("TextBox")
-    SpeedSlider.Name = "SpeedSlider"
     SpeedSlider.Size = UDim2.new(0, 180, 0, 25)
     SpeedSlider.Position = UDim2.new(0, 10, 0, 125)
     SpeedSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -242,60 +245,68 @@ local function CreateMenu()
     SpeedSlider.Text = "Hız: 50"
     SpeedSlider.Parent = MenuFrame
 
-    -- Toggle buton
+    -- Olaylar
     ToggleButton.MouseButton1Click:Connect(function()
         MenuFrame.Visible = not MenuFrame.Visible
     end)
 
-    -- Fly toggle
     FlyButton.MouseButton1Click:Connect(function()
         HamsterLive.FlyEnabled = not HamsterLive.FlyEnabled
         if HamsterLive.FlyEnabled then
             FlyButton.Text = "Fly: AÇIK"
             FlyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            CreateFlyPhysics()
+            CreateFly()
         else
             FlyButton.Text = "Fly: KAPALI"
             FlyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-            if HamsterLive.BodyGyro then HamsterLive.BodyGyro:Destroy() end
-            if HamsterLive.BodyVelocity then HamsterLive.BodyVelocity:Destroy() end
-            if HamsterLive.Connections.RenderStepped then
-                HamsterLive.Connections.RenderStepped:Disconnect()
-            end
+            DestroyFly()
         end
     end)
 
-    -- Yer belirle
     SaveButton.MouseButton1Click:Connect(function()
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if root then
             HamsterLive.SavedPosition = root.Position
             SaveButton.Text = "Kaydedildi!"
-            task.wait(1)
+            wait(1)
             SaveButton.Text = "Yer Belirle"
         end
     end)
 
-    -- TP
     TpButton.MouseButton1Click:Connect(function()
         if HamsterLive.SavedPosition then
             TeleportTo(HamsterLive.SavedPosition)
         end
     end)
 
-    -- Hız ayarı
     SpeedSlider.FocusLost:Connect(function(enterPressed)
         if enterPressed then
-            local newSpeed = tonumber(SpeedSlider.Text:match("%d+"))
-            if newSpeed then
-                HamsterLive.FlySpeed = newSpeed
-                SpeedSlider.Text = "Hız: " .. newSpeed
+            local match = string.match(SpeedSlider.Text, "%d+")
+            if match then
+                local newSpeed = tonumber(match)
+                if newSpeed and newSpeed > 0 and newSpeed <= 500 then
+                    HamsterLive.FlySpeed = newSpeed
+                    SpeedSlider.Text = "Hız: " .. newSpeed
+                else
+                    SpeedSlider.Text = "Hız: 50"
+                    HamsterLive.FlySpeed = 50
+                end
+            else
+                SpeedSlider.Text = "Hız: 50"
+                HamsterLive.FlySpeed = 50
             end
         end
     end)
 end
 
 -- // BAŞLAT
-EnableBypass()
 CreateMenu()
+
+-- Karakter yeniden doğarsa fly'ı sıfırla
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(1)
+    if HamsterLive.FlyEnabled then
+        CreateFly()
+    end
+end)

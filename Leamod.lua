@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v24 - TEMİZ SÜRÜM
--- PART 1/2 - ANİMASYON YOK + AŞIRI GÜÇLÜ BYPASS
+-- HAMSTERLİVES v25 - PART 1/3
+-- BYPASS SİSTEMİ (700+ SATIR)
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -8,6 +8,9 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local StarterGui = game:GetService("StarterGui")
 
 local HL = {
 	Fly = false,
@@ -38,23 +41,21 @@ local Bypass = {
 	FakePosition = nil,
 	GroundY = nil,
 	GroundCacheTime = 0,
-	GroundCacheTTL = 0.1,
+	GroundCacheTTL = 0.05,
 	KickAttempts = 0,
-	ProtectConn = nil,
-	KickBlocker = nil,
-	SpoofConn = nil,
-	AntiDetectConn = nil,
-	NetConn = nil,
-	FlyShield = nil,
-	TPShield = nil,
-	EggShield = nil,
-	NoclipShield = nil,
-	GodShield = nil,
-	WalkShield = nil,
-	JumpShield = nil,
-	StateShield = nil,
-	ParentShield = nil,
-	HealthShield = nil
+	DetectionAttempts = 0,
+	BlockedRemotes = {},
+	BlockedScripts = {},
+	HiddenInstances = {},
+	OriginalValues = {},
+	Shields = {},
+	NetworkBlocker = false,
+	AntiCheatNeutralized = false,
+	ServerReplicationHooked = false,
+	ClientReplicationHooked = false,
+	TeleportBlocker = false,
+	BanBlocker = false,
+	KickBlockerActive = false
 }
 
 local function FindGroundYFast(pos)
@@ -69,7 +70,7 @@ local function FindGroundYFast(pos)
 		params.FilterDescendantsInstances = {LocalPlayer.Character}
 	end
 	
-	local result = workspace:Raycast(pos + Vector3.new(0, 30, 0), Vector3.new(0, -500, 0), params)
+	local result = workspace:Raycast(pos + Vector3.new(0, 50, 0), Vector3.new(0, -500, 0), params)
 	if result then
 		Bypass.GroundY = result.Position.Y + 3.2
 		Bypass.GroundCacheTime = now
@@ -78,18 +79,189 @@ local function FindGroundYFast(pos)
 	return pos.Y - 10
 end
 
-local function StartBypass()
-	if Bypass.Active then return end
-	Bypass.Active = true
+local function NeutralizeAntiCheatScripts()
+	task.spawn(function()
+		while Bypass.Active do
+			task.wait(2)
+			
+			pcall(function()
+				for _, obj in pairs(workspace:GetDescendants()) do
+					if obj:IsA("LocalScript") or obj:IsA("Script") then
+						local name = string.lower(obj.Name)
+						local source = ""
+						pcall(function() source = string.lower(obj.Source or "") end)
+						
+						if string.find(name, "anticheat") or 
+						   string.find(name, "anti_cheat") or
+						   string.find(name, "ban") or
+						   string.find(name, "kick") or
+						   string.find(name, "detect") or
+						   string.find(name, "flag") or
+						   string.find(source, "anticheat") or
+						   string.find(source, "fly") or
+						   string.find(source, "speed") or
+						   string.find(source, "teleport") or
+						   string.find(source, "noclip") then
+							
+							if not Bypass.BlockedScripts[obj] then
+								Bypass.BlockedScripts[obj] = true
+								pcall(function() obj.Enabled = false end)
+							end
+						end
+					end
+				end
+			end)
+			
+			pcall(function()
+				for _, child in pairs(StarterGui:GetChildren()) do
+					local name = string.lower(child.Name)
+					if string.find(name, "anticheat") or 
+					   string.find(name, "ban") or 
+					   string.find(name, "kick") then
+						child.Enabled = false
+					end
+				end
+			end)
+		end
+	end)
+end
 
-	-- KALKAN 1: ANA KORUMA
-	Bypass.ProtectConn = RunService.Heartbeat:Connect(function()
+local function BlockRemoteEvents()
+	task.spawn(function()
+		while Bypass.Active do
+			task.wait(1)
+			
+			pcall(function()
+				local replicatedStorage = game:GetService("ReplicatedStorage")
+				for _, remote in pairs(replicatedStorage:GetDescendants()) do
+					if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+						local name = string.lower(remote.Name)
+						
+						if string.find(name, "anticheat") or 
+						   string.find(name, "ban") or 
+						   string.find(name, "kick") or
+						   string.find(name, "report") or
+						   string.find(name, "flag") or
+						   string.find(name, "detect") then
+							
+							if not Bypass.BlockedRemotes[remote] then
+								Bypass.BlockedRemotes[remote] = true
+								pcall(function()
+									remote.Parent = nil
+								end)
+							end
+						end
+					end
+				end
+			end)
+		end
+	end)
+end
+
+local function BlockTeleportService()
+	task.spawn(function()
+		while Bypass.Active do
+			task.wait(0.5)
+			pcall(function()
+				if TeleportService then
+					Bypass.TeleportBlocker = true
+				end
+			end)
+		end
+	end)
+end
+
+local function KickBanProtection()
+	Bypass.Shields.KickBlocker = LocalPlayer.Changed:Connect(function(prop)
+		if prop == "Parent" then
+			Bypass.KickAttempts = Bypass.KickAttempts + 1
+			Bypass.KickBlockerActive = true
+			
+			if not LocalPlayer:IsDescendantOf(Players) then
+				pcall(function()
+					LocalPlayer.Parent = Players
+				end)
+			end
+		end
+	end)
+	
+	Bypass.Shields.CharacterBlocker = LocalPlayer.CharacterAdded:Connect(function(char)
+		task.wait(0.5)
+		
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.Died:Connect(function()
+				pcall(function()
+					hum.Health = hum.MaxHealth
+					hum:ChangeState(Enum.HumanoidStateType.Running)
+				end)
+			end)
+		end
+	end)
+	
+	task.spawn(function()
+		while Bypass.Active do
+			task.wait(0.01)
+			if not LocalPlayer:IsDescendantOf(Players) then
+				pcall(function() LocalPlayer.Parent = Players end)
+			end
+		end
+	end)
+end
+
+local function PositionSpoofingSystem()
+	Bypass.Shields.Spoof = RunService.RenderStepped:Connect(function()
+		if not Bypass.Active then return end
 		local char = LocalPlayer.Character
 		if not char then return end
 		local root = char:FindFirstChild("HumanoidRootPart")
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not root or not hum then return end
+		if not root then return end
+		
+		if root.Position.Y > 15 then
+			local gy = Bypass.FakePosition and Bypass.FakePosition.Y or FindGroundYFast(root.Position)
+			Bypass.FakePosition = Vector3.new(root.Position.X, gy, root.Position.Z)
+			
+			pcall(function()
+				local realCFrame = root.CFrame
+				root.CFrame = CFrame.new(Bypass.FakePosition)
+				root.AssemblyLinearVelocity = Vector3.new(0, -0.05, 0)
+				
+				task.defer(function()
+					pcall(function()
+						if HL.Fly or HL.PullActive then
+							root.CFrame = realCFrame
+						end
+					end)
+				end)
+			end)
+		else
+			Bypass.FakePosition = root.Position
+		end
+	end)
+end
 
+local function NetworkTrafficControl()
+	Bypass.Shields.Network = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+		
+		pcall(function()
+			if root:GetNetworkOwner() ~= LocalPlayer then
+				root:SetNetworkOwner(LocalPlayer)
+			end
+		end)
+	end)
+end
+
+local function HumanoidProtection()
+	Bypass.Shields.Humanoid = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
 		pcall(function()
 			if hum.Health < hum.MaxHealth * 0.98 or HL.God then
 				hum.Health = hum.MaxHealth
@@ -98,19 +270,38 @@ local function StartBypass()
 				hum.Health = hum.MaxHealth
 				hum:ChangeState(Enum.HumanoidStateType.Running)
 			end
+			if hum.WalkSpeed < 16 and not HL.Fly then
+				hum.WalkSpeed = 16
+			end
+			if hum.JumpPower < 50 and not HL.Fly then
+				hum.JumpPower = 50
+			end
+			if hum.PlatformStand and not HL.Fly then
+				hum.PlatformStand = false
+			end
+			hum.AutoRotate = true
 		end)
+	end)
+end
 
+local function PositionProtection()
+	Bypass.Shields.Position = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+		
 		if not root:IsDescendantOf(workspace) then
 			pcall(function() root.Parent = char end)
 		end
-
+		
 		if Bypass.LastSafePosition and not HL.Fly and not HL.PullActive then
 			local dist = (root.Position - Bypass.LastSafePosition).Magnitude
 			if dist > 100 then
 				pcall(function() root.CFrame = CFrame.new(Bypass.LastSafePosition) end)
 			end
 		end
-
+		
 		if root.Position.Y < -50 then
 			pcall(function()
 				if Bypass.LastSafePosition then
@@ -118,20 +309,13 @@ local function StartBypass()
 				end
 			end)
 		end
-
+		
 		Bypass.LastSafePosition = root.Position
 	end)
+end
 
-	-- KALKAN 2: KICK ENGELLEYİCİ
-	Bypass.KickBlocker = LocalPlayer.Changed:Connect(function(prop)
-		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
-			Bypass.KickAttempts = Bypass.KickAttempts + 1
-			pcall(function() LocalPlayer.Parent = Players end)
-		end
-	end)
-
-	-- KALKAN 3: ANTI-DETECTION
-	Bypass.AntiDetectConn = RunService.Heartbeat:Connect(function()
+local function AntiDetectionSystem()
+	Bypass.Shields.AntiDetect = RunService.Heartbeat:Connect(function()
 		pcall(function()
 			local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
 			if playerGui then
@@ -141,29 +325,90 @@ local function StartBypass()
 					   string.find(name, "ban") or 
 					   string.find(name, "kick") or
 					   string.find(name, "warning") or
-					   string.find(name, "detect") then
+					   string.find(name, "detect") or
+					   string.find(name, "flag") then
 						child.Enabled = false
 					end
 				end
 			end
 		end)
 	end)
+end
 
-	-- KALKAN 4: AĞ SAHİPLİĞİ
-	Bypass.NetConn = RunService.Heartbeat:Connect(function()
+local function SpeedProtection()
+	Bypass.Shields.Speed = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
 		pcall(function()
-			if root:GetNetworkOwner() ~= LocalPlayer then
-				root:SetNetworkOwner(LocalPlayer)
+			if hum.WalkSpeed < 16 and not HL.Fly then
+				hum.WalkSpeed = 16
+			end
+			if hum.WalkSpeed == 0 then
+				hum.WalkSpeed = 16
 			end
 		end)
 	end)
+end
 
-	-- KALKAN 5: FLY KORUMA
-	Bypass.FlyShield = RunService.RenderStepped:Connect(function()
+local function JumpProtection()
+	Bypass.Shields.Jump = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			if hum.JumpPower < 50 and not HL.Fly then
+				hum.JumpPower = 50
+			end
+		end)
+	end)
+end
+
+local function StateProtection()
+	Bypass.Shields.State = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			if hum.PlatformStand and not HL.Fly then
+				hum.PlatformStand = false
+			end
+			hum.AutoRotate = true
+		end)
+	end)
+end
+
+local function ParentProtection()
+	Bypass.Shields.Parent = RunService.Heartbeat:Connect(function()
+		if not LocalPlayer:IsDescendantOf(Players) then
+			pcall(function() LocalPlayer.Parent = Players end)
+		end
+	end)
+end
+
+local function HealthProtection()
+	Bypass.Shields.Health = RunService.Heartbeat:Connect(function()
+		local char = LocalPlayer.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+		
+		pcall(function()
+			if hum.Health <= 0 then
+				hum.Health = hum.MaxHealth
+			end
+		end)
+	end)
+end
+
+local function FlyProtection()
+	Bypass.Shields.Fly = RunService.RenderStepped:Connect(function()
 		if not HL.Fly then return end
 		local char = LocalPlayer.Character
 		if not char then return end
@@ -177,7 +422,7 @@ local function StartBypass()
 			pcall(function()
 				local realCFrame = root.CFrame
 				root.CFrame = CFrame.new(Bypass.FakePosition)
-				root.AssemblyLinearVelocity = Vector3.new(0, -0.1, 0)
+				root.AssemblyLinearVelocity = Vector3.new(0, -0.05, 0)
 				task.defer(function()
 					pcall(function()
 						if HL.Fly then root.CFrame = realCFrame end
@@ -186,88 +431,102 @@ local function StartBypass()
 			end)
 		end
 	end)
+end
 
-	-- KALKAN 6: TP KORUMA
-	Bypass.TPShield = RunService.Heartbeat:Connect(function()
+local function TPProtection()
+	Bypass.Shields.TP = RunService.Heartbeat:Connect(function()
 		if not HL.PullActive then return end
 		local char = LocalPlayer.Character
 		if not char then return end
 		local root = char:FindFirstChild("HumanoidRootPart")
 		if not root then return end
+		
 		pcall(function()
 			root.AssemblyLinearVelocity = Vector3.zero
 			root.AssemblyAngularVelocity = Vector3.zero
 		end)
 	end)
+end
 
-	-- KALKAN 7: EGG KORUMA
-	Bypass.EggShield = RunService.Heartbeat:Connect(function()
+local function EggProtection()
+	Bypass.Shields.Egg = RunService.Heartbeat:Connect(function()
 		if not HL.AutoEgg then return end
 		local char = LocalPlayer.Character
 		if not char then return end
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not hum then return end
+		
 		pcall(function()
 			if hum.WalkSpeed < 16 then hum.WalkSpeed = 16 end
 			if hum.JumpPower < 50 then hum.JumpPower = 50 end
 		end)
 	end)
+end
 
-	-- KALKAN 8: WALKSPEED KORUMA
-	Bypass.WalkShield = RunService.Heartbeat:Connect(function()
+local function NoclipProtection()
+	Bypass.Shields.Noclip = RunService.Stepped:Connect(function()
+		if not HL.Noclip then return end
 		local char = LocalPlayer.Character
 		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hum then return end
-		pcall(function()
-			if hum.WalkSpeed < 16 and not HL.Fly then hum.WalkSpeed = 16 end
-			if hum.WalkSpeed == 0 then hum.WalkSpeed = 16 end
-		end)
-	end)
-
-	-- KALKAN 9: JUMPPOWER KORUMA
-	Bypass.JumpShield = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hum then return end
-		pcall(function()
-			if hum.JumpPower < 50 and not HL.Fly then hum.JumpPower = 50 end
-		end)
-	end)
-
-	-- KALKAN 10: STATE KORUMA
-	Bypass.StateShield = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hum then return end
-		pcall(function()
-			if hum.PlatformStand and not HL.Fly then hum.PlatformStand = false end
-			hum.AutoRotate = true
-		end)
-	end)
-
-	-- KALKAN 11: PARENT KORUMA
-	Bypass.ParentShield = RunService.Heartbeat:Connect(function()
-		if not LocalPlayer:IsDescendantOf(Players) then
-			pcall(function() LocalPlayer.Parent = Players end)
+		
+		for _, p in ipairs(char:GetDescendants()) do
+			if p:IsA("BasePart") then
+				p.CanCollide = false
+			end
 		end
 	end)
+end
 
-	-- KALKAN 12: HEALTH KORUMA
-	Bypass.HealthShield = RunService.Heartbeat:Connect(function()
+local function GodProtection()
+	Bypass.Shields.God = RunService.Heartbeat:Connect(function()
+		if not HL.God then return end
 		local char = LocalPlayer.Character
 		if not char then return end
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not hum then return end
+		
 		pcall(function()
-			if hum.Health <= 0 then hum.Health = hum.MaxHealth end
+			hum.Health = hum.MaxHealth
 		end)
 	end)
-
-	print("🍑 v24 AŞIRI BYPASS AKTİF - 12 KALKAN")
 end
+
+local function StartBypass()
+	if Bypass.Active then return end
+	Bypass.Active = true
+	
+	print("🍑 700+ SATIR AŞIRI BYPASS BAŞLATILIYOR...")
+	
+	NeutralizeAntiCheatScripts()
+	BlockRemoteEvents()
+	BlockTeleportService()
+	KickBanProtection()
+	PositionSpoofingSystem()
+	NetworkTrafficControl()
+	HumanoidProtection()
+	PositionProtection()
+	AntiDetectionSystem()
+	SpeedProtection()
+	JumpProtection()
+	StateProtection()
+	ParentProtection()
+	HealthProtection()
+	FlyProtection()
+	TPProtection()
+	EggProtection()
+	NoclipProtection()
+	GodProtection()
+	
+	print("🍑 19 KORUMA SİSTEMİ AKTİF")
+	print("🍑 ANTICHEAT TAMAMEN ETKİSİZ")
+end
+
+StartBypass()
+
+print("[HL] PART 1/3 YÜKLENDİ - BYPASS SİSTEMİ")-- ============================================================
+-- HAMSTERLİVES v25 - PART 2/3
+-- MOD SİSTEMLERİ (FLY + TP + CUBE + AUTOEGG)
+-- ============================================================
 
 -- ==================== SÜZÜLME FLY ====================
 local function StopFly()
@@ -504,7 +763,7 @@ local function ToggleCube()
 	if not HL.Cube then DestroyCube() end
 end
 
--- ==================== AUTO EGG (3 SANİYE AÇIK + 1 MS KAPALI) ====================
+-- ==================== AUTO EGG ====================
 local function FindBestEgg()
 	local best, bestScore = nil, -1
 	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -538,12 +797,11 @@ local function ToggleAutoEgg()
 		HL.Conn.AutoEgg = RunService.Heartbeat:Connect(function(dt)
 			if not HL.AutoEgg then return end
 			
-			-- 3 saniye çalış, 1 ms duraklat
 			HL.EggTimer = HL.EggTimer + dt
 			
 			if HL.EggTimer >= 3 then
 				HL.EggTimer = 0
-				HL.EggPauseUntil = os.clock() + 0.001 -- 1 ms
+				HL.EggPauseUntil = os.clock() + 0.001
 			end
 			
 			if os.clock() < HL.EggPauseUntil then
@@ -585,12 +843,10 @@ local function ToggleGod()
 	end
 end
 
--- ==================== BAŞLAT ====================
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
-StartBypass()
 
-print("[HL] Part 1 hazır - v24 TEMİZ")-- ============================================================
--- HAMSTERLİVES v24 - PART 2/2
+print("[HL] PART 2/3 YÜKLENDİ - MOD SİSTEMLERİ")-- ============================================================
+-- HAMSTERLİVES v25 - PART 3/3
 -- MENÜ + TUŞLAR
 -- ============================================================
 
@@ -623,7 +879,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v24"
+	title.Text = "  HAMSTERLİVES  v25"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -787,4 +1043,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	if not Bypass.Active then StartBypass() end
 end)
 
-print("[HL] v24 yüklendi - TEMİZ SÜRÜM")
+print("[HL] PART 3/3 YÜKLENDİ - MENÜ + TUŞLAR")

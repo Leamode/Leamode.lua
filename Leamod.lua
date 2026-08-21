@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v43 TAM SÜRÜM - PART 1/2
--- ANTICHEAT BLOK + BYPASS + FLY + TP + CUBE + AUTOEGG
+-- HAMSTERLİVES v48 TAM SÜRÜM - PART 1/2
+-- ANTIKICK + ANTIRESET + BYPASS + FLY + TP + CUBE + AUTOEGG
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -17,7 +17,8 @@ local HL = {
 	God = false,
 	Cube = false,
 	AutoEgg = false,
-	AntiCheatBlock = false,
+	AntiKickActive = false,
+	AntiResetActive = false,
 	IsMobile = false,
 	ModeSelected = false,
 	PullTarget = nil,
@@ -29,11 +30,12 @@ local HL = {
 	EggTimer = 0,
 	EggPauseUntil = 0,
 	LastBlockTime = 0,
+	LastResetCheck = 0,
 	Conn = {},
 	Buttons = {}
 }
 
--- ==================== ANTICHEAT BLOK SİSTEMİ ====================
+-- ==================== REMOTE YOK ETME SİSTEMİ ====================
 local function GetRemote(name)
 	local remote = nil
 	pcall(function()
@@ -51,32 +53,161 @@ local function GetRemote(name)
 	return remote
 end
 
-local function BlockAllAntiCheatRemotes()
-	local blocked = 0
+local function DestroyAllAntiCheatRemotes()
+	local destroyed = {}
 	
-	-- Tüm anticheat remote'larını blokla
-	local remoteNames = {
-		"ClientCharacter: IntegrityViolation",
-		"ClientCharacter: IntegrityHeartbeat",
-		"ClientCharacter: CorrectionStarted",
-		"ClientCharacter: Sync",
-		"ClientCharacter: RequestCharacterReset",
-		"ClientCharacter: Ready",
-		"ClientCharacter: Update"
-	}
+	pcall(function()
+		local rs = game:GetService("ReplicatedStorage")
+		local network = rs:FindFirstChild("Network")
+		if network then
+			for _, obj in ipairs(network:GetDescendants()) do
+				if obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") then
+					local name = string.lower(obj.Name)
+					
+					if string.find(name, "clientcharacter") or 
+					   string.find(name, "integrity") or
+					   string.find(name, "correction") or
+					   string.find(name, "violation") or
+					   string.find(name, "reset") then
+						
+						table.insert(destroyed, obj.Name)
+						pcall(function()
+							obj:Destroy()
+						end)
+					end
+				end
+			end
+		end
+	end)
 	
-	for _, name in pairs(remoteNames) do
+	return destroyed
+end
+
+-- ==================== ANTI-KICK SİSTEMİ ====================
+local function StartAntiKick()
+	if HL.AntiKickActive then return end
+	HL.AntiKickActive = true
+	
+	print("🍑 ANTI-KICK BAŞLADI")
+	
+	-- İlk yok etme
+	local destroyed = DestroyAllAntiCheatRemotes()
+	print("🍑 " .. #destroyed .. " remote yok edildi")
+	
+	-- Parent koruması
+	LocalPlayer.Changed:Connect(function(prop)
+		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
+			pcall(function()
+				LocalPlayer.Parent = Players
+			end)
+		end
+	end)
+	
+	task.spawn(function()
+		while HL.AntiKickActive do
+			task.wait(0.001)
+			if not LocalPlayer:IsDescendantOf(Players) then
+				pcall(function()
+					LocalPlayer.Parent = Players
+				end)
+			end
+		end
+	end)
+	
+	-- Sürekli yok et
+	HL.Conn.AntiKick = RunService.Heartbeat:Connect(function()
+		if not HL.AntiKickActive then return end
+		
+		if os.clock() - HL.LastBlockTime > 0.5 then
+			HL.LastBlockTime = os.clock()
+			
+			-- Kick UI temizliği
+			pcall(function()
+				local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+				if playerGui then
+					for _, child in pairs(playerGui:GetChildren()) do
+						local name = string.lower(child.Name)
+						if string.find(name, "kick") or 
+						   string.find(name, "ban") or 
+						   string.find(name, "integrity") or
+						   string.find(name, "error") or
+						   string.find(name, "denetim") or
+						   string.find(name, "moderation") then
+							child:Destroy()
+						end
+					end
+				end
+			end)
+			
+			DestroyAllAntiCheatRemotes()
+		end
+	end)
+	
+	print("🍑 ANTI-KICK AKTİF")
+end
+
+-- ==================== ANTI-RESET SİSTEMİ ====================
+local function StartAntiReset()
+	if HL.AntiResetActive then return end
+	HL.AntiResetActive = true
+	
+	print("🍑 ANTI-RESET BAŞLADI")
+	
+	-- Karakter değişimini izle
+	LocalPlayer.CharacterAdded:Connect(function(char)
+		task.wait(0.5)
+		
+		-- Yeni karakterin Humanoid'ini koru
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.Died:Connect(function()
+				pcall(function()
+					hum.Health = hum.MaxHealth
+					hum:ChangeState(Enum.HumanoidStateType.Running)
+				end)
+			end)
+		end
+	end)
+	
+	-- Sürekli anti-reset
+	HL.Conn.AntiReset = RunService.Heartbeat:Connect(function()
+		if not HL.AntiResetActive then return end
+		
+		local char = LocalPlayer.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not root or not hum then return end
+		
 		pcall(function()
-			local remote = GetRemote(name)
-			if remote then
-				remote.Parent = nil
-				blocked = blocked + 1
-				print("✅ Bloklandı: " .. name)
+			-- Ölümü engelle
+			if hum:GetState() == Enum.HumanoidStateType.Dead then
+				hum.Health = hum.MaxHealth
+				hum:ChangeState(Enum.HumanoidStateType.Running)
+			end
+			
+			-- Health koruması
+			if hum.Health < hum.MaxHealth * 0.95 or HL.God then
+				hum.Health = hum.MaxHealth
+			end
+			
+			-- Karakter workspace dışına atılırsa
+			if not root:IsDescendantOf(workspace) then
+				pcall(function() root.Parent = char end)
+			end
+			
+			-- Void'e düşerse kurtar
+			if root.Position.Y < -50 then
+				pcall(function()
+					if Bypass.LastSafePosition then
+						root.CFrame = CFrame.new(Bypass.LastSafePosition)
+					end
+				end)
 			end
 		end)
-	end
+	end)
 	
-	return blocked
+	print("🍑 ANTI-RESET AKTİF")
 end
 
 -- ==================== BYPASS SİSTEMİ ====================
@@ -114,7 +245,6 @@ local function StartBypass()
 	if Bypass.Active then return end
 	Bypass.Active = true
 	
-	-- ANA KORUMA
 	Bypass.Shields.Main = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
@@ -154,7 +284,6 @@ local function StartBypass()
 		Bypass.LastSafePosition = root.Position
 	end)
 	
-	-- HIZ KORUMASI
 	Bypass.Shields.Speed = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
@@ -175,7 +304,6 @@ local function StartBypass()
 		end)
 	end)
 	
-	-- POZİSYON SPOOF
 	Bypass.Shields.Spoof = RunService.RenderStepped:Connect(function()
 		if not Bypass.Active then return end
 		local char = LocalPlayer.Character
@@ -203,14 +331,6 @@ local function StartBypass()
 		end
 	end)
 	
-	-- KICK ENGELLEYİCİ
-	Bypass.Shields.Kick = LocalPlayer.Changed:Connect(function(prop)
-		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
-			pcall(function() LocalPlayer.Parent = Players end)
-		end
-	end)
-	
-	-- AĞ SAHİPLİĞİ
 	Bypass.Shields.Network = RunService.Heartbeat:Connect(function()
 		local char = LocalPlayer.Character
 		if not char then return end
@@ -221,16 +341,6 @@ local function StartBypass()
 				root:SetNetworkOwner(LocalPlayer)
 			end
 		end)
-	end)
-	
-	-- ANTICHEAT REMOTE BLOK (sürekli)
-	Bypass.Shields.AntiCheat = RunService.Heartbeat:Connect(function()
-		if not HL.AntiCheatBlock then return end
-		
-		if os.clock() - HL.LastBlockTime > 3 then
-			HL.LastBlockTime = os.clock()
-			BlockAllAntiCheatRemotes()
-		end
 	end)
 	
 	print("🍑 BYPASS AKTİF")
@@ -495,23 +605,9 @@ local function ToggleAutoEgg()
 	end
 	if HL.AutoEgg then
 		if HL.Conn.AutoEgg then HL.Conn.AutoEgg:Disconnect() end
-		HL.EggTimer = 0
-		HL.EggPauseUntil = 0
 		
 		HL.Conn.AutoEgg = RunService.Heartbeat:Connect(function(dt)
 			if not HL.AutoEgg then return end
-			
-			HL.EggTimer = HL.EggTimer + dt
-			if HL.EggTimer >= 3 then
-				HL.EggTimer = 0
-				HL.EggPauseUntil = os.clock() + 0.001
-			end
-			
-			if os.clock() < HL.EggPauseUntil then
-				StopPull()
-				return
-			end
-			
 			if HL.PullActive then return end
 			
 			local t = FindBestEgg()
@@ -546,26 +642,12 @@ local function ToggleGod()
 	end
 end
 
--- ==================== ANTICHEAT BLOK TOGGLE ====================
-local function ToggleAntiCheatBlock()
-	HL.AntiCheatBlock = not HL.AntiCheatBlock
-	local b = HL.Buttons.AntiCheat
-	if b then
-		b.Text = HL.AntiCheatBlock and "ANTICHEAT  ●" or "ANTICHEAT  ○"
-		b.BackgroundColor3 = HL.AntiCheatBlock and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(40, 40, 50)
-	end
-	if HL.AntiCheatBlock then
-		BlockAllAntiCheatRemotes()
-		print("🍑 ANTICHEAT BLOKLANDI")
-	end
-end
-
 -- ==================== BAŞLAT ====================
 HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
 StartBypass()
 
-print("[HL] PART 1/2 YÜKLENDİ - v43")-- ============================================================
--- HAMSTERLİVES v43 TAM SÜRÜM - PART 2/2
+print("[HL] PART 1/2 YÜKLENDİ - v48")-- ============================================================
+-- HAMSTERLİVES v48 TAM SÜRÜM - PART 2/2
 -- MENÜ + TUŞLAR
 -- ============================================================
 
@@ -582,7 +664,7 @@ local function CreateMainMenu()
 	gui.Parent = playerGui
 
 	local main = Instance.new("Frame")
-	main.Size = UDim2.new(0, 240, 0, 470)
+	main.Size = UDim2.new(0, 240, 0, 510)
 	main.Position = UDim2.new(0.5, -120, 0.5, -120)
 	main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 	main.BorderSizePixel = 0
@@ -599,7 +681,7 @@ local function CreateMainMenu()
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v43"
+	title.Text = "  HAMSTERLİVES  v48"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 15
@@ -651,7 +733,24 @@ local function CreateMainMenu()
 	HL.Buttons.God        = makeBtn("ANTİ-YAKALANMA  ○", 202, ToggleGod)
 	HL.Buttons.Cube       = makeBtn("CUBE  ○ KAPALI", 240, ToggleCube)
 	HL.Buttons.AutoEgg    = makeBtn("AUTO EGG  ○", 278, ToggleAutoEgg)
-	HL.Buttons.AntiCheat  = makeBtn("ANTICHEAT BLOK  ○", 316, ToggleAntiCheatBlock)
+	HL.Buttons.AntiKick   = makeBtn("ANTI-KICK  ○", 316, function()
+		HL.AntiKickActive = not HL.AntiKickActive
+		local btn = HL.Buttons.AntiKick
+		if btn then
+			btn.Text = HL.AntiKickActive and "ANTI-KICK  ●" or "ANTI-KICK  ○"
+			btn.BackgroundColor3 = HL.AntiKickActive and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(40, 40, 50)
+		end
+		if HL.AntiKickActive then StartAntiKick() end
+	end)
+	HL.Buttons.AntiReset  = makeBtn("ANTI-RESET  ○", 354, function()
+		HL.AntiResetActive = not HL.AntiResetActive
+		local btn = HL.Buttons.AntiReset
+		if btn then
+			btn.Text = HL.AntiResetActive and "ANTI-RESET  ●" or "ANTI-RESET  ○"
+			btn.BackgroundColor3 = HL.AntiResetActive and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(40, 40, 50)
+		end
+		if HL.AntiResetActive then StartAntiReset() end
+	end)
 
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 28, 0, 28)
@@ -753,9 +852,14 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 	elseif inp.KeyCode == Enum.KeyCode.F5 then TP()
 	elseif inp.KeyCode == Enum.KeyCode.F6 then ToggleNoclip()
 	elseif inp.KeyCode == Enum.KeyCode.F7 then ToggleGod()
-	elseif inp.KeyCode == Enum.KeyCode.F8 then ToggleAntiCheatBlock()
 	elseif inp.KeyCode == Enum.KeyCode.F9 then ToggleCube()
 	elseif inp.KeyCode == Enum.KeyCode.F10 then ToggleAutoEgg()
+	elseif inp.KeyCode == Enum.KeyCode.F11 then
+		HL.AntiKickActive = not HL.AntiKickActive
+		if HL.AntiKickActive then StartAntiKick() end
+	elseif inp.KeyCode == Enum.KeyCode.F12 then
+		HL.AntiResetActive = not HL.AntiResetActive
+		if HL.AntiResetActive then StartAntiReset() end
 	end
 end)
 
@@ -763,6 +867,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(1.2)
 	if HL.Fly then StartFly() end
 	if not Bypass.Active then StartBypass() end
+	if HL.AntiResetActive then StartAntiReset() end
 end)
 
-print("[HL] PART 2/2 YÜKLENDİ - v43 TAM")
+print("[HL] PART 2/2 YÜKLENDİ - v48 TAM")

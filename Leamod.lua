@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTERLİVES v48 TAM SÜRÜM - PART 1/2
--- ANTIKICK + ANTIRESET + BYPASS + FLY + TP + CUBE + AUTOEGG
+-- HAMSTERLİVES v50 - RGB COOL + ANTIRESET + YER BELİRLEME
+-- ERR INT 27 engelle + Antireset + Oynatılabilir RGB Menü
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -8,34 +8,21 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
 local HL = {
-	Fly = false,
-	Speed = 18,
-	Saved = nil,
-	Noclip = false,
-	God = false,
-	Cube = false,
 	AutoEgg = false,
 	AntiKickActive = false,
 	AntiResetActive = false,
-	IsMobile = false,
-	ModeSelected = false,
-	PullTarget = nil,
-	PullActive = false,
-	LocalCube = nil,
-	OscTimer = 0,
-	GlideTimer = 0,
-	GlideVelocity = Vector3.zero,
-	EggTimer = 0,
-	EggPauseUntil = 0,
+	Saved = nil,
 	LastBlockTime = 0,
 	LastResetCheck = 0,
+	RGBHue = 0,
 	Conn = {},
 	Buttons = {}
 }
 
--- ==================== REMOTE YOK ETME SİSTEMİ ====================
+-- ==================== REMOTE YOK ETME (AYNI) ====================
 local function GetRemote(name)
 	local remote = nil
 	pcall(function()
@@ -53,9 +40,8 @@ local function GetRemote(name)
 	return remote
 end
 
-local function DestroyAllAntiCheatRemotes()
+local function DestroyAllClientCharacterRemotes()
 	local destroyed = {}
-	
 	pcall(function()
 		local rs = game:GetService("ReplicatedStorage")
 		local network = rs:FindFirstChild("Network")
@@ -63,43 +49,32 @@ local function DestroyAllAntiCheatRemotes()
 			for _, obj in ipairs(network:GetDescendants()) do
 				if obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") then
 					local name = string.lower(obj.Name)
-					
 					if string.find(name, "clientcharacter") or 
 					   string.find(name, "integrity") or
 					   string.find(name, "correction") or
-					   string.find(name, "violation") or
-					   string.find(name, "reset") then
-						
+					   string.find(name, "violation") then
 						table.insert(destroyed, obj.Name)
-						pcall(function()
-							obj:Destroy()
-						end)
+						pcall(function() obj:Destroy() end)
 					end
 				end
 			end
 		end
 	end)
-	
 	return destroyed
 end
 
--- ==================== ANTI-KICK SİSTEMİ ====================
+-- ==================== ANTI-KICK ====================
 local function StartAntiKick()
 	if HL.AntiKickActive then return end
 	HL.AntiKickActive = true
 	
 	print("🍑 ANTI-KICK BAŞLADI")
 	
-	-- İlk yok etme
-	local destroyed = DestroyAllAntiCheatRemotes()
-	print("🍑 " .. #destroyed .. " remote yok edildi")
+	DestroyAllClientCharacterRemotes()
 	
-	-- Parent koruması
 	LocalPlayer.Changed:Connect(function(prop)
 		if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
-			pcall(function()
-				LocalPlayer.Parent = Players
-			end)
+			pcall(function() LocalPlayer.Parent = Players end)
 		end
 	end)
 	
@@ -107,57 +82,42 @@ local function StartAntiKick()
 		while HL.AntiKickActive do
 			task.wait(0.001)
 			if not LocalPlayer:IsDescendantOf(Players) then
-				pcall(function()
-					LocalPlayer.Parent = Players
-				end)
+				pcall(function() LocalPlayer.Parent = Players end)
 			end
 		end
 	end)
 	
-	-- Sürekli yok et
 	HL.Conn.AntiKick = RunService.Heartbeat:Connect(function()
 		if not HL.AntiKickActive then return end
-		
 		if os.clock() - HL.LastBlockTime > 0.5 then
 			HL.LastBlockTime = os.clock()
-			
-			-- Kick UI temizliği
 			pcall(function()
 				local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
 				if playerGui then
 					for _, child in pairs(playerGui:GetChildren()) do
 						local name = string.lower(child.Name)
-						if string.find(name, "kick") or 
-						   string.find(name, "ban") or 
-						   string.find(name, "integrity") or
-						   string.find(name, "error") or
-						   string.find(name, "denetim") or
-						   string.find(name, "moderation") then
+						if string.find(name, "kick") or string.find(name, "ban") or 
+						   string.find(name, "integrity") or string.find(name, "error") or
+						   string.find(name, "denetim") or string.find(name, "moderation") then
 							child:Destroy()
 						end
 					end
 				end
 			end)
-			
-			DestroyAllAntiCheatRemotes()
+			DestroyAllClientCharacterRemotes()
 		end
 	end)
-	
-	print("🍑 ANTI-KICK AKTİF")
 end
 
--- ==================== ANTI-RESET SİSTEMİ ====================
+-- ==================== ANTI-RESET ====================
 local function StartAntiReset()
 	if HL.AntiResetActive then return end
 	HL.AntiResetActive = true
 	
 	print("🍑 ANTI-RESET BAŞLADI")
 	
-	-- Karakter değişimini izle
 	LocalPlayer.CharacterAdded:Connect(function(char)
 		task.wait(0.5)
-		
-		-- Yeni karakterin Humanoid'ini koru
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum then
 			hum.Died:Connect(function()
@@ -169,10 +129,8 @@ local function StartAntiReset()
 		end
 	end)
 	
-	-- Sürekli anti-reset
 	HL.Conn.AntiReset = RunService.Heartbeat:Connect(function()
 		if not HL.AntiResetActive then return end
-		
 		local char = LocalPlayer.Character
 		if not char then return end
 		local root = char:FindFirstChild("HumanoidRootPart")
@@ -180,273 +138,71 @@ local function StartAntiReset()
 		if not root or not hum then return end
 		
 		pcall(function()
-			-- Ölümü engelle
 			if hum:GetState() == Enum.HumanoidStateType.Dead then
 				hum.Health = hum.MaxHealth
 				hum:ChangeState(Enum.HumanoidStateType.Running)
 			end
-			
-			-- Health koruması
-			if hum.Health < hum.MaxHealth * 0.95 or HL.God then
+			if hum.Health < hum.MaxHealth * 0.95 then
 				hum.Health = hum.MaxHealth
 			end
-			
-			-- Karakter workspace dışına atılırsa
 			if not root:IsDescendantOf(workspace) then
 				pcall(function() root.Parent = char end)
 			end
-			
-			-- Void'e düşerse kurtar
 			if root.Position.Y < -50 then
 				pcall(function()
-					if Bypass.LastSafePosition then
-						root.CFrame = CFrame.new(Bypass.LastSafePosition)
+					if HL.Saved then
+						root.CFrame = CFrame.new(HL.Saved)
 					end
 				end)
 			end
-		end)
-	end)
-	
-	print("🍑 ANTI-RESET AKTİF")
-end
-
--- ==================== BYPASS SİSTEMİ ====================
-local Bypass = {
-	Active = false,
-	LastSafePosition = nil,
-	FakePosition = nil,
-	GroundY = nil,
-	GroundCacheTime = 0,
-	Shields = {}
-}
-
-local function FindGroundYFast(pos)
-	local now = os.clock()
-	if Bypass.GroundY and (now - Bypass.GroundCacheTime) < 0.1 then
-		return Bypass.GroundY
-	end
-	
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	if LocalPlayer.Character then
-		params.FilterDescendantsInstances = {LocalPlayer.Character}
-	end
-	
-	local result = workspace:Raycast(pos + Vector3.new(0, 50, 0), Vector3.new(0, -500, 0), params)
-	if result then
-		Bypass.GroundY = result.Position.Y + 3.2
-		Bypass.GroundCacheTime = now
-		return Bypass.GroundY
-	end
-	return pos.Y - 10
-end
-
-local function StartBypass()
-	if Bypass.Active then return end
-	Bypass.Active = true
-	
-	Bypass.Shields.Main = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not root or not hum then return end
-		
-		pcall(function()
-			if hum.Health < hum.MaxHealth * 0.95 or HL.God then
-				hum.Health = hum.MaxHealth
-			end
-			if hum:GetState() == Enum.HumanoidStateType.Dead then
-				hum.Health = hum.MaxHealth
-				hum:ChangeState(Enum.HumanoidStateType.Running)
-			end
-		end)
-		
-		if not root:IsDescendantOf(workspace) then
-			pcall(function() root.Parent = char end)
-		end
-		
-		if Bypass.LastSafePosition and not HL.Fly and not HL.PullActive then
-			local dist = (root.Position - Bypass.LastSafePosition).Magnitude
-			if dist > 100 then
-				pcall(function() root.CFrame = CFrame.new(Bypass.LastSafePosition) end)
-			end
-		end
-		
-		if root.Position.Y < -50 then
-			pcall(function()
-				if Bypass.LastSafePosition then
-					root.CFrame = CFrame.new(Bypass.LastSafePosition)
-				end
-			end)
-		end
-		
-		Bypass.LastSafePosition = root.Position
-	end)
-	
-	Bypass.Shields.Speed = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hum then return end
-		
-		pcall(function()
-			if hum.WalkSpeed < 16 and not HL.Fly then
-				hum.WalkSpeed = 16
-			end
-			if hum.JumpPower < 50 and not HL.Fly then
-				hum.JumpPower = 50
-			end
-			if hum.PlatformStand and not HL.Fly then
-				hum.PlatformStand = false
-			end
-			hum.AutoRotate = true
-		end)
-	end)
-	
-	Bypass.Shields.Spoof = RunService.RenderStepped:Connect(function()
-		if not Bypass.Active then return end
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-		
-		if root.Position.Y > 15 then
-			local gy = Bypass.FakePosition and Bypass.FakePosition.Y or FindGroundYFast(root.Position)
-			Bypass.FakePosition = Vector3.new(root.Position.X, gy, root.Position.Z)
-			
-			pcall(function()
-				local realCFrame = root.CFrame
-				root.CFrame = CFrame.new(Bypass.FakePosition)
-				root.AssemblyLinearVelocity = Vector3.new(0, -0.05, 0)
-				
-				task.defer(function()
-					pcall(function()
-						if HL.Fly or HL.PullActive then
-							root.CFrame = realCFrame
-						end
-					end)
-				end)
-			end)
-		end
-	end)
-	
-	Bypass.Shields.Network = RunService.Heartbeat:Connect(function()
-		local char = LocalPlayer.Character
-		if not char then return end
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-		pcall(function()
-			if root:GetNetworkOwner() ~= LocalPlayer then
-				root:SetNetworkOwner(LocalPlayer)
-			end
-		end)
-	end)
-	
-	print("🍑 BYPASS AKTİF")
-end
-
--- ==================== FLY ====================
-local function StopFly()
-	if HL.Conn.Fly then
-		HL.Conn.Fly:Disconnect()
-		HL.Conn.Fly = nil
-	end
-	local char = LocalPlayer.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.PlatformStand = false
-		pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
-	end
-	HL.GlideVelocity = Vector3.zero
-end
-
-local function StartFly()
-	StopFly()
-	local char = LocalPlayer.Character
-	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not root or not hum then return end
-	
-	pcall(function() hum:ChangeState(Enum.HumanoidStateType.Freefall) end)
-	HL.OscTimer = 0
-	HL.GlideTimer = 0
-	HL.GlideVelocity = Vector3.zero
-	
-	HL.Conn.Fly = RunService.RenderStepped:Connect(function(dt)
-		if not HL.Fly then return end
-		local r = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-		local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if not r or not h then return end
-		
-		pcall(function() h:ChangeState(Enum.HumanoidStateType.Freefall) end)
-		
-		local cf = Camera.CFrame
-		local move = Vector3.zero
-		
-		if HL.IsMobile then
-			local touches = UserInputService:GetTouches()
-			if #touches > 0 then
-				local t = touches[1]
-				local size = Camera.ViewportSize
-				local dx = (t.Position.X - size.X/2) / (size.X/2)
-				local dy = (t.Position.Y - size.Y/2) / (size.Y/2)
-				if math.abs(dx) > 0.04 or math.abs(dy) > 0.04 then
-					move = cf.LookVector * (-dy) + cf.RightVector * dx
+			-- Ani pozisyon değişimini düzelt
+			if HL.Saved and not HL.PullActive then
+				local dist = (root.Position - HL.Saved).Magnitude
+				if dist > 200 then
+					pcall(function() root.CFrame = CFrame.new(HL.Saved) end)
 				end
 			end
-		else
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + cf.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - cf.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - cf.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + cf.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.yAxis end
-			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.yAxis end
-		end
-		
-		local speed = HL.Speed * 3
-		if move.Magnitude > 0 then move = move.Unit * speed end
-		
-		HL.OscTimer = HL.OscTimer + dt
-		HL.GlideTimer = HL.GlideTimer + dt
-		
-		local targetVelocity = move
-		local lerpFactor = 1 - math.exp(-12 * dt)
-		HL.GlideVelocity = HL.GlideVelocity:Lerp(targetVelocity, lerpFactor)
-		
-		local downwardGlide = Vector3.new(0, -1, 0)
-		HL.GlideVelocity = HL.GlideVelocity + downwardGlide * dt
-		
-		if HL.GlideVelocity.Magnitude > speed * 2 then
-			HL.GlideVelocity = HL.GlideVelocity.Unit * speed * 2
-		end
-		
-		local oscY = math.sin(HL.OscTimer * 1.5) * 0.25
-		local oscX = math.cos(HL.OscTimer * 1.1) * 0.08
-		
-		local newPos = r.Position + HL.GlideVelocity * dt + Vector3.new(oscX * dt * 2, oscY * dt * 2, 0)
-		
-		local lookDir = HL.GlideVelocity.Magnitude > 0.5 and HL.GlideVelocity.Unit or cf.LookVector
-		local smoothCFrame = CFrame.new(newPos, newPos + lookDir:Lerp(cf.LookVector, 0.15))
-		
-		r.CFrame = smoothCFrame
-		r.AssemblyLinearVelocity = Vector3.new(0, -0.5, 0)
-		r.AssemblyAngularVelocity = Vector3.zero
+		end)
 	end)
 end
 
-local function ToggleFly()
-	HL.Fly = not HL.Fly
-	local b = HL.Buttons.Fly
+-- ==================== YER BELİRLEME ====================
+local function SavePos()
+	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	HL.Saved = root.Position
+	local b = HL.Buttons.Save
 	if b then
-		b.Text = HL.Fly and "FLY  ● AÇIK" or "FLY  ○ KAPALI"
-		b.BackgroundColor3 = HL.Fly and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
+		b.Text = "KAYDEDİLDİ ✓"
+		b.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+		task.delay(1.2, function()
+			if b then
+				b.Text = "YER BELİLE"
+				b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+			end
+		end)
 	end
-	if HL.Fly then StartFly() else StopFly() end
 end
 
--- ==================== TP ====================
+-- ==================== AUTOEGG ====================
+local function FindBestEgg()
+	local best, bestScore = nil, -1
+	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") or obj:IsA("Model") then
+			local name = string.lower(obj.Name)
+			if string.find(name, "egg") or string.find(name, "yumurta") then
+				local pos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+				local size = obj:IsA("BasePart") and obj.Size.Magnitude or 5
+				local score = size * 10 - (pos - root.Position).Magnitude * 0.05
+				if score > bestScore then bestScore = score best = pos end
+			end
+		end
+	end
+	return best
+end
+
 local function StopPull()
 	HL.PullActive = false
 	HL.PullTarget = nil
@@ -471,7 +227,7 @@ local function StartPull(targetPos)
 	local flatTarget = Vector3.new(targetPos.X, startPos.Y, targetPos.Z)
 	local totalDist = (flatTarget - startPos).Magnitude
 	local startTime = os.clock()
-	local duration = math.clamp(totalDist / (hum.WalkSpeed * 2), 0.1, 2)
+	local duration = math.clamp(totalDist / (hum.WalkSpeed * 1.5), 0.1, 2)
 	
 	HL.Conn.Pull = RunService.Heartbeat:Connect(function(dt)
 		if not HL.PullActive then return end
@@ -498,104 +254,6 @@ local function StartPull(targetPos)
 	end)
 end
 
-local function SavePos()
-	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	HL.Saved = root.Position
-	local b = HL.Buttons.Save
-	if b then
-		b.Text = "KAYDEDİLDİ ✓"
-		b.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-		task.delay(1.2, function()
-			if b then
-				b.Text = "YER BELİLE"
-				b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-			end
-		end)
-	end
-end
-
-local function TP()
-	if HL.Saved then
-		if HL.Fly then
-			HL.Fly = false
-			StopFly()
-		end
-		StartPull(HL.Saved)
-	end
-end
-
--- ==================== CUBE ====================
-local function DestroyCube()
-	if HL.LocalCube then
-		pcall(function() HL.LocalCube:Destroy() end)
-		HL.LocalCube = nil
-	end
-end
-
-local function UpdateCube()
-	if not HL.Cube then
-		DestroyCube()
-		return
-	end
-	local char = LocalPlayer.Character
-	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not root or not hum then return end
-	
-	local moving = hum.MoveDirection.Magnitude > 0.05
-	local air = hum:GetState() == Enum.HumanoidStateType.Jumping or hum:GetState() == Enum.HumanoidStateType.Freefall
-	
-	if not HL.LocalCube then
-		local p = Instance.new("Part")
-		p.Name = "HL_Cube"
-		p.Size = Vector3.new(4, 1, 4)
-		p.Anchored = true
-		p.CanCollide = true
-		p.Transparency = 0.9
-		p.Color = Color3.fromRGB(80, 80, 120)
-		p.Parent = workspace
-		HL.LocalCube = p
-	end
-	
-	if moving or air or HL.Fly then
-		HL.LocalCube.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3, root.Position.Z)
-		HL.LocalCube.CanCollide = true
-	else
-		HL.LocalCube.CanCollide = false
-	end
-end
-
-local function ToggleCube()
-	HL.Cube = not HL.Cube
-	local b = HL.Buttons.Cube
-	if b then
-		b.Text = HL.Cube and "CUBE  ● AÇIK" or "CUBE  ○ KAPALI"
-		b.BackgroundColor3 = HL.Cube and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
-	end
-	if not HL.Cube then DestroyCube() end
-end
-
--- ==================== AUTOEGG ====================
-local function FindBestEgg()
-	local best, bestScore = nil, -1
-	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if not root then return nil end
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") or obj:IsA("Model") then
-			local name = string.lower(obj.Name)
-			if string.find(name, "egg") or string.find(name, "yumurta") then
-				local pos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
-				local size = obj:IsA("BasePart") and obj.Size.Magnitude or 5
-				local score = size * 10 - (pos - root.Position).Magnitude * 0.05
-				if score > bestScore then bestScore = score best = pos end
-			end
-		end
-	end
-	return best
-end
-
 local function ToggleAutoEgg()
 	HL.AutoEgg = not HL.AutoEgg
 	local b = HL.Buttons.AutoEgg
@@ -605,11 +263,9 @@ local function ToggleAutoEgg()
 	end
 	if HL.AutoEgg then
 		if HL.Conn.AutoEgg then HL.Conn.AutoEgg:Disconnect() end
-		
 		HL.Conn.AutoEgg = RunService.Heartbeat:Connect(function(dt)
 			if not HL.AutoEgg then return end
 			if HL.PullActive then return end
-			
 			local t = FindBestEgg()
 			if t then StartPull(t) end
 		end)
@@ -622,73 +278,68 @@ local function ToggleAutoEgg()
 	end
 end
 
--- ==================== NOCLIP ====================
-local function ToggleNoclip()
-	HL.Noclip = not HL.Noclip
-	local b = HL.Buttons.Noclip
-	if b then
-		b.Text = HL.Noclip and "NOCLIP  ● AÇIK" or "NOCLIP  ○ KAPALI"
-		b.BackgroundColor3 = HL.Noclip and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
+-- ==================== RGB COOL MENÜ ====================
+local function HSVToRGB(h, s, v)
+	h = h % 1
+	local r, g, b
+	
+	if s <= 0 then
+		r, g, b = v, v, v
+	else
+		local h6 = h * 6
+		local i = math.floor(h6)
+		local f = h6 - i
+		local p = v * (1 - s)
+		local q = v * (1 - s * f)
+		local t = v * (1 - s * (1 - f))
+		
+		if i == 0 then r, g, b = v, t, p
+		elseif i == 1 then r, g, b = q, v, p
+		elseif i == 2 then r, g, b = p, v, t
+		elseif i == 3 then r, g, b = p, q, v
+		elseif i == 4 then r, g, b = t, p, v
+		else r, g, b = v, p, q end
 	end
+	
+	return Color3.new(r, g, b)
 end
 
--- ==================== GOD ====================
-local function ToggleGod()
-	HL.God = not HL.God
-	local b = HL.Buttons.God
-	if b then
-		b.Text = HL.God and "ANTİ-YAKALANMA  ●" or "ANTİ-YAKALANMA  ○"
-		b.BackgroundColor3 = HL.God and Color3.fromRGB(0, 190, 90) or Color3.fromRGB(40, 40, 50)
-	end
-end
-
--- ==================== BAŞLAT ====================
-HL.Conn.Cube = RunService.Heartbeat:Connect(UpdateCube)
-StartBypass()
-
-print("[HL] PART 1/2 YÜKLENDİ - v48")-- ============================================================
--- HAMSTERLİVES v48 TAM SÜRÜM - PART 2/2
--- MENÜ + TUŞLAR
--- ============================================================
-
-local function CreateMainMenu()
+local function CreateCoolMenu()
 	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 8)
 	if not playerGui then return end
-
-	local old = playerGui:FindFirstChild("HamsterLiveGUI")
-	if old then old:Destroy() end
-
+	
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HamsterLiveGUI"
 	gui.ResetOnSpawn = false
 	gui.Parent = playerGui
-
+	
 	local main = Instance.new("Frame")
-	main.Size = UDim2.new(0, 240, 0, 510)
-	main.Position = UDim2.new(0.5, -120, 0.5, -120)
-	main.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+	main.Size = UDim2.new(0, 280, 0, 260)
+	main.Position = UDim2.new(0.5, -140, 0.5, -130)
+	main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 	main.BorderSizePixel = 0
 	main.Active = true
 	main.Parent = gui
-	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
-
+	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
+	
 	local stroke = Instance.new("UIStroke", main)
-	stroke.Color = Color3.fromRGB(140, 0, 255)
-	stroke.Thickness = 2
+	stroke.Thickness = 3
 	stroke.Parent = main
-
+	
+	-- RGB BAŞLIK
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 40)
-	title.BackgroundColor3 = Color3.fromRGB(30, 20, 45)
+	title.Size = UDim2.new(1, 0, 0, 50)
+	title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v48"
+	title.Text = "HAMSTERLİVES THE BEST SCRİPT\nDEVELOPER XVERA"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 15
-	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextSize = 13
+	title.TextXAlignment = Enum.TextXAlignment.Center
 	title.Parent = main
-	Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
-
+	Instance.new("UICorner", title).CornerRadius = UDim.new(0, 14)
+	
+	-- Sürüklenebilir
 	local dragging, dragStart, startPos
 	title.InputBegan:Connect(function(inp)
 		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
@@ -708,12 +359,12 @@ local function CreateMainMenu()
 			main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
 		end
 	end)
-
+	
 	local function makeBtn(text, y, callback)
 		local b = Instance.new("TextButton")
-		b.Size = UDim2.new(1, -20, 0, 32)
-		b.Position = UDim2.new(0, 10, 0, y)
-		b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+		b.Size = UDim2.new(1, -24, 0, 35)
+		b.Position = UDim2.new(0, 12, 0, y)
+		b.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 		b.BorderSizePixel = 0
 		b.Text = text
 		b.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -724,150 +375,80 @@ local function CreateMainMenu()
 		b.MouseButton1Click:Connect(callback)
 		return b
 	end
-
+	
 	HL.Buttons = {}
-	HL.Buttons.Fly        = makeBtn("FLY  ○ KAPALI", 50, ToggleFly)
-	HL.Buttons.Save       = makeBtn("YER BELİLE", 88, SavePos)
-	HL.Buttons.TP         = makeBtn("TP ET (DÜZ)", 126, TP)
-	HL.Buttons.Noclip     = makeBtn("NOCLIP  ○ KAPALI", 164, ToggleNoclip)
-	HL.Buttons.God        = makeBtn("ANTİ-YAKALANMA  ○", 202, ToggleGod)
-	HL.Buttons.Cube       = makeBtn("CUBE  ○ KAPALI", 240, ToggleCube)
-	HL.Buttons.AutoEgg    = makeBtn("AUTO EGG  ○", 278, ToggleAutoEgg)
-	HL.Buttons.AntiKick   = makeBtn("ANTI-KICK  ○", 316, function()
+	HL.Buttons.AntiKick  = makeBtn("ANTI-KICK  ○", 60, function()
 		HL.AntiKickActive = not HL.AntiKickActive
-		local btn = HL.Buttons.AntiKick
-		if btn then
-			btn.Text = HL.AntiKickActive and "ANTI-KICK  ●" or "ANTI-KICK  ○"
-			btn.BackgroundColor3 = HL.AntiKickActive and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(40, 40, 50)
-		end
+		HL.Buttons.AntiKick.Text = HL.AntiKickActive and "ANTI-KICK  ●" or "ANTI-KICK  ○"
+		HL.Buttons.AntiKick.BackgroundColor3 = HL.AntiKickActive and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(35, 35, 45)
 		if HL.AntiKickActive then StartAntiKick() end
 	end)
-	HL.Buttons.AntiReset  = makeBtn("ANTI-RESET  ○", 354, function()
+	HL.Buttons.AntiReset = makeBtn("ANTI-RESET  ○", 100, function()
 		HL.AntiResetActive = not HL.AntiResetActive
-		local btn = HL.Buttons.AntiReset
-		if btn then
-			btn.Text = HL.AntiResetActive and "ANTI-RESET  ●" or "ANTI-RESET  ○"
-			btn.BackgroundColor3 = HL.AntiResetActive and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(40, 40, 50)
-		end
+		HL.Buttons.AntiReset.Text = HL.AntiResetActive and "ANTI-RESET  ●" or "ANTI-RESET  ○"
+		HL.Buttons.AntiReset.BackgroundColor3 = HL.AntiResetActive and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(35, 35, 45)
 		if HL.AntiResetActive then StartAntiReset() end
 	end)
-
-	local close = Instance.new("TextButton")
-	close.Size = UDim2.new(0, 28, 0, 28)
-	close.Position = UDim2.new(1, -34, 0, 6)
-	close.BackgroundColor3 = Color3.fromRGB(180, 40, 50)
-	close.Text = "X"
-	close.TextColor3 = Color3.fromRGB(255, 255, 255)
-	close.Font = Enum.Font.GothamBold
-	close.TextSize = 14
-	close.Parent = main
-	Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
-	close.MouseButton1Click:Connect(function() main.Visible = false end)
-
-	local open = Instance.new("TextButton")
-	open.Size = UDim2.new(0, 50, 0, 50)
-	open.Position = UDim2.new(1, -65, 0, 20)
-	open.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
-	open.Text = "HL"
-	open.TextColor3 = Color3.fromRGB(255, 255, 255)
-	open.Font = Enum.Font.GothamBold
-	open.TextSize = 16
-	open.Parent = gui
-	Instance.new("UICorner", open).CornerRadius = UDim.new(1, 0)
-	open.MouseButton1Click:Connect(function() main.Visible = not main.Visible end)
+	HL.Buttons.Save      = makeBtn("YER BELİLE", 140, SavePos)
+	HL.Buttons.AutoEgg   = makeBtn("AUTO EGG  ○", 180, ToggleAutoEgg)
+	
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 28, 0, 28)
+	closeBtn.Position = UDim2.new(1, -34, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.Parent = main
+	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+	closeBtn.MouseButton1Click:Connect(function() main.Visible = false end)
+	
+	local openBtn = Instance.new("TextButton")
+	openBtn.Size = UDim2.new(0, 50, 0, 50)
+	openBtn.Position = UDim2.new(1, -65, 0, 20)
+	openBtn.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
+	openBtn.Text = "HL"
+	openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	openBtn.Font = Enum.Font.GothamBold
+	openBtn.TextSize = 16
+	openBtn.Parent = gui
+	Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
+	openBtn.MouseButton1Click:Connect(function() main.Visible = not main.Visible end)
+	
+	-- RGB ANİMASYON
+	HL.Conn.RGB = RunService.RenderStepped:Connect(function(dt)
+		HL.RGBHue = HL.RGBHue + dt * 0.3
+		if HL.RGBHue > 1 then HL.RGBHue = HL.RGBHue - 1 end
+		
+		local rgbColor = HSVToRGB(HL.RGBHue, 1, 1)
+		stroke.Color = rgbColor
+		title.TextColor3 = rgbColor
+		openBtn.BackgroundColor3 = rgbColor
+	end)
 end
 
-local function CreateStartScreen()
-	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 8)
-	if not playerGui then return end
-	local old = playerGui:FindFirstChild("HL_Start")
-	if old then old:Destroy() end
+CreateCoolMenu()
 
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "HL_Start"
-	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
-	gui.Parent = playerGui
-
-	local bg = Instance.new("Frame")
-	bg.Size = UDim2.new(1, 0, 1, 0)
-	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	bg.BorderSizePixel = 0
-	bg.Parent = gui
-
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 50)
-	title.Position = UDim2.new(0, 0, 0.3, 0)
-	title.BackgroundTransparency = 1
-	title.Text = "HAMSTERLİVES"
-	title.TextColor3 = Color3.fromRGB(180, 0, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 32
-	title.Parent = bg
-
-	local sub = Instance.new("TextLabel")
-	sub.Size = UDim2.new(1, 0, 0, 30)
-	sub.Position = UDim2.new(0, 0, 0.38, 0)
-	sub.BackgroundTransparency = 1
-	sub.Text = "Cihazını seç"
-	sub.TextColor3 = Color3.fromRGB(200, 200, 200)
-	sub.Font = Enum.Font.Gotham
-	sub.TextSize = 16
-	sub.Parent = bg
-
-	local function makeChoice(text, x)
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(0, 150, 0, 50)
-		btn.Position = UDim2.new(0.5, x, 0.5, -10)
-		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-		btn.Text = text
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn.Font = Enum.Font.GothamBold
-		btn.TextSize = 18
-		btn.Parent = bg
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-		return btn
-	end
-
-	local pcBtn = makeChoice("PC", -170)
-	local mobBtn = makeChoice("MOBİL", 20)
-
-	local function select(isMobile)
-		HL.IsMobile = isMobile
-		HL.ModeSelected = true
-		gui:Destroy()
-		CreateMainMenu()
-	end
-
-	pcBtn.MouseButton1Click:Connect(function() select(false) end)
-	mobBtn.MouseButton1Click:Connect(function() select(true) end)
-end
-
-CreateStartScreen()
-
-UserInputService.InputBegan:Connect(function(inp, gp)
-	if gp or not HL.ModeSelected then return end
-	if inp.KeyCode == Enum.KeyCode.F8 then ToggleFly()
-	elseif inp.KeyCode == Enum.KeyCode.F4 then SavePos()
-	elseif inp.KeyCode == Enum.KeyCode.F5 then TP()
-	elseif inp.KeyCode == Enum.KeyCode.F6 then ToggleNoclip()
-	elseif inp.KeyCode == Enum.KeyCode.F7 then ToggleGod()
-	elseif inp.KeyCode == Enum.KeyCode.F9 then ToggleCube()
-	elseif inp.KeyCode == Enum.KeyCode.F10 then ToggleAutoEgg()
-	elseif inp.KeyCode == Enum.KeyCode.F11 then
+-- TUŞLAR
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.F7 then
 		HL.AntiKickActive = not HL.AntiKickActive
 		if HL.AntiKickActive then StartAntiKick() end
-	elseif inp.KeyCode == Enum.KeyCode.F12 then
+	elseif input.KeyCode == Enum.KeyCode.F11 then
 		HL.AntiResetActive = not HL.AntiResetActive
 		if HL.AntiResetActive then StartAntiReset() end
+	elseif input.KeyCode == Enum.KeyCode.F4 then
+		SavePos()
+	elseif input.KeyCode == Enum.KeyCode.F10 then
+		ToggleAutoEgg()
 	end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1.2)
-	if HL.Fly then StartFly() end
-	if not Bypass.Active then StartBypass() end
-	if HL.AntiResetActive then StartAntiReset() end
-end)
-
-print("[HL] PART 2/2 YÜKLENDİ - v48 TAM")
+print("🍑 v50 RGB COOL HAZIR")
+print("🍑 F7 - ANTI-KICK")
+print("🍑 F11 - ANTI-RESET")
+print("🍑 F4 - YER BELİLE")
+print("🍑 F10 - AUTO EGG")
+print("🍑 GELİŞTİRİCİ: XVERA")

@@ -1,10 +1,9 @@
--- HAMSTERLİVES v5.1 (Hata Düzeltilmiş)
+-- HAMSTERLİVES v6  |  Temiz + Düzeltilmiş
 -- PART 1/2
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -29,7 +28,9 @@ local function wait(t)
 	end
 end
 
--- ==================== KORUMA ====================
+-------------------------------------------------
+-- KORUMA (Anti-Reset + Anti-Kill + Yumurta)
+-------------------------------------------------
 local function ProtectLoop()
 	if HL.Conn.Protect then return end
 
@@ -95,7 +96,9 @@ end
 
 ProtectLoop()
 
--- ==================== FLY ====================
+-------------------------------------------------
+-- FLY
+-------------------------------------------------
 local function StopFly()
 	if HL.Conn.Fly then
 		HL.Conn.Fly:Disconnect()
@@ -189,7 +192,9 @@ local function ToggleFly()
 	end
 end
 
--- ==================== TP ====================
+-------------------------------------------------
+-- TP
+-------------------------------------------------
 local function DoTeleport(pos)
 	if not pos then return end
 
@@ -250,7 +255,9 @@ local function TP()
 	end
 end
 
--- ==================== NOCLIP ====================
+-------------------------------------------------
+-- NOCLIP
+-------------------------------------------------
 local function ToggleNoclip()
 	HL.Noclip = not HL.Noclip
 	local b = HL.Buttons.Noclip
@@ -289,7 +296,9 @@ local function ToggleNoclip()
 	end
 end
 
--- ==================== ANTİ YAKALANMA ====================
+-------------------------------------------------
+-- ANTİ YAKALANMA
+-------------------------------------------------
 local function ToggleGod()
 	HL.God = not HL.God
 	local b = HL.Buttons.God
@@ -310,15 +319,11 @@ end
 print("[HL] Part 1 hazır")-- PART 2/2 (hemen altına yapıştır)
 
 local function CreateMenu()
-	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 8)
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 	if not playerGui then
 		warn("[HL] PlayerGui bulunamadı")
 		return
 	end
-
-	-- Eski menüyü temizle
-	local old = playerGui:FindFirstChild("HamsterLiveGUI")
-	if old then old:Destroy() end
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HamsterLiveGUI"
@@ -349,7 +354,7 @@ local function CreateMenu()
 	title.Size = UDim2.new(1, 0, 0, 44)
 	title.BackgroundColor3 = Color3.fromRGB(28, 18, 42)
 	title.BorderSizePixel = 0
-	title.Text = "  HAMSTERLİVES  v5.1"
+	title.Text = "  HAMSTERLİVES  v6"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 16
@@ -417,7 +422,7 @@ local function CreateMenu()
 	HL.Buttons.Noclip = makeBtn("NOCLIP  ○ KAPALI", 184, ToggleNoclip)
 	HL.Buttons.God    = makeBtn("ANTİ-YAKALANMA  ○", 227, ToggleGod)
 
-	-- Hız kutusu
+	-- Hız
 	local box = Instance.new("TextBox")
 	box.Size = UDim2.new(1, -24, 0, 34)
 	box.Position = UDim2.new(0, 12, 0, 280)
@@ -444,7 +449,7 @@ local function CreateMenu()
 		end
 	end)
 
-	-- Kapat butonu
+	-- Kapat
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
 	close.Position = UDim2.new(1, -36, 0, 7)
@@ -463,7 +468,7 @@ local function CreateMenu()
 		main.Visible = false
 	end)
 
-	-- HL açma butonu
+	-- HL butonu
 	local open = Instance.new("TextButton")
 	open.Size = UDim2.new(0, 54, 0, 54)
 	open.Position = UDim2.new(1, -68, 0, 18)
@@ -482,13 +487,13 @@ local function CreateMenu()
 		main.Visible = not main.Visible
 	end)
 
-	print("[HL] Menü başarıyla oluşturuldu")
+	print("[HL] Menü hazır")
 end
 
 -- Menüyü oluştur
 local ok, err = pcall(CreateMenu)
 if not ok then
-	warn("[HL] Menü hatası: ", err)
+	warn("[HL] Menü hatası:", err)
 end
 
 -- Tuşlar
@@ -519,4 +524,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	end
 end)
 
-print("[HL] v5.1 tamamen yüklendi")
+print("[HL] v6 tamamen yüklendi")

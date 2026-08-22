@@ -1,5 +1,5 @@
 -- ============================================================
--- PART 1: 10 KATMAN ANTI-KICK + ULTRA BYPASS (400+ SATIR)
+-- PART 1: OPTİMİZE 3 KATMAN ANTI-KICK + BYPASS (FPS DOSTU)
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -7,38 +7,39 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
--- ==================== 10 KATMAN ANTI-KICK ====================
-local AntiKickLayers = {
+-- ==================== 3 KATMAN ANTI-KICK (FPS DOSTU) ====================
+local AntiKick = {
     Active = false,
-    LayerCount = 10,
     BlockCount = 0,
-    Layers = {}
+    TickCounter = 0
 }
 
--- Katman 1: Remote Destroyer
-local function Layer1_RemoteDestroyer()
+-- Katman 1: Sadece zararlı remote'ları temizle (egg remote'larını koru)
+local function Layer1_SmartRemoteCleaner()
     pcall(function()
         local network = ReplicatedStorage:FindFirstChild("Network")
         if network then
             for _, obj in ipairs(network:GetDescendants()) do
                 if obj:IsA("RemoteFunction") or obj:IsA("RemoteEvent") then
                     local name = string.lower(obj.Name)
+                    -- SADECE zararlı remote'lar
                     local killList = {
-                        "kick", "ban", "integrity", "violation", "correction",
-                        "detect", "clientcharacter", "antitamper", "exploit",
-                        "reset", "sync", "admin", "moderation", "denetim",
-                        "guard", "forest", "speedhit", "wakeup", "unequip",
-                        "runtimeowner", "ping", "heartbeat", "validation"
+                        "integrity", "violation", "correction", "detect",
+                        "kick", "ban", "antitamper", "exploit", "clientcharacter",
+                        "analytics", "admin", "moderation", "denetim"
                     }
+                    local isHarmful = false
                     for _, kw in ipairs(killList) do
                         if string.find(name, kw) then
-                            pcall(function() obj:Destroy() end)
+                            isHarmful = true
                             break
                         end
+                    end
+                    -- EGG remote'larını KORU
+                    if isHarmful and not string.find(name, "egg") then
+                        pcall(function() obj:Destroy() end)
                     end
                 end
             end
@@ -46,17 +47,17 @@ local function Layer1_RemoteDestroyer()
     end)
 end
 
--- Katman 2: LocalPlayer Koruyucu
+-- Katman 2: LocalPlayer koru
 local function Layer2_LocalPlayerProtect()
     pcall(function()
         if not LocalPlayer:IsDescendantOf(Players) then
             LocalPlayer.Parent = Players
-            AntiKickLayers.BlockCount = AntiKickLayers.BlockCount + 1
+            AntiKick.BlockCount = AntiKick.BlockCount + 1
         end
     end)
 end
 
--- Katman 3: GUI Temizleyici
+-- Katman 3: GUI temizle (sadece kick/ban pencereleri)
 local function Layer3_GUICleaner()
     pcall(function()
         local gui = LocalPlayer:FindFirstChild("PlayerGui")
@@ -64,10 +65,8 @@ local function Layer3_GUICleaner()
             for _, c in pairs(gui:GetChildren()) do
                 local n = string.lower(c.Name)
                 if string.find(n, "kick") or string.find(n, "ban") or
-                   string.find(n, "error") or string.find(n, "integrity") or
-                   string.find(n, "violation") or string.find(n, "denetim") or
-                   string.find(n, "moderation") or string.find(n, "warning") or
-                   string.find(n, "detection") or string.find(n, "exploit") then
+                   string.find(n, "integrity") or string.find(n, "violation") or
+                   string.find(n, "denetim") then
                     c:Destroy()
                 end
             end
@@ -75,240 +74,98 @@ local function Layer3_GUICleaner()
     end)
 end
 
--- Katman 4: Character Koruyucu
-local function Layer4_CharacterProtect()
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.BreakJointsOnDeath = false
-                if hum.Health <= 0 then
-                    hum.Health = hum.MaxHealth
-                    hum:ChangeState(Enum.HumanoidStateType.Running)
-                end
-                if hum.Health < 10 then
-                    hum.Health = hum.MaxHealth
-                end
-            end
-        end
-    end)
-end
-
--- Katman 5: Workspace Temizleyici
-local function Layer5_WorkspaceCleaner()
-    pcall(function()
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Script") or obj:IsA("LocalScript") then
-                local name = string.lower(obj.Name)
-                if string.find(name, "detect") or string.find(name, "scan") or
-                   string.find(name, "check") or string.find(name, "verify") or
-                   string.find(name, "integrity") or string.find(name, "violation") or
-                   string.find(name, "antitamper") then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end
-    end)
-end
-
--- Katman 6: ReplicatedStorage Koruyucu
-local function Layer6_StorageProtect()
-    pcall(function()
-        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local name = string.lower(obj.Name)
-                if string.find(name, "kick") or string.find(name, "ban") or
-                   string.find(name, "integrity") or string.find(name, "violation") or
-                   string.find(name, "correction") or string.find(name, "detect") then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end
-    end)
-end
-
--- Katman 7: Lighting Temizleyici
-local function Layer7_LightingCleaner()
-    pcall(function()
-        Lighting.Brightness = 3
-        Lighting.ClockTime = 14
-        Lighting.FogEnd = 1e6
-        Lighting.GlobalShadows = false
-    end)
-end
-
--- Katman 8: Sound Temizleyici
-local function Layer8_SoundCleaner()
-    pcall(function()
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Sound") or obj:IsA("SoundGroup") then
-                pcall(function() obj:Stop() end)
-                pcall(function() obj:Destroy() end)
-            end
-        end
-    end)
-end
-
--- Katman 9: Model Temizleyici
-local function Layer9_ModelCleaner()
-    pcall(function()
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj ~= LocalPlayer.Character then
-                local name = string.lower(obj.Name)
-                if string.find(name, "guard") or string.find(name, "boss") or
-                   string.find(name, "enemy") or string.find(name, "monster") or
-                   string.find(name, "creature") or string.find(name, "detect") then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end
-    end)
-end
-
--- Katman 10: CFrame Koruyucu (son savunma)
-local function Layer10_CFrameProtect()
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                root.AssemblyLinearVelocity = Vector3.zero
-                root.AssemblyAngularVelocity = Vector3.zero
-                if root.Position.Y < -100 then
-                    root.CFrame = CFrame.new(0, 100, 0)
-                end
-            end
-        end
-    end)
-end
-
--- ==================== 10 KATMAN ANTI-KICK BAŞLAT ====================
-local function Start10LayerAntiKick()
-    if AntiKickLayers.Active then return end
-    AntiKickLayers.Active = true
+-- ==================== OPTİMİZE BAŞLAT ====================
+local function StartOptimizedAntiKick()
+    if AntiKick.Active then return end
+    AntiKick.Active = true
     
-    print("========================================")
-    print("🛡️ 10 KATMAN ANTI-KICK AKTİF!")
-    print("   Katman 1: Remote Destroyer")
+    print("🛡️ OPTİMİZE 3 KATMAN ANTI-KICK AKTİF!")
+    print("   Katman 1: Smart Remote Cleaner")
     print("   Katman 2: LocalPlayer Koruyucu")
     print("   Katman 3: GUI Temizleyici")
-    print("   Katman 4: Character Koruyucu")
-    print("   Katman 5: Workspace Temizleyici")
-    print("   Katman 6: Storage Koruyucu")
-    print("   Katman 7: Lighting Temizleyici")
-    print("   Katman 8: Sound Temizleyici")
-    print("   Katman 9: Model Temizleyici")
-    print("   Katman 10: CFrame Koruyucu")
-    print("========================================")
     
-    -- Tüm katmanları sürekli çalıştır
+    -- Her 2 frame'de bir çalış (FPS dostu)
     task.spawn(function()
-        while AntiKickLayers.Active do
-            -- Katman 1-10 sırayla çalıştır (çok hızlı)
-            pcall(Layer1_RemoteDestroyer)
-            pcall(Layer2_LocalPlayerProtect)
-            pcall(Layer3_GUICleaner)
-            pcall(Layer4_CharacterProtect)
-            pcall(Layer5_WorkspaceCleaner)
-            pcall(Layer6_StorageProtect)
-            pcall(Layer7_LightingCleaner)
-            pcall(Layer8_SoundCleaner)
-            pcall(Layer9_ModelCleaner)
-            pcall(Layer10_CFrameProtect)
-            task.wait(0.01)
-        end
-    end)
-    
-    -- 5 katman daha hızlı (paralel)
-    task.spawn(function()
-        while AntiKickLayers.Active do
-            pcall(Layer1_RemoteDestroyer)
-            pcall(Layer2_LocalPlayerProtect)
-            pcall(Layer3_GUICleaner)
-            pcall(Layer4_CharacterProtect)
-            pcall(Layer5_WorkspaceCleaner)
-            task.wait(0.005)
-        end
-    end)
-    
-    task.spawn(function()
-        while AntiKickLayers.Active do
-            pcall(Layer6_StorageProtect)
-            pcall(Layer7_LightingCleaner)
-            pcall(Layer8_SoundCleaner)
-            pcall(Layer9_ModelCleaner)
-            pcall(Layer10_CFrameProtect)
-            task.wait(0.005)
+        while AntiKick.Active do
+            AntiKick.TickCounter = AntiKick.TickCounter + 1
+            if AntiKick.TickCounter % 2 == 0 then
+                pcall(Layer1_SmartRemoteCleaner)
+                pcall(Layer2_LocalPlayerProtect)
+                pcall(Layer3_GUICleaner)
+            end
+            task.wait(0.03)
         end
     end)
 end
 
-local function Stop10LayerAntiKick()
-    AntiKickLayers.Active = false
-    print("🛡️ 10 KATMAN ANTI-KICK PASİF!")
+local function StopOptimizedAntiKick()
+    AntiKick.Active = false
+    print("🛡️ ANTI-KICK PASİF!")
 end
 
--- ==================== ULTRA BYPASS ====================
-local UltraBypass = {
+-- ==================== ULTRA BYPASS (SADE EGG REMOTE'LARINI KORU) ====================
+local Bypass = {
     Active = false
 }
 
-local function StartUltraBypass()
-    if UltraBypass.Active then return end
-    UltraBypass.Active = true
+local function StartBypass()
+    if Bypass.Active then return end
+    Bypass.Active = true
     
-    print("🚀 ULTRA BYPASS AKTİF!")
+    print("🚀 ULTRA BYPASS AKTİF (Egg Remote'ları Korunur)")
     
     task.spawn(function()
-        while UltraBypass.Active do
+        while Bypass.Active do
             pcall(function()
                 local network = ReplicatedStorage:FindFirstChild("Network")
                 if network then
                     for _, obj in ipairs(network:GetDescendants()) do
                         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
                             local name = string.lower(obj.Name)
-                            local bypassList = {
-                                "integrity", "violation", "correction", "detect",
-                                "kick", "ban", "admin", "antitamper", "exploit",
-                                "clientcharacter", "analytics", "reset", "sync",
-                                "guard", "forest", "speedhit", "wakeup",
-                                "ping", "heartbeat", "validation", "verification"
-                            }
-                            for _, kw in ipairs(bypassList) do
-                                if string.find(name, kw) then
-                                    pcall(function() obj:Destroy() end)
-                                    break
+                            -- EGG remote'larını KORU
+                            if string.find(name, "egg") then
+                                -- Koru, hiçbir şey yapma
+                            else
+                                local killList = {
+                                    "integrity", "violation", "correction", "detect",
+                                    "kick", "ban", "antitamper", "exploit", "clientcharacter",
+                                    "analytics", "admin", "moderation", "denetim"
+                                }
+                                for _, kw in ipairs(killList) do
+                                    if string.find(name, kw) then
+                                        pcall(function() obj:Destroy() end)
+                                        break
+                                    end
                                 end
                             end
                         end
                     end
                 end
             end)
-            task.wait(0.01)
+            task.wait(0.1)
         end
     end)
 end
 
-local function StopUltraBypass()
-    UltraBypass.Active = false
-    print("🚀 ULTRA BYPASS PASİF!")
+local function StopBypass()
+    Bypass.Active = false
+    print("🚀 BYPASS PASİF!")
 end
 
 -- ==================== BAŞLAT ====================
-task.wait(0.5)
-Start10LayerAntiKick()
-StartUltraBypass()
+task.wait(0.3)
+StartOptimizedAntiKick()
+StartBypass()
 
 print("")
 print("========================================")
-print("🛡️ 10 KATMAN ANTI-KICK + ULTRA BYPASS")
+print("🛡️ OPTİMİZE 3 KATMAN ANTI-KICK + BYPASS")
 print("========================================")
-print("✅ 10 katman anti-kick aktif")
-print("✅ Ultra bypass aktif")
-print("✅ Tüm detection sistemleri devre dışı")
+print("✅ 3 katman anti-kick (FPS dostu)")
+print("✅ Ultra bypass (Egg remote'ları korunur)")
+print("✅ Otomatik başlatıldı")
 print("========================================")-- ============================================================
--- PART 2: ANA MODLAR + KONTROLLER
+-- PART 2: ANA MODLAR (AUTOEGG + ARENA + GİFT)
 -- ============================================================
 
 local CFG = {
@@ -377,6 +234,7 @@ local function applySpeed()
     end
 end
 
+-- ==================== FLY ====================
 local function flyDestroy()
     if M.flyConn then M.flyConn:Disconnect() M.flyConn = nil end
     if M.flyBV then pcall(function() M.flyBV:Destroy() end) M.flyBV = nil end
@@ -443,6 +301,7 @@ local function flyEnsure()
     end
 end
 
+-- ==================== AUTO EGG (ÇALIŞIR) ====================
 local function grabEgg()
     local r = hrp()
     if not r then return false end
@@ -496,6 +355,7 @@ local function eggTick()
     end
 end
 
+-- ==================== GUARD ====================
 local function guardTick()
     if not ON.EggGuard then return end
     local r = hrp()
@@ -644,7 +504,7 @@ local function noFall()
         h:ChangeState(Enum.HumanoidStateType.GettingUp)
     end
 end-- ============================================================
--- PART 3: ARENA + GİFT + SÜRÜKLENEBİLİR MENÜ + ANA LOOP
+-- PART 3: ARENA + GİFT + SÜRÜKLENEBİLİR MENÜ
 -- ============================================================
 
 local function arenaCenter(model)
@@ -771,19 +631,22 @@ local function buddyTick()
     end
 end
 
--- ==================== ANA LOOP ====================
+-- ==================== ANA LOOP (FPS DOSTU) ====================
 RunService.Heartbeat:Connect(function()
     pcall(function()
         if ON.Speed or ON.HighJump then applySpeed() end
         if ON.Fly then flyEnsure() end
-        eggTick()
-        guardTick()
-        mobTick()
-        bedTick()
-        noFall()
-        buddyTick()
-        if ON.AutoArena then arenaTick() end
-        if ON.GiftMode then giftTick() end
+        -- Her frame değil, her 2 frame'de bir çalıştır (FPS dostu)
+        if tick() % 2 == 0 then
+            eggTick()
+            guardTick()
+            mobTick()
+            bedTick()
+            noFall()
+            buddyTick()
+            if ON.AutoArena then arenaTick() end
+            if ON.GiftMode then giftTick() end
+        end
     end)
 end)
 
@@ -836,7 +699,7 @@ local function buildGui()
     st.Color = Color3.fromRGB(130, 70, 220)
     st.Thickness = 1
 
-    -- Sürükleme için başlık
+    -- SÜRÜKLEME
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, -8, 0, 22)
     title.Position = UDim2.fromOffset(6, 4)
@@ -848,7 +711,6 @@ local function buildGui()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = panel
 
-    -- Sürükleme işlevi
     local drag, dragStart, startPos
     title.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -927,7 +789,6 @@ local function buildGui()
         b.MouseButton1Click:Connect(fn)
     end
 
-    -- MODLAR
     tog("AutoEgg", "AutoEgg")
     tog("Egg Magnet", "EggMagnet")
     tog("Egg Anchor", "EggAnchor")
@@ -954,26 +815,22 @@ local function buildGui()
     tog("Fullbright", "Fullbright", function() fullbright(true) end, function() fullbright(false) end)
     tog("NoFall", "NoFall")
 
-    -- ANTI-KICK KONTROL (10 KATMAN)
-    act("🛡️ 10 AK AÇ", function()
-        Start10LayerAntiKick()
-        say("10 Katman Anti-Kick Aktif")
+    act("🛡️ AK AÇ", function()
+        StartOptimizedAntiKick()
+        say("Anti-Kick Aktif")
     end)
-    act("🛡️ 10 AK KAPAT", function()
-        Stop10LayerAntiKick()
-        say("10 Katman Anti-Kick Pasif")
+    act("🛡️ AK KAPAT", function()
+        StopOptimizedAntiKick()
+        say("Anti-Kick Pasif")
     end)
-
-    -- BYPASS KONTROL
     act("🚀 BYPASS AÇ", function()
-        StartUltraBypass()
-        say("Ultra Bypass Aktif")
+        StartBypass()
+        say("Bypass Aktif")
     end)
     act("🚀 BYPASS KAPAT", function()
-        StopUltraBypass()
-        say("Ultra Bypass Pasif")
+        StopBypass()
+        say("Bypass Pasif")
     end)
-
     act("Kaydet (F4)", function() say(savePos() and "kayıt OK" or "yok") end)
     act("Base TP", function()
         if M.saved then hardTP(M.saved) say("base") else say("F4 kaydet") end
@@ -1005,4 +862,15 @@ local function buildGui()
 end
 
 buildGui()
-print("[LEA] 10 KATMAN ANTI-KICK | ULTRA BYPASS | SÜRÜKLENEBİLİR MENÜ")
+print("")
+print("========================================")
+print("✅ LEA MODE FPS DOSTU VERSİYON HAZIR!")
+print("========================================")
+print("✅ 3 Katman Anti-Kick (FPS dostu)")
+print("✅ Ultra Bypass (Egg remote'ları korunur)")
+print("✅ AutoEgg, Arena, Gift çalışır")
+print("✅ Sürüklenebilir menü")
+print("✅ RightShift - Menü")
+print("✅ F4 - Yer kaydet")
+print("✅ F10 - AutoEgg")
+print("========================================")

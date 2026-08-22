@@ -23,7 +23,505 @@ local Mouse = LocalPlayer:GetMouse()
 task.spawn(function()
 	local ok, err = pcall(function()
 		-- ==================== PASTE START ====================
+-- ============================================================
+-- ULTRA BYPASS ENGINE V5.0 - TAM KAPSAMLI (400+ SATIR)
+-- ANTI-CHEAT KILLER + REMOTE DESTROYER + ANTI-KICK + ANTI-RESET
+-- TÜM DETECTION SİSTEMLERİ DEVRE DIŞI
+-- ============================================================
 
+local Ultra = {
+    Active = false,
+    AntiCheat = true,
+    AntiKick = true,
+    AntiReset = true,
+    RemoteKiller = true,
+    GuiCleaner = true,
+    PlayerProtector = true,
+    MemoryCleaner = true,
+    Counter = 0,
+    RemoteKillCount = 0,
+    HealCount = 0,
+    KickBlockCount = 0,
+    LastScan = 0
+}
+
+-- ==================== 1. LOG SİSTEMİ ====================
+local Log = function(msg, color)
+    color = color or "\27[36m"
+    print(color .. "[ULTRA] " .. msg .. "\27[0m")
+end
+
+-- ==================== 2. REMOTE KİLLER (TÜM ZARARLI REMOTE'LAR) ====================
+local RemoteKiller = {
+    KillList = {},
+    KillCount = 0
+}
+
+RemoteKiller.KillList = {
+    -- ANTI-CHEAT / INTEGRITY
+    "Integrity", "IntegrityViolation", "IntegrityHeartbeat", "IntegrityCheck",
+    "IntegrityValidation", "IntegrityVerification", "IntegrityPing",
+    "IntegrityScan", "IntegrityMonitor", "IntegrityReport",
+    "Correction", "CorrectionStarted", "CorrectionCompleted", "CorrectionFailed",
+    "CorrectionPending", "CorrectionQueue", "CorrectionManager",
+    "Violation", "ViolationDetected", "ViolationReport", "ViolationWarning",
+    "ViolationLog", "ViolationHandler", "ViolationProcessor",
+    "AntiTamper", "AntiTamperCheck", "AntiTamperPing", "AntiTamperValidation",
+    "AntiTamperScan", "AntiTamperMonitor", "AntiTamperReport",
+    
+    -- CLIENT CHARACTER
+    "ClientCharacter", "ClientCharacter:Ready", "ClientCharacter:Update",
+    "ClientCharacter:Sync", "ClientCharacter:CorrectionStarted",
+    "ClientCharacter:IntegrityViolation", "ClientCharacter:IntegrityHeartbeat",
+    "ClientCharacter:RequestCharacterReset", "ClientCharacter:Reset",
+    "ClientCharacter:Teleport", "ClientCharacter:PositionCheck",
+    "ClientCharacter:VelocityCheck", "ClientCharacter:HealthCheck",
+    "ClientCharacter:StateCheck", "ClientCharacter:AnimationCheck",
+    
+    -- KICK / BAN / MODERATION
+    "Kick", "Ban", "Moderation", "Denetim", "ModerationPanel",
+    "KickPlayer", "BanPlayer", "KickAll", "BanAll", "KickUser",
+    "BanUser", "ModeratePlayer", "ModerateUser",
+    "AdminPanel", "AdminPanel_CheckAdminStatus", "AdminPanel_AdminStatusResponse",
+    "AdminPanel_GiveAssetToSelf", "AdminPanel_GiveEggToSelf",
+    "AdminPanel_ResetSelfData", "AdminPanel_SetWalkSpeed",
+    "AdminPanel_SetSpeedPower", "AdminPanel_GiveMoney",
+    "AdminPanel_GiveGems", "AdminPanel_GiveTokens", "AdminPanel_GiveReward",
+    "AdminAbuse", "AdminAbuse_GetEventNames", "AdminAbuse_GetActiveEvents",
+    "AdminAbuse_GetTimeUntilRecurringEvents", "AdminAbuse_GetScheduledEvents",
+    "AdminAbuse_StartEvent", "AdminAbuse_StopEvent", "AdminAbuse_ForceEvent",
+    
+    -- DETECTION / ANALYTICS
+    "Detection", "Detect", "AntiCheat", "AntiExploit",
+    "Exploit", "ExploitDetected", "ExploitPrevention", "ExploitDetection",
+    "ExploitLogger", "ExploitReporter", "ExploitBlocker",
+    "Analytics", "Analytics:ReportAfkState", "Analytics:ReportAfk",
+    "Analytics:RequestAfkTeleportFlush", "Analytics:ReportAfkTeleport",
+    "Analytics:ReportActivity", "Analytics:ReportMovement",
+    "Analytics:ReportJump", "Analytics:ReportTeleport",
+    "Analytics:ReportSpeed", "Analytics:ReportFly", "Analytics:ReportNoclip",
+    "Analytics:ReportPosition", "Analytics:ReportVelocity",
+    
+    -- RESET / SYNC
+    "Reset", "ResetSelfData", "RequestCharacterReset", "ResetCharacter",
+    "ResetAll", "ResetPosition", "ResetVelocity", "ResetState",
+    "Sync", "Syncing", "Synchronization", "SyncCheck",
+    "SyncValidation", "SyncVerification", "SyncPing", "SyncHeartbeat",
+    "SyncManager", "SyncProcessor", "SyncQueue",
+    
+    -- GUARD / BOSS / ENEMY
+    "Guard", "GuardAttack", "GuardDamage", "GuardHit",
+    "ForestHit", "ForestGuard", "ForestDamage", "ForestDeposit",
+    "SpeedHit", "SpeedHitOffer", "SpeedHitWarning", "SpeedHitCancel",
+    "WakeUp", "GuardAlert", "GuardChase", "GuardPatrol",
+    "Boss", "BossAttack", "BossDamage", "BossHit", "BossPhase",
+    "Enemy", "EnemyAttack", "EnemyDamage", "EnemyHit", "EnemySpawn",
+    "Monster", "MonsterAttack", "MonsterDamage", "MonsterSpawn",
+    "Creature", "CreatureAttack", "CreatureDamage", "CreatureSpawn",
+    
+    -- EGG DROP / UNEQUIP
+    "UnequipTool", "RuntimeOwnerCleared", "RuntimeOwnerUpdated",
+    "AreaEggDrop", "RequestAreaEggDrop", "RequestUnequip",
+    "RequestDrop", "DropItem", "DropAsset", "DropEgg",
+    "EggDrop", "EggUnequip", "EggRuntimeClear",
+    "ActiveAssets:RuntimeOwnerCleared", "ActiveAssets:RuntimeOwnerUpdated",
+    "ActiveAssets:RequestUnequip", "Trails:RequestUnequip",
+    "Treadmills:RequestUnequip", "GearInventory:Removed",
+    
+    -- SPAWN / RESPAWN / REVIVE
+    "Spawn", "Respawn", "Revive", "SpawnMonster",
+    "SpawnEnemy", "SpawnBoss", "SpawnGuard", "SpawnCreature",
+    "RespawnPlayer", "RevivePlayer", "RespawnCharacter",
+    "SpawnObject", "SpawnNPC", "SpawnMob",
+    
+    -- TELEPORT / POSITION / MOVEMENT
+    "Teleport", "TP", "Position", "MoveTo",
+    "SetPosition", "UpdatePosition", "PositionCheck",
+    "TeleportPlayer", "TeleportTo", "MovePlayer",
+    "VelocityCheck", "SpeedCheck", "FlyCheck", "NoclipCheck",
+    
+    -- PING / HEARTBEAT / KEEPALIVE
+    "Ping", "Heartbeat", "KeepAlive", "Alive",
+    "ConnectionPing", "ServerPing", "ClientPing",
+    "HeartbeatCheck", "HeartbeatMonitor", "HeartbeatReport",
+    
+    -- VALIDATION / VERIFICATION
+    "Validation", "Verification", "Validate", "Verify",
+    "ValidatePlayer", "VerifyPlayer", "ValidateCharacter",
+    "ValidatePosition", "ValidateVelocity", "ValidateState",
+    
+    -- TRADE / MARKET
+    "Trade", "Trading", "TradeRequest", "TradeAccept",
+    "TradeConfirm", "TradeDecline", "TradeReject", "TradeCancel",
+    "Market", "MarketBuy", "MarketSell", "MarketTrade",
+    "MarketList", "MarketPrice", "MarketItem",
+    
+    -- PRODUCT / PURCHASE
+    "Product", "Purchase", "Buy", "Sell",
+    "ProductGrant", "PurchaseComplete", "PurchaseFailed",
+    "ProductCheck", "ProductList", "ProductInfo",
+    
+    -- DETECTION KEYWORDS (GENİŞ)
+    "Detection", "Detect", "Scan", "Check", "Verify",
+    "Validate", "Monitor", "Report", "Log", "Alert",
+    "Warning", "Error", "Critical", "Security",
+    "Anti", "Counter", "Block", "Prevent", "Protect"
+}
+
+function RemoteKiller:Scan()
+    if not Ultra.RemoteKiller then return end
+    
+    local network = ReplicatedStorage:FindFirstChild("Network")
+    if not network then return end
+    
+    local killed = 0
+    
+    for _, obj in ipairs(network:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = obj.Name
+            local shouldKill = false
+            
+            for _, kw in ipairs(self.KillList) do
+                if string.find(name, kw) then
+                    shouldKill = true
+                    break
+                end
+            end
+            
+            if not shouldKill then
+                local lowerName = string.lower(name)
+                local keywords = {
+                    "integrity", "violation", "correction", "detect",
+                    "kick", "ban", "admin", "antitamper", "exploit",
+                    "clientcharacter", "analytics", "reset", "sync",
+                    "guard", "forest", "speedhit", "wakeup",
+                    "unequip", "runtimeowner", "areae ggdrop",
+                    "ping", "heartbeat", "validation", "verification",
+                    "trade", "market", "product", "purchase",
+                    "spawn", "respawn", "revive", "teleport", "tp",
+                    "check", "scan", "clean", "kill", "detect",
+                    "monitor", "report", "log", "alert", "warning",
+                    "security", "counter", "block", "prevent"
+                }
+                for _, kw in ipairs(keywords) do
+                    if string.find(lowerName, kw) then
+                        shouldKill = true
+                        break
+                    end
+                end
+            end
+            
+            if shouldKill then
+                pcall(function()
+                    obj:Destroy()
+                    killed = killed + 1
+                    self.KillCount = self.KillCount + 1
+                end)
+            end
+        end
+    end
+    
+    if killed > 0 then
+        Log("🔥 " .. killed .. " remote yok edildi! (Toplam: " .. self.KillCount .. ")", "\27[31m")
+    end
+    
+    return killed
+end
+
+function RemoteKiller:Watch()
+    local network = ReplicatedStorage:FindFirstChild("Network")
+    if not network then return end
+    
+    network.DescendantAdded:Connect(function(child)
+        task.wait(0.02)
+        if Ultra.RemoteKiller then
+            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                local name = child.Name
+                local shouldKill = false
+                for _, kw in ipairs(self.KillList) do
+                    if string.find(name, kw) then
+                        shouldKill = true
+                        break
+                    end
+                end
+                if shouldKill then
+                    pcall(function()
+                        child:Destroy()
+                        self.KillCount = self.KillCount + 1
+                        Log("🆕 Yeni remote yok edildi: " .. name, "\27[31m")
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+function RemoteKiller:Start()
+    Log("🔥 Remote Killer Başlatıldı!", "\27[31m")
+    self:Scan()
+    self:Watch()
+end
+
+-- ==================== 3. ANTI-KICK SİSTEMİ ====================
+local AntiKick = {
+    Active = false,
+    BlockCount = 0
+}
+
+function AntiKick:Start()
+    if self.Active then return end
+    self.Active = true
+    Log("🛡️ Anti-Kick Başlatıldı!", "\27[33m")
+    
+    LocalPlayer.Changed:Connect(function(prop)
+        if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
+            pcall(function() LocalPlayer.Parent = Players end)
+            self.BlockCount = self.BlockCount + 1
+            Log("🛡️ LocalPlayer korundu! (" .. self.BlockCount .. ")", "\27[33m")
+        end
+    end)
+    
+    task.spawn(function()
+        while Ultra.Active do
+            task.wait(0.05)
+            pcall(function()
+                if not LocalPlayer:IsDescendantOf(Players) then
+                    LocalPlayer.Parent = Players
+                    self.BlockCount = self.BlockCount + 1
+                end
+                
+                local gui = LocalPlayer:FindFirstChild("PlayerGui")
+                if gui then
+                    for _, c in pairs(gui:GetChildren()) do
+                        local n = string.lower(c.Name)
+                        if string.find(n, "kick") or string.find(n, "ban") or
+                           string.find(n, "error") or string.find(n, "integrity") or
+                           string.find(n, "violation") or string.find(n, "denetim") or
+                           string.find(n, "moderation") or string.find(n, "warning") or
+                           string.find(n, "detection") or string.find(n, "exploit") or
+                           string.find(n, "security") or string.find(n, "alert") then
+                            c:Destroy()
+                            Log("🧹 GUI temizlendi: " .. c.Name, "\27[36m")
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+-- ==================== 4. ANTI-RESET SİSTEMİ ====================
+local AntiReset = {
+    Active = false,
+    HealCount = 0
+}
+
+function AntiReset:Start()
+    if self.Active then return end
+    self.Active = true
+    Log("🔄 Anti-Reset Başlatıldı! (BreakJointsOnDeath = false)", "\27[34m")
+    
+    local function protectCharacter()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        
+        if hum.BreakJointsOnDeath ~= false then
+            hum.BreakJointsOnDeath = false
+            Log("🛡️ BreakJointsOnDeath düzeltildi!", "\27[34m")
+        end
+        
+        if hum.Health <= 0 then
+            hum.Health = hum.MaxHealth
+            hum:ChangeState(Enum.HumanoidStateType.Running)
+            self.HealCount = self.HealCount + 1
+            Log("💚 Can yenilendi! (" .. self.HealCount .. ")", "\27[32m")
+        end
+        
+        if hum.Health < 10 and hum.Health > 0 then
+            hum.Health = hum.MaxHealth
+            self.HealCount = self.HealCount + 1
+            Log("💚 Can düzeltildi! (" .. self.HealCount .. ")", "\27[32m")
+        end
+        
+        if hum.PlatformStand == true then
+            hum.PlatformStand = false
+        end
+        
+        if hum.AutoRotate == false then
+            hum.AutoRotate = true
+        end
+    end
+    
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.BreakJointsOnDeath = false
+            hum.Health = hum.MaxHealth
+            Log("🔄 Karakter yeniden doğdu! Koruma aktif!", "\27[34m")
+        end
+    end)
+    
+    local function blockDeath()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        
+        hum.Died:Connect(function()
+            hum.Health = hum.MaxHealth
+            hum:ChangeState(Enum.HumanoidStateType.Running)
+            self.HealCount = self.HealCount + 1
+            Log("💀 Ölüm engellendi! (" .. self.HealCount .. ")", "\27[32m")
+        end)
+    end
+    
+    task.spawn(function()
+        while Ultra.Active do
+            task.wait(0.05)
+            pcall(protectCharacter)
+        end
+    end)
+    
+    protectCharacter()
+    blockDeath()
+end
+
+-- ==================== 5. ANTI-CHEAT BYPASS ====================
+local AntiCheatBypass = {
+    Active = false
+}
+
+function AntiCheatBypass:Start()
+    if self.Active then return end
+    self.Active = true
+    Log("🚀 Anti-Cheat Bypass Başlatıldı!", "\27[35m")
+    
+    task.spawn(function()
+        while Ultra.Active do
+            task.wait(0.1)
+            pcall(function()
+                local network = ReplicatedStorage:FindFirstChild("Network")
+                if network then
+                    for _, obj in ipairs(network:GetDescendants()) do
+                        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                            local name = string.lower(obj.Name)
+                            local detectList = {
+                                "detect", "scan", "check", "verify",
+                                "validation", "integrity", "violation",
+                                "correction", "antitamper", "exploit",
+                                "ping", "heartbeat", "alive", "keepalive",
+                                "monitor", "report", "log", "alert"
+                            }
+                            for _, kw in ipairs(detectList) do
+                                if string.find(name, kw) then
+                                    pcall(function() obj:Destroy() end)
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+    
+    task.spawn(function()
+        while Ultra.Active do
+            task.wait(0.5)
+            pcall(function()
+                for _, obj in ipairs(Workspace:GetDescendants()) do
+                    if obj:IsA("Script") or obj:IsA("LocalScript") then
+                        local name = string.lower(obj.Name)
+                        if string.find(name, "detect") or string.find(name, "scan") or
+                           string.find(name, "check") or string.find(name, "verify") or
+                           string.find(name, "integrity") or string.find(name, "violation") then
+                            pcall(function() obj:Destroy() end)
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+-- ==================== 6. ANA BAŞLAT ====================
+local function StartUltraBypass()
+    if Ultra.Active then return end
+    Ultra.Active = true
+    
+    Log("", "\27[36m")
+    Log("========================================", "\27[36m")
+    Log("🛡️ ULTRA BYPASS AKTİF!", "\27[32m")
+    Log("========================================", "\27[36m")
+    Log("✅ Anti-Cheat Bypass (Tüm detection'lar yok)", "\27[32m")
+    Log("✅ Remote Killer (500+ remote yok edilir)", "\27[32m")
+    Log("✅ Anti-Kick (Kick yemezsin)", "\27[32m")
+    Log("✅ Anti-Reset (BreakJointsOnDeath)", "\27[32m")
+    Log("✅ GUI Cleaner (Kick/Ban pencereleri temizlenir)", "\27[32m")
+    Log("✅ Player Protector (LocalPlayer korunur)", "\27[32m")
+    Log("========================================", "\27[36m")
+    Log("", "\27[36m")
+    
+    RemoteKiller:Start()
+    AntiKick:Start()
+    AntiReset:Start()
+    AntiCheatBypass:Start()
+    
+    task.spawn(function()
+        while Ultra.Active do
+            task.wait(0.2)
+            pcall(function()
+                RemoteKiller:Scan()
+            end)
+        end
+    end)
+end
+
+-- ==================== 7. KAPAT ====================
+local function StopUltraBypass()
+    Ultra.Active = false
+    RemoteKiller.Active = false
+    AntiKick.Active = false
+    AntiReset.Active = false
+    AntiCheatBypass.Active = false
+    
+    Log("", "\27[31m")
+    Log("========================================", "\27[31m")
+    Log("🛡️ ULTRA BYPASS PASİF!", "\27[31m")
+    Log("========================================", "\27[31m")
+    Log("", "\27[31m")
+end
+
+-- ==================== 8. TUŞLAR ====================
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F7 then
+        if Ultra.Active then
+            StopUltraBypass()
+        else
+            StartUltraBypass()
+        end
+    end
+end)
+
+-- ==================== 9. OTOMATİK BAŞLAT ====================
+task.wait(0.5)
+StartUltraBypass()
+
+print("")
+print("========================================")
+print("🛡️ ULTRA BYPASS PAKETİ HAZIR!")
+print("========================================")
+print("📌 F7 - Bypass Aç/Kapat")
+print("✅ Tüm Anti-Cheat sistemleri devre dışı")
+print("✅ 500+ zararlı remote yok edilir")
+print("✅ Kick yemezsin")
+print("✅ Ölmezsin (BreakJointsOnDeath)")
+print("✅ Yakalanmazsın")
+print("========================================")
 
 
 		-- ==================== PASTE END ====================

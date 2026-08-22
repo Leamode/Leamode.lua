@@ -10,194 +10,28 @@ local UIS = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
 ----------------------------------------------------------------
--- TEK YAPIŞTIRMA ALANI  (bypass + antikick + antireset HEPSİ)
--- Aşağıdaki iki satırın arasındakini sil, kendi bloğunu koy.
+-- ÇALIŞIR YAPIŞTIRMA ALANI
+-- PASTE START ile PASTE END arasına kodunu koy (yorum bloğu YOK).
+-- Players, LocalPlayer, UIS, RunService, ReplicatedStorage, Workspace hazır.
+-- Hata olursa sadece bu blok düşer; altındaki modlar çalışmaya devam eder.
 ----------------------------------------------------------------
-do
---[[
-	<<< PASTE START >>>
+task.spawn(function()
+	local ok, err = pcall(function()
+		-- ==================== PASTE START ====================
 
-	-- ============================================================
-	-- ULTRA BYPASS + ANTI-KICK + ANTI-RESET PAKETİ (CRAZYHUB)
-	-- SADECE KORUMA, TELEPORT YOK, SADECE BYPASS
-	-- ============================================================
-	
-	local Anti = {
-		Active = false,
-		AntiCheat = true,
-		AntiKick = true,
-		AntiReset = true,
-		RemoteKiller = true,
-		Counter = 0
-	}
-	
-	-- ==================== 1. REMOTE KILLER ====================
-	local function KillRemotes()
-		if not Anti.RemoteKiller then return end
-		local killed = 0
-		local network = ReplicatedStorage:FindFirstChild("Network")
-		if not network then return end
-		
-		for _, obj in ipairs(network:GetDescendants()) do
-			if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-				local name = obj.Name
-				local kill = false
-				local list = {
-					"Integrity", "Violation", "Correction", "Detect",
-					"Kick", "Ban", "Admin", "AntiTamper", "Exploit",
-					"ClientCharacter", "Analytics", "Reset", "Sync",
-					"Guard", "Forest", "SpeedHit", "WakeUp",
-					"Unequip", "RuntimeOwner", "Ping", "Heartbeat",
-					"Validation", "Verification"
-				}
-				for _, kw in ipairs(list) do
-					if string.find(name, kw) then kill = true break end
-				end
-				if kill then
-					pcall(function() obj:Destroy() end)
-					killed = killed + 1
-				end
-			end
-		end
-		if killed > 0 then
-			print("🔥 " .. killed .. " remote yok edildi!")
-		end
-	end
-	
-	-- ==================== 2. ANTI-KICK ====================
-	local function StartAntiKick()
-		if not Anti.AntiKick then return end
-		
-		LocalPlayer.Changed:Connect(function(prop)
-			if prop == "Parent" and not LocalPlayer:IsDescendantOf(Players) then
-				pcall(function() LocalPlayer.Parent = Players end)
-			end
-		end)
-		
-		task.spawn(function()
-			while Anti.Active do
-				task.wait(0.05)
-				pcall(function()
-					if not LocalPlayer:IsDescendantOf(Players) then
-						LocalPlayer.Parent = Players
-					end
-					local gui = LocalPlayer:FindFirstChild("PlayerGui")
-					if gui then
-						for _, c in pairs(gui:GetChildren()) do
-							local n = string.lower(c.Name)
-							if string.find(n, "kick") or string.find(n, "ban") or
-							   string.find(n, "error") or string.find(n, "integrity") or
-							   string.find(n, "violation") or string.find(n, "denetim") then
-								c:Destroy()
-							end
-						end
-					end
-				end)
-			end
-		end)
-	end
-	
-	-- ==================== 3. ANTI-RESET (BREAKJOINTSONDEATH) ====================
-	local function StartAntiReset()
-		if not Anti.AntiReset then return end
-		
-		local function protectChar()
-			local char = LocalPlayer.Character
-			if not char then return end
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if not hum then return end
-			
-			hum.BreakJointsOnDeath = false
-			if hum.Health <= 0 then
-				hum.Health = hum.MaxHealth
-				hum:ChangeState(Enum.HumanoidStateType.Running)
-			end
-			if hum.Health < 10 then
-				hum.Health = hum.MaxHealth
-			end
-			hum.PlatformStand = false
-			hum.AutoRotate = true
-		end
-		
-		LocalPlayer.CharacterAdded:Connect(function(char)
-			task.wait(0.5)
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then
-				hum.BreakJointsOnDeath = false
-				hum.Health = hum.MaxHealth
-			end
-		end)
-		
-		task.spawn(function()
-			while Anti.Active do
-				task.wait(0.05)
-				pcall(protectChar)
-			end
-		end)
-	end
-	
-	-- ==================== 4. BYPASS BAŞLAT ====================
-	local function StartBypass()
-		if Anti.Active then return end
-		Anti.Active = true
-		
-		print("🛡️ ULTRA BYPASS AKTİF!")
-		print("   ✅ Remote Killer")
-		print("   ✅ Anti-Kick")
-		print("   ✅ Anti-Reset (BreakJointsOnDeath)")
-		
-		KillRemotes()
-		StartAntiKick()
-		StartAntiReset()
-		
-		task.spawn(function()
-			while Anti.Active do
-				task.wait(0.1)
-				pcall(KillRemotes)
-			end
-		end)
-	end
-	
-	-- ==================== 5. KAPAT ====================
-	local function StopBypass()
-		Anti.Active = false
-		print("🛡️ ULTRA BYPASS PASİF!")
-	end
-	
-	-- ==================== 6. TUŞLAR ====================
-	UIS.InputBegan:Connect(function(input, gp)
-		if gp then return end
-		if input.KeyCode == Enum.KeyCode.F7 then
-			if Anti.Active then
-				StopBypass()
-			else
-				StartBypass()
-			end
-		end
+
+
+		-- ==================== PASTE END ====================
 	end)
-	
-	-- ==================== 7. OTOMATİK BAŞLAT ====================
-	task.wait(0.5)
-	StartBypass()
-	
-	print("")
-	print("========================================")
-	print("🛡️ ULTRA BYPASS PAKETİ HAZIR!")
-	print("========================================")
-	print("📌 F7 - Bypass Aç/Kapat")
-	print("✅ Anti-Cheat Bypass")
-	print("✅ Anti-Kick (Kick yemezsin)")
-	print("✅ Anti-Reset (BreakJointsOnDeath)")
-	print("✅ Remote Killer")
-	print("========================================")
-
-	<<< PASTE END >>>
-]]
-end
+	if not ok then
+		warn("[LEA] Yapıştırma alanı hatası: ", err)
+	end
+end)
 ----------------------------------------------------------------
 
 local CFG = {

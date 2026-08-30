@@ -1,110 +1,333 @@
 -- ============================================================
--- HAMSTER LIVES - MEVLANA MOD V2 (HIZ AYARLI)
--- 360 DERECE DÖNÜŞ | HIZ AYARLI | SAĞ ÜST BUTON
+-- HAMSTER LIVES - BRUTAL MOD V2 (GELİŞMİŞ)
+-- HITBOX 40x | TRIGGERBOT | AIMBOT | TEAM/WALL/KILL CHECK
 -- ============================================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🌀 MEVLANA MOD V2 BAŞLADI...")
+print("💀 BRUTAL MOD V2 BAŞLADI...")
 
-local ModActive = false
-local RotationSpeed = 30  -- Başlangıç hızı (derece/frame)
-local CurrentAngle = 0
-local Character = nil
-local HumanoidRootPart = nil
+local BrutalActive = false
+local AimTarget = nil
+local CurrentWeapon = nil
+local HitboxSize = 40
+local FOVRadius = 300
 
 -- ============================================================
--- KARAKTERİ AL
+-- HITBOX BÜYÜTME (40x)
 -- ============================================================
-local function GetCharacter()
-    Character = LocalPlayer.Character
-    if Character then
-        HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+local function SetHitboxSize()
+    if not BrutalActive then return end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+                    hrp.Transparency = 0.3
+                    hrp.Material = Enum.Material.Neon
+                    hrp.BrickColor = BrickColor.new("Bright red")
+                end
+                -- Tüm parçaları büyüt
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part ~= hrp then
+                        part.Size = part.Size * 2
+                    end
+                end
+            end
+        end
     end
-    return Character
 end
 
 -- ============================================================
--- DÖNÜŞ FONKSİYONU
+-- HITBOX'LARI NORMALE DÖNDÜR
 -- ============================================================
-local function StartSpinning()
-    if not ModActive then return end
-    
-    CurrentAngle = CurrentAngle + RotationSpeed
-    if CurrentAngle > 360 then
-        CurrentAngle = CurrentAngle - 360
-    end
-    
-    if HumanoidRootPart then
-        HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
+local function ResetHitboxSize()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.Size = Vector3.new(2, 2, 2)
+                    hrp.Transparency = 0
+                    hrp.Material = Enum.Material.Plastic
+                end
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part ~= hrp then
+                        part.Size = part.Size / 2
+                    end
+                end
+            end
+        end
     end
 end
 
 -- ============================================================
--- MOD BAŞLAT/DURDUR
+-- SİLAH TESPİTİ (GELİŞMİŞ)
 -- ============================================================
-local function ToggleMod()
-    ModActive = not ModActive
-    GetCharacter()
+local function DetectWeapon()
+    local char = LocalPlayer.Character
+    if not char then return nil end
     
-    if ModActive then
-        print("🌀 MEVLANA MOD AKTİF! (Hız: " .. RotationSpeed .. " derece/frame)")
-        -- Dönüş döngüsünü başlat
+    -- Tool ara
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Tool") then
+            return child
+        end
+    end
+    
+    -- Accessory ara
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Accessory") then
+            return child
+        end
+    end
+    
+    -- Humanoid'de EquipTool kontrol et
+    local hum = char:FindFirstChild("Humanoid")
+    if hum then
+        local equipTool = hum:FindFirstChild("EquipTool")
+        if equipTool then
+            return equipTool.Parent
+        end
+    end
+    
+    return nil
+end
+
+-- ============================================================
+-- WALL CHECK (GELİŞMİŞ)
+-- ============================================================
+local function CanSeeTarget(targetPos)
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    -- Raycast ile duvar kontrolü
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {char, LocalPlayer.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.IgnoreWater = true
+    
+    local ray = Workspace:Raycast(hrp.Position, (targetPos - hrp.Position).Unit * 500, rayParams)
+    
+    if ray then
+        local hit = ray.Instance
+        if hit and hit.Parent then
+            if hit.Parent:FindFirstChild("Humanoid") then
+                return true
+            else
+                return false
+            end
+        end
+    end
+    return true
+end
+
+-- ============================================================
+-- TEAM CHECK
+-- ============================================================
+local function IsSameTeam(player)
+    local localTeam = LocalPlayer.Team
+    local targetTeam = player.Team
+    if localTeam and targetTeam then
+        return localTeam == targetTeam
+    end
+    return false
+end
+
+-- ============================================================
+-- EN YAKIN HEDEF BUL (FOV İLE)
+-- ============================================================
+local function FindClosestTarget()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    
+    local closest = nil
+    local closestDist = FOVRadius
+    local pos = hrp.Position
+    local cam = workspace.CurrentCamera
+    local camPos = cam.CFrame.Position
+    local camLook = cam.CFrame.LookVector
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            -- TEAM CHECK
+            if IsSameTeam(player) then
+                continue
+            end
+            
+            local tChar = player.Character
+            if not tChar then continue end
+            
+            local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+            if not tHrp then continue end
+            
+            local tHum = tChar:FindFirstChild("Humanoid")
+            if not tHum then continue end
+            
+            -- KILL CHECK (ÖLÜ MÜ?)
+            if tHum.Health <= 0 then
+                continue
+            end
+            
+            local dist = (pos - tHrp.Position).Magnitude
+            
+            -- FOV KONTROLÜ
+            local directionToTarget = (tHrp.Position - camPos).Unit
+            local angle = math.deg(math.acos(camLook:Dot(directionToTarget)))
+            if angle > 45 then
+                continue
+            end
+            
+            -- WALL CHECK
+            if not CanSeeTarget(tHrp.Position) then
+                continue
+            end
+            
+            if dist < closestDist then
+                closestDist = dist
+                closest = player
+            end
+        end
+    end
+    
+    return closest
+end
+
+-- ============================================================
+-- AIMBOT (HEDEFE ODAKLAN)
+-- ============================================================
+local function AimBot(target)
+    if not target then return end
+    
+    local tChar = target.Character
+    if not tChar then return end
+    local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+    if not tHrp then return end
+    
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    
+    -- HEDEFE BAK (SMOOTH)
+    local targetPos = tHrp.Position + Vector3.new(0, 1.5, 0)
+    local newCF = CFrame.new(cam.CFrame.Position, targetPos)
+    
+    TweenService:Create(cam, TweenInfo.new(0.05, Enum.EasingStyle.Linear), {
+        CFrame = newCF
+    }):Play()
+end
+
+-- ============================================================
+-- TRIGGERBOT (OTOMATİK SIKMA)
+-- ============================================================
+local function TriggerBot()
+    if not BrutalActive then return end
+    
+    local target = FindClosestTarget()
+    if not target then
+        CurrentWeapon = DetectWeapon()
+        return
+    end
+    
+    -- HEDEFE ODAKLAN
+    AimBot(target)
+    
+    -- SİLAH VAR MI?
+    local weapon = DetectWeapon()
+    if not weapon then return end
+    
+    -- OTOMATİK SIK
+    pcall(function()
+        UserInputService:SetKeyDown(Enum.KeyCode.Button1)
+        task.wait(0.05)
+        UserInputService:SetKeyUp(Enum.KeyCode.Button1)
+    end)
+end
+
+-- ============================================================
+-- OTOMATİK HEDEF DEĞİŞTİRME
+-- ============================================================
+local function AutoSwitchTarget()
+    if not BrutalActive then return end
+    
+    local target = FindClosestTarget()
+    if target then
+        AimTarget = target
+    end
+end
+
+-- ============================================================
+-- BRUTAL MOD AÇ/KAPA
+-- ============================================================
+local function ToggleBrutal()
+    BrutalActive = not BrutalActive
+    
+    if BrutalActive then
+        print("💀 BRUTAL MOD V2 AKTİF!")
+        print("   📏 Hitbox 40x büyütüldü")
+        print("   🎯 Aimbot + Triggerbot aktif")
+        print("   🛡️ Team/Wall/Kill check")
+        print("   🔫 Silah otomatik tespit")
+        
+        SetHitboxSize()
+        
+        -- ANA DÖNGÜ
         task.spawn(function()
-            while ModActive do
-                StartSpinning()
-                task.wait(0.016) -- ~60 FPS
+            while BrutalActive do
+                -- HITBOX KONTROL
+                SetHitboxSize()
+                
+                -- OTOMATİK HEDEF DEĞİŞTİR
+                AutoSwitchTarget()
+                
+                -- TRIGGERBOT
+                TriggerBot()
+                
+                -- SİLAH TESPİTİ
+                CurrentWeapon = DetectWeapon()
+                
+                task.wait(0.05)
             end
         end)
     else
-        print("⏹️ MEVLANA MOD DURDURULDU!")
+        print("💀 BRUTAL MOD V2 KAPATILDI!")
+        ResetHitboxSize()
+        AimTarget = nil
     end
 end
 
 -- ============================================================
--- HIZ AYARLAMA
--- ============================================================
-local function SetSpeed(value)
-    RotationSpeed = math.clamp(value, 5, 200)
-    print("🌀 Dönüş hızı: " .. RotationSpeed .. " derece/frame")
-end
-
--- ============================================================
--- KARAKTER DEĞİŞİMİNİ İZLE
--- ============================================================
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    GetCharacter()
-    if ModActive then
-        print("🌀 Karakter yeniden doğdu, dönüş devam ediyor...")
-    end
-end)
-
--- ============================================================
--- MENU BUTONU + HIZ AYARI (SAĞ ÜST)
+-- MENU BUTONU
 -- ============================================================
 local function CreateButton()
-    local old = CoreGui:FindFirstChild("MevlanaButton")
+    local old = CoreGui:FindFirstChild("BrutalButton")
     if old then old:Destroy() end
     
     local gui = Instance.new("ScreenGui")
-    gui.Name = "MevlanaButton"
+    gui.Name = "BrutalButton"
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     
-    -- ANA BUTON
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 44, 0, 44)
-    btn.Position = UDim2.new(1, -54, 0, 60)
+    btn.Position = UDim2.new(1, -54, 0, 110)
     btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn.BackgroundTransparency = 0.3
-    btn.Text = "🌀"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = "💀"
+    btn.TextColor3 = Color3.fromRGB(255, 50, 50)
     btn.TextSize = 22
     btn.Font = Enum.Font.GothamBold
     btn.Parent = gui
@@ -113,12 +336,12 @@ local function CreateButton()
     
     local stroke = Instance.new("UIStroke", btn)
     stroke.Thickness = 1.5
-    stroke.Color = Color3.fromRGB(255, 200, 0)
+    stroke.Color = Color3.fromRGB(255, 0, 0)
     stroke.Transparency = 0.5
     
     local status = Instance.new("TextLabel")
     status.Size = UDim2.new(0, 60, 0, 16)
-    status.Position = UDim2.new(1, -65, 0, 48)
+    status.Position = UDim2.new(1, -65, 0, 98)
     status.BackgroundTransparency = 1
     status.Text = "KAPALI"
     status.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -128,97 +351,15 @@ local function CreateButton()
     status.Parent = gui
     status.ZIndex = 999
     
-    -- HIZ ÇUBUĞU (YANINA)
-    local speedFrame = Instance.new("Frame")
-    speedFrame.Size = UDim2.new(0, 80, 0, 20)
-    speedFrame.Position = UDim2.new(1, -90, 0, 108)
-    speedFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    speedFrame.BackgroundTransparency = 0.3
-    speedFrame.Parent = gui
-    speedFrame.ZIndex = 999
-    Instance.new("UICorner", speedFrame).CornerRadius = UDim.new(1, 0)
-    
-    -- DOLU KISIM
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new((RotationSpeed - 5) / 195, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-    fill.BorderSizePixel = 0
-    fill.Parent = speedFrame
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-    
-    -- HIZ ETİKETİ
-    local speedLabel = Instance.new("TextLabel")
-    speedLabel.Size = UDim2.new(1, 0, 1, 0)
-    speedLabel.BackgroundTransparency = 1
-    speedLabel.Text = math.round(RotationSpeed) .. "°"
-    speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    speedLabel.TextSize = 9
-    speedLabel.Font = Enum.Font.GothamBold
-    speedLabel.Parent = speedFrame
-    speedLabel.ZIndex = 1000
-    
-    -- ARTTIR BUTONU
-    local upBtn = Instance.new("TextButton")
-    upBtn.Size = UDim2.new(0, 20, 0, 20)
-    upBtn.Position = UDim2.new(1, -75, 0, 60)
-    upBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    upBtn.Text = "▲"
-    upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    upBtn.TextSize = 12
-    upBtn.Font = Enum.Font.GothamBold
-    upBtn.Parent = gui
-    upBtn.ZIndex = 999
-    Instance.new("UICorner", upBtn).CornerRadius = UDim.new(1, 0)
-    
-    upBtn.MouseEnter:Connect(function()
-        upBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    end)
-    upBtn.MouseLeave:Connect(function()
-        upBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    end)
-    
-    upBtn.MouseButton1Click:Connect(function()
-        SetSpeed(RotationSpeed + 10)
-        fill.Size = UDim2.new((RotationSpeed - 5) / 195, 0, 1, 0)
-        speedLabel.Text = math.round(RotationSpeed) .. "°"
-    end)
-    
-    -- AZALT BUTONU
-    local downBtn = Instance.new("TextButton")
-    downBtn.Size = UDim2.new(0, 20, 0, 20)
-    downBtn.Position = UDim2.new(1, -75, 0, 82)
-    downBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-    downBtn.Text = "▼"
-    downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    downBtn.TextSize = 12
-    downBtn.Font = Enum.Font.GothamBold
-    downBtn.Parent = gui
-    downBtn.ZIndex = 999
-    Instance.new("UICorner", downBtn).CornerRadius = UDim.new(1, 0)
-    
-    downBtn.MouseEnter:Connect(function()
-        downBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    end)
-    downBtn.MouseLeave:Connect(function()
-        downBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-    end)
-    
-    downBtn.MouseButton1Click:Connect(function()
-        SetSpeed(RotationSpeed - 10)
-        fill.Size = UDim2.new((RotationSpeed - 5) / 195, 0, 1, 0)
-        speedLabel.Text = math.round(RotationSpeed) .. "°"
-    end)
-    
-    -- ANA BUTON İŞLEVİ
     btn.MouseButton1Click:Connect(function()
-        ToggleMod()
-        if ModActive then
-            btn.Text = "🌀⚡"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        ToggleBrutal()
+        if BrutalActive then
+            btn.Text = "💀🔥"
+            btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
             status.Text = "AKTİF"
-            status.TextColor3 = Color3.fromRGB(0, 255, 100)
+            status.TextColor3 = Color3.fromRGB(255, 0, 0)
         else
-            btn.Text = "🌀"
+            btn.Text = "💀"
             btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
             status.Text = "KAPALI"
             status.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -229,15 +370,22 @@ local function CreateButton()
 end
 
 -- ============================================================
--- ESC İLE KAPAT
+-- KARAKTER DEĞİŞİMİ
 -- ============================================================
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.Escape then
-        if ModActive then
-            ModActive = false
-            print("⏹️ ESC ile MEVLANA MOD kapatıldı!")
-        end
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if BrutalActive then
+        SetHitboxSize()
+    end
+end)
+
+-- ============================================================
+-- YENİ OYUNCU GİRİŞİ
+-- ============================================================
+Players.PlayerAdded:Connect(function()
+    if BrutalActive then
+        task.wait(0.5)
+        SetHitboxSize()
     end
 end)
 
@@ -245,15 +393,15 @@ end)
 -- BAŞLAT
 -- ============================================================
 task.wait(0.5)
-GetCharacter()
 CreateButton()
 
 print("")
 print("========================================")
-print("🌀 MEVLANA MOD V2 HAZIR!")
-print("   📌 Sağ üstteki 🌀 butonuna tıkla")
-print("   🔄 Karakter 360 derece döner")
-print("   🎥 Kamera sabit kalır")
-print("   📊 ▲▼ ile dönüş hızını ayarla")
-print("   ⏹️ ESC ile kapat")
+print("💀 BRUTAL MOD V2 HAZIR!")
+print("   📌 Sağ üstteki 💀 butonuna tıkla")
+print("   📏 Hitbox 40x büyütülür")
+print("   🎯 Aimbot + Triggerbot")
+print("   🛡️ Team/Wall/Kill check")
+print("   🔫 Silah otomatik tespit")
+print("   👁️ FOV ile hedef seçimi")
 print("========================================")

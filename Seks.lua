@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V2 (MENÜLÜ)
--- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT (OTOMATİK TIK)
+-- HAMSTER LIVES - ULTRA MOD V5 (MOBİL UYUMLU)
+-- 360 DÖNÜŞ | BRUTAL HITBOX | TRIGGERBOT | BYPASS | MENÜ ÇALIŞIR
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -8,11 +8,10 @@ local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V2 BAŞLADI...")
+print("🔥 ULTRA MOD V5 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
@@ -30,6 +29,7 @@ local CurrentAngle = 0
 local MenuVisible = false
 local Character = nil
 local HumanoidRootPart = nil
+local MenuGui = nil
 
 -- ============================================================
 -- BYPASS
@@ -94,7 +94,6 @@ local function SetHitboxSize()
                 if hrp then
                     hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
                     hrp.Transparency = 1
-                    hrp.Material = Enum.Material.Plastic
                     hrp.CanCollide = false
                 end
             end
@@ -111,7 +110,6 @@ local function ResetHitboxSize()
                 if hrp then
                     hrp.Size = Vector3.new(2, 2, 2)
                     hrp.Transparency = 0
-                    hrp.Material = Enum.Material.Plastic
                     hrp.CanCollide = true
                 end
             end
@@ -159,7 +157,7 @@ local function CanSeeTarget(targetPos)
 end
 
 -- ============================================================
--- TRIGGERBOT (EKRA GÖRÜNCE OTOMATİK TIK)
+-- TRIGGERBOT
 -- ============================================================
 local function TriggerBot()
     if not Mods.Trigger then return end
@@ -213,19 +211,33 @@ local function MainLoop()
 end
 
 -- ============================================================
--- MENU (EKRA ORTASI - AÇ/KAPA BUTONU İLE)
+-- MENU OLUŞTUR (MOBİL UYUMLU - TOUCH DESTEKLİ)
 -- ============================================================
 local function CreateMenu()
-    local old = CoreGui:FindFirstChild("UltraMenuV2")
+    if MenuGui then
+        MenuGui:Destroy()
+        MenuGui = nil
+    end
+    local old = CoreGui:FindFirstChild("UltraMenuV3")
     if old then old:Destroy() end
+    local old2 = CoreGui:FindFirstChild("UltraMenuV2")
+    if old2 then old2:Destroy() end
+    
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then
+        pg = Instance.new("ScreenGui")
+        pg.Name = "PlayerGui"
+        pg.Parent = LocalPlayer
+        task.wait(0.1)
+    end
     
     local gui = Instance.new("ScreenGui")
-    gui.Name = "UltraMenuV2"
-    gui.Parent = CoreGui
+    gui.Name = "UltraMenuV5"
+    gui.Parent = pg
     gui.ResetOnSpawn = false
     gui.Enabled = false
+    MenuGui = gui
     
-    -- ANA PANEL (ORTA)
     local panel = Instance.new("Frame")
     panel.Size = UDim2.new(0, 220, 0, 280)
     panel.Position = UDim2.new(0.5, -110, 0.3, 0)
@@ -240,7 +252,6 @@ local function CreateMenu()
     stroke.Color = Color3.fromRGB(255, 200, 0)
     stroke.Transparency = 0.5
     
-    -- BAŞLIK
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
     title.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
@@ -251,11 +262,26 @@ local function CreateMenu()
     title.Parent = panel
     Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
     
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -28, 0, 3)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = panel
+    closeBtn.ZIndex = 1000
+    closeBtn.MouseButton1Click:Connect(function()
+        gui.Enabled = false
+        MenuVisible = false
+    end)
+    
     local yPos = 38
     
-    -- MEVLANA MOD (360 DÖNÜŞ)
+    -- MEVLANA BUTONU
     local mevBtn = Instance.new("TextButton")
-    mevBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    mevBtn.Size = UDim2.new(0.9, 0, 0, 28)
     mevBtn.Position = UDim2.new(0.05, 0, 0, yPos)
     mevBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
     mevBtn.Text = "🌀 MEVLANA: KAPALI"
@@ -264,16 +290,15 @@ local function CreateMenu()
     mevBtn.Font = Enum.Font.GothamBold
     mevBtn.Parent = panel
     Instance.new("UICorner", mevBtn).CornerRadius = UDim.new(0, 4)
-    
     mevBtn.MouseButton1Click:Connect(function()
         Mods.Mevlana = not Mods.Mevlana
         mevBtn.Text = Mods.Mevlana and "🌀 MEVLANA: AKTİF" or "🌀 MEVLANA: KAPALI"
         mevBtn.BackgroundColor3 = Mods.Mevlana and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(20, 20, 40)
     end)
     
-    yPos = yPos + 38
+    yPos = yPos + 35
     
-    -- MEVLANA HIZ AYARI
+    -- HIZ AYARI (TOUCH + MOUSE DESTEKLİ)
     local speedLabel = Instance.new("TextLabel")
     speedLabel.Size = UDim2.new(0.4, 0, 0, 18)
     speedLabel.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -298,20 +323,35 @@ local function CreateMenu()
     speedFill.Parent = speedSlider
     Instance.new("UICorner", speedFill).CornerRadius = UDim.new(1, 0)
     
-    speedSlider.MouseButton1Click:Connect(function(input)
-        local x = input.Position.X - speedSlider.AbsolutePosition.X
-        local w = speedSlider.AbsoluteSize.X
-        local val = math.clamp(math.floor((x / w) * 200), 1, 200)
-        MevlanaSpeed = val
-        speedFill.Size = UDim2.new(val / 200, 0, 1, 0)
-        speedLabel.Text = "Hız: " .. val
+    -- TOUCH + MOUSE DESTEĞİ
+    speedSlider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local x = input.Position.X - speedSlider.AbsolutePosition.X
+            local w = speedSlider.AbsoluteSize.X
+            local val = math.clamp(math.floor((x / w) * 200), 1, 200)
+            MevlanaSpeed = val
+            speedFill.Size = UDim2.new(val / 200, 0, 1, 0)
+            speedLabel.Text = "Hız: " .. val
+        end
     end)
     
-    yPos = yPos + 28
+    -- TOUCH MOVE DESTEĞİ (SÜRÜKLEMEK İÇİN)
+    speedSlider.InputMoved:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local x = input.Position.X - speedSlider.AbsolutePosition.X
+            local w = speedSlider.AbsoluteSize.X
+            local val = math.clamp(math.floor((x / w) * 200), 1, 200)
+            MevlanaSpeed = val
+            speedFill.Size = UDim2.new(val / 200, 0, 1, 0)
+            speedLabel.Text = "Hız: " .. val
+        end
+    end)
     
-    -- BRUTAL MOD (HITBOX)
+    yPos = yPos + 25
+    
+    -- BRUTAL BUTONU
     local brutBtn = Instance.new("TextButton")
-    brutBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    brutBtn.Size = UDim2.new(0.9, 0, 0, 28)
     brutBtn.Position = UDim2.new(0.05, 0, 0, yPos)
     brutBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
     brutBtn.Text = "💀 BRUTAL: KAPALI"
@@ -320,7 +360,6 @@ local function CreateMenu()
     brutBtn.Font = Enum.Font.GothamBold
     brutBtn.Parent = panel
     Instance.new("UICorner", brutBtn).CornerRadius = UDim.new(0, 4)
-    
     brutBtn.MouseButton1Click:Connect(function()
         Mods.Brutal = not Mods.Brutal
         brutBtn.Text = Mods.Brutal and "💀 BRUTAL: AKTİF" or "💀 BRUTAL: KAPALI"
@@ -328,9 +367,9 @@ local function CreateMenu()
         if not Mods.Brutal then ResetHitboxSize() end
     end)
     
-    yPos = yPos + 38
+    yPos = yPos + 35
     
-    -- HITBOX BOYUT AYARI
+    -- HITBOX AYARI (TOUCH + MOUSE DESTEKLİ)
     local sizeLabel = Instance.new("TextLabel")
     sizeLabel.Size = UDim2.new(0.4, 0, 0, 18)
     sizeLabel.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -355,20 +394,33 @@ local function CreateMenu()
     sizeFill.Parent = sizeSlider
     Instance.new("UICorner", sizeFill).CornerRadius = UDim.new(1, 0)
     
-    sizeSlider.MouseButton1Click:Connect(function(input)
-        local x = input.Position.X - sizeSlider.AbsolutePosition.X
-        local w = sizeSlider.AbsoluteSize.X
-        local val = math.clamp(math.floor((x / w) * 1000), 5, 1000)
-        HitboxSize = val
-        sizeFill.Size = UDim2.new(val / 1000, 0, 1, 0)
-        sizeLabel.Text = "Hitbox: " .. val
+    sizeSlider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local x = input.Position.X - sizeSlider.AbsolutePosition.X
+            local w = sizeSlider.AbsoluteSize.X
+            local val = math.clamp(math.floor((x / w) * 1000), 5, 1000)
+            HitboxSize = val
+            sizeFill.Size = UDim2.new(val / 1000, 0, 1, 0)
+            sizeLabel.Text = "Hitbox: " .. val
+        end
     end)
     
-    yPos = yPos + 28
+    sizeSlider.InputMoved:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local x = input.Position.X - sizeSlider.AbsolutePosition.X
+            local w = sizeSlider.AbsoluteSize.X
+            local val = math.clamp(math.floor((x / w) * 1000), 5, 1000)
+            HitboxSize = val
+            sizeFill.Size = UDim2.new(val / 1000, 0, 1, 0)
+            sizeLabel.Text = "Hitbox: " .. val
+        end
+    end)
     
-    -- TRIGGERBOT
+    yPos = yPos + 25
+    
+    -- TRIGGER BUTONU
     local trigBtn = Instance.new("TextButton")
-    trigBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    trigBtn.Size = UDim2.new(0.9, 0, 0, 28)
     trigBtn.Position = UDim2.new(0.05, 0, 0, yPos)
     trigBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
     trigBtn.Text = "🎯 TRIGGER: KAPALI"
@@ -377,18 +429,17 @@ local function CreateMenu()
     trigBtn.Font = Enum.Font.GothamBold
     trigBtn.Parent = panel
     Instance.new("UICorner", trigBtn).CornerRadius = UDim.new(0, 4)
-    
     trigBtn.MouseButton1Click:Connect(function()
         Mods.Trigger = not Mods.Trigger
         trigBtn.Text = Mods.Trigger and "🎯 TRIGGER: AKTİF" or "🎯 TRIGGER: KAPALI"
         trigBtn.BackgroundColor3 = Mods.Trigger and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(20, 20, 40)
     end)
     
-    yPos = yPos + 38
+    yPos = yPos + 35
     
-    -- BYPASS
+    -- BYPASS BUTONU
     local bypassBtn = Instance.new("TextButton")
-    bypassBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    bypassBtn.Size = UDim2.new(0.9, 0, 0, 28)
     bypassBtn.Position = UDim2.new(0.05, 0, 0, yPos)
     bypassBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
     bypassBtn.Text = "🔓 BYPASS: KAPALI"
@@ -397,7 +448,6 @@ local function CreateMenu()
     bypassBtn.Font = Enum.Font.GothamBold
     bypassBtn.Parent = panel
     Instance.new("UICorner", bypassBtn).CornerRadius = UDim.new(0, 4)
-    
     bypassBtn.MouseButton1Click:Connect(function()
         Mods.Bypass = not Mods.Bypass
         bypassBtn.Text = Mods.Bypass and "🔓 BYPASS: AKTİF" or "🔓 BYPASS: KAPALI"
@@ -405,30 +455,18 @@ local function CreateMenu()
         if Mods.Bypass then RunBypass() end
     end)
     
-    -- KAPATMA BUTONU
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -28, 0, 4)
-    closeBtn.BackgroundTransparency = 1
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    closeBtn.TextSize = 14
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = panel
-    closeBtn.ZIndex = 1000
-    closeBtn.MouseButton1Click:Connect(function()
-        gui.Enabled = false
-        MenuVisible = false
-    end)
-    
     return gui
 end
 
 -- ============================================================
--- AÇMA/KAPAMA BUTONU (SAĞ ÜST)
+-- AÇMA BUTONU
 -- ============================================================
 local function CreateToggleButton()
+    local old = CoreGui:FindFirstChild("UltraToggle")
+    if old then old:Destroy() end
+    
     local btn = Instance.new("TextButton")
+    btn.Name = "UltraToggle"
     btn.Size = UDim2.new(0, 40, 0, 40)
     btn.Position = UDim2.new(1, -50, 0, 10)
     btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
@@ -440,25 +478,16 @@ local function CreateToggleButton()
     btn.ZIndex = 999
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     
-    local menu = CreateMenu()
-    
     btn.MouseButton1Click:Connect(function()
-        if menu then
+        if not MenuGui or not MenuGui.Parent then
+            MenuGui = CreateMenu()
+        end
+        if MenuGui then
             MenuVisible = not MenuVisible
-            menu.Enabled = MenuVisible
+            MenuGui.Enabled = MenuVisible
         end
     end)
-    
-    return btn
 end
-
--- ============================================================
--- KARAKTER DEĞİŞİMİ
--- ============================================================
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    GetCharacter()
-end)
 
 -- ============================================================
 -- BAŞLAT
@@ -470,11 +499,9 @@ MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V2 HAZIR!")
+print("🔥 ULTRA MOD V5 HAZIR!")
 print("   📌 Sağ üstteki ⚡ butonuna tıkla")
 print("   📊 Menü ekranın ortasında açılır")
-print("   🌀 Mevlana: 360 dönüş (hız ayarlı)")
-print("   💀 Brutal: Hitbox (1000'e kadar)")
-print("   🎯 Trigger: Otomatik tık")
-print("   🔓 Bypass: Anti-cheat killer")
+print("   ✅ TOUCH + MOUSE DESTEKLİ")
+print("   ✅ Telefon için optimize")
 print("========================================")

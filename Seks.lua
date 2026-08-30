@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V5 (MOBİL UYUMLU)
--- 360 DÖNÜŞ | BRUTAL HITBOX | TRIGGERBOT | BYPASS | MENÜ ÇALIŞIR
+-- HAMSTER LIVES - ULTRA MOD V6 (MOBİL OPTİMİZE)
+-- 360 DÖNÜŞ | BRUTAL HITBOX | TRIGGERBOT | BYPASS
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -9,9 +9,10 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V5 BAŞLADI...")
+print("🔥 ULTRA MOD V6 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
@@ -30,6 +31,9 @@ local MenuVisible = false
 local Character = nil
 local HumanoidRootPart = nil
 local MenuGui = nil
+local isDragging = false
+local DragStart = nil
+local StartPos = nil
 
 -- ============================================================
 -- BYPASS
@@ -157,7 +161,7 @@ local function CanSeeTarget(targetPos)
 end
 
 -- ============================================================
--- TRIGGERBOT
+-- TRIGGERBOT (EKRA GÖRÜNCE OTOMATİK TIK)
 -- ============================================================
 local function TriggerBot()
     if not Mods.Trigger then return end
@@ -211,40 +215,33 @@ local function MainLoop()
 end
 
 -- ============================================================
--- MENU OLUŞTUR (MOBİL UYUMLU - TOUCH DESTEKLİ)
+-- MENU OLUŞTUR (EKRA ORTASI - SÜRÜKLEYEBİLİR)
 -- ============================================================
 local function CreateMenu()
     if MenuGui then
         MenuGui:Destroy()
         MenuGui = nil
     end
-    local old = CoreGui:FindFirstChild("UltraMenuV3")
-    if old then old:Destroy() end
-    local old2 = CoreGui:FindFirstChild("UltraMenuV2")
-    if old2 then old2:Destroy() end
     
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then
-        pg = Instance.new("ScreenGui")
-        pg.Name = "PlayerGui"
-        pg.Parent = LocalPlayer
-        task.wait(0.1)
-    end
+    local old = CoreGui:FindFirstChild("UltraMenuV6")
+    if old then old:Destroy() end
     
     local gui = Instance.new("ScreenGui")
-    gui.Name = "UltraMenuV5"
-    gui.Parent = pg
+    gui.Name = "UltraMenuV6"
+    gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     gui.Enabled = false
     MenuGui = gui
     
     local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, 220, 0, 280)
+    panel.Size = UDim2.new(0, 220, 0, 320)
     panel.Position = UDim2.new(0.5, -110, 0.3, 0)
     panel.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
     panel.BackgroundTransparency = 0.1
     panel.Parent = gui
     panel.ZIndex = 999
+    panel.Active = true
+    panel.Draggable = true
     Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
     
     local stroke = Instance.new("UIStroke", panel)
@@ -298,7 +295,7 @@ local function CreateMenu()
     
     yPos = yPos + 35
     
-    -- HIZ AYARI (TOUCH + MOUSE DESTEKLİ)
+    -- HIZ AYARI (SADECE TOUCH)
     local speedLabel = Instance.new("TextLabel")
     speedLabel.Size = UDim2.new(0.4, 0, 0, 18)
     speedLabel.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -323,21 +320,8 @@ local function CreateMenu()
     speedFill.Parent = speedSlider
     Instance.new("UICorner", speedFill).CornerRadius = UDim.new(1, 0)
     
-    -- TOUCH + MOUSE DESTEĞİ
     speedSlider.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local x = input.Position.X - speedSlider.AbsolutePosition.X
-            local w = speedSlider.AbsoluteSize.X
-            local val = math.clamp(math.floor((x / w) * 200), 1, 200)
-            MevlanaSpeed = val
-            speedFill.Size = UDim2.new(val / 200, 0, 1, 0)
-            speedLabel.Text = "Hız: " .. val
-        end
-    end)
-    
-    -- TOUCH MOVE DESTEĞİ (SÜRÜKLEMEK İÇİN)
-    speedSlider.InputMoved:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             local x = input.Position.X - speedSlider.AbsolutePosition.X
             local w = speedSlider.AbsoluteSize.X
             local val = math.clamp(math.floor((x / w) * 200), 1, 200)
@@ -369,7 +353,7 @@ local function CreateMenu()
     
     yPos = yPos + 35
     
-    -- HITBOX AYARI (TOUCH + MOUSE DESTEKLİ)
+    -- HITBOX AYARI (SADECE TOUCH)
     local sizeLabel = Instance.new("TextLabel")
     sizeLabel.Size = UDim2.new(0.4, 0, 0, 18)
     sizeLabel.Position = UDim2.new(0.05, 0, 0, yPos)
@@ -395,18 +379,7 @@ local function CreateMenu()
     Instance.new("UICorner", sizeFill).CornerRadius = UDim.new(1, 0)
     
     sizeSlider.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local x = input.Position.X - sizeSlider.AbsolutePosition.X
-            local w = sizeSlider.AbsoluteSize.X
-            local val = math.clamp(math.floor((x / w) * 1000), 5, 1000)
-            HitboxSize = val
-            sizeFill.Size = UDim2.new(val / 1000, 0, 1, 0)
-            sizeLabel.Text = "Hitbox: " .. val
-        end
-    end)
-    
-    sizeSlider.InputMoved:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             local x = input.Position.X - sizeSlider.AbsolutePosition.X
             local w = sizeSlider.AbsoluteSize.X
             local val = math.clamp(math.floor((x / w) * 1000), 5, 1000)
@@ -459,7 +432,7 @@ local function CreateMenu()
 end
 
 -- ============================================================
--- AÇMA BUTONU
+-- AÇMA BUTONU (EKRA ORTASI - SÜRÜKLEYEBİLİR)
 -- ============================================================
 local function CreateToggleButton()
     local old = CoreGui:FindFirstChild("UltraToggle")
@@ -467,15 +440,17 @@ local function CreateToggleButton()
     
     local btn = Instance.new("TextButton")
     btn.Name = "UltraToggle"
-    btn.Size = UDim2.new(0, 40, 0, 40)
-    btn.Position = UDim2.new(1, -50, 0, 10)
+    btn.Size = UDim2.new(0, 50, 0, 50)
+    btn.Position = UDim2.new(0.5, -25, 0.5, -25)
     btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
     btn.Text = "⚡"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 20
+    btn.TextSize = 24
     btn.Font = Enum.Font.GothamBold
     btn.Parent = CoreGui
     btn.ZIndex = 999
+    btn.Active = true
+    btn.Draggable = true
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     
     btn.MouseButton1Click:Connect(function()
@@ -499,9 +474,8 @@ MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V5 HAZIR!")
-print("   📌 Sağ üstteki ⚡ butonuna tıkla")
-print("   📊 Menü ekranın ortasında açılır")
-print("   ✅ TOUCH + MOUSE DESTEKLİ")
-print("   ✅ Telefon için optimize")
+print("🔥 ULTRA MOD V6 HAZIR!")
+print("   📌 Ekran ortasında ⚡ butonuna tıkla")
+print("   📊 Menü açılır (sürükleyebilirsin)")
+print("   ✅ MOBİL OPTİMİZE")
 print("========================================")

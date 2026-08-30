@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V2 (TRIGGERBOT EKLENDİ)
--- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT | BYPASS
+-- HAMSTER LIVES - ULTRA MOD V3 (BYPASS KALDIRILDI)
+-- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -9,18 +9,16 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V2 BAŞLADI...")
+print("🔥 ULTRA MOD V3 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
 -- ============================================================
 local Mods = {
     Mevlana = false,
-    Brutal = false,
-    Bypass = false
+    Brutal = false
 }
 
 local MevlanaSpeed = 30
@@ -28,43 +26,6 @@ local CurrentAngle = 0
 local HitboxSize = 40
 local Character = nil
 local HumanoidRootPart = nil
-
--- ============================================================
--- BYPASS
--- ============================================================
-local function RunBypass()
-    if not Mods.Bypass then return end
-    
-    local patterns = {
-        "AntiCheat", "AC", "Security", "Protect", "Ban",
-        "Kick", "Detect", "Monitor", "Guard", "Watch",
-        "Hyperion", "Byfron", "Luau", "Bytecode"
-    }
-    
-    local killed = 0
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj.Name then
-            for _, p in ipairs(patterns) do
-                if obj.Name:find(p) then
-                    pcall(function()
-                        if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-                            obj.Disabled = true
-                            killed = killed + 1
-                        end
-                        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                            if obj.Name:find("Anti") or obj.Name:find("Cheat") or obj.Name:find("Detect") then
-                                obj:Destroy()
-                                killed = killed + 1
-                            end
-                        end
-                    end)
-                    break
-                end
-            end
-        end
-    end
-    print("[BYPASS] " .. killed .. " anticheat nesnesi imha edildi.")
-end
 
 -- ============================================================
 -- 360 DÖNÜŞ
@@ -170,7 +131,7 @@ local function CanSeeTarget(targetPos)
 end
 
 -- ============================================================
--- TRIGGERBOT (EKLEDİM)
+-- TRIGGERBOT
 -- ============================================================
 local function TriggerBot()
     if not Mods.Brutal then return end
@@ -221,19 +182,6 @@ local function ToggleBrutal()
 end
 
 -- ============================================================
--- BYPASS AÇ/KAPA
--- ============================================================
-local function ToggleBypass()
-    Mods.Bypass = not Mods.Bypass
-    if Mods.Bypass then
-        print("🔓 BYPASS AKTİF!")
-        RunBypass()
-    else
-        print("🔓 BYPASS KAPALI!")
-    end
-end
-
--- ============================================================
 -- ANA DÖNGÜ
 -- ============================================================
 local function MainLoop()
@@ -250,7 +198,7 @@ local function MainLoop()
 end
 
 -- ============================================================
--- MENU (BUTONLAR DAHA YUKARIDA - btnY = 10)
+-- MENU (SADECE 2 BUTON - BYPASS YOK)
 -- ============================================================
 local function CreateMenu()
     local old = CoreGui:FindFirstChild("UltraMenu")
@@ -261,7 +209,7 @@ local function CreateMenu()
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     
-    local btnY = 10  -- DAHA YUKARIDA
+    local btnY = 55
     local btnGap = 48
     
     -- MEVLANA BUTONU
@@ -346,46 +294,7 @@ local function CreateMenu()
         end
     end)
     
-    -- BYPASS BUTONU
-    local btn3 = Instance.new("TextButton")
-    btn3.Size = UDim2.new(0, 40, 0, 40)
-    btn3.Position = UDim2.new(1, -50, 0, btnY + btnGap * 2)
-    btn3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btn3.BackgroundTransparency = 0.3
-    btn3.Text = "🔓"
-    btn3.TextColor3 = Color3.fromRGB(0, 255, 100)
-    btn3.TextSize = 20
-    btn3.Font = Enum.Font.GothamBold
-    btn3.Parent = gui
-    btn3.ZIndex = 999
-    Instance.new("UICorner", btn3).CornerRadius = UDim.new(1, 0)
-    
-    local status3 = Instance.new("TextLabel")
-    status3.Size = UDim2.new(0, 50, 0, 14)
-    status3.Position = UDim2.new(1, -55, 0, btnY + btnGap * 2 - 18)
-    status3.BackgroundTransparency = 1
-    status3.Text = "KAPALI"
-    status3.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status3.TextSize = 7
-    status3.Font = Enum.Font.GothamBold
-    status3.TextXAlignment = Enum.TextXAlignment.Right
-    status3.Parent = gui
-    status3.ZIndex = 999
-    
-    btn3.MouseButton1Click:Connect(function()
-        ToggleBypass()
-        if Mods.Bypass then
-            btn3.Text = "🔓✅"
-            btn3.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            status3.Text = "AKTİF"
-            status3.TextColor3 = Color3.fromRGB(0, 255, 100)
-        else
-            btn3.Text = "🔓"
-            btn3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            status3.Text = "KAPALI"
-            status3.TextColor3 = Color3.fromRGB(255, 50, 50)
-        end
-    end)
+    -- BYPASS BUTONU KALDIRILDI
 end
 
 -- ============================================================
@@ -407,9 +316,8 @@ MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V2 HAZIR!")
+print("🔥 ULTRA MOD V3 HAZIR!")
 print("   🌀 Mevlana: 360 dönüş")
 print("   💀 Brutal: Hitbox 40x + TRIGGERBOT")
-print("   🔓 Bypass: Anti-cheat killer")
-print("   📌 Sağ üstteki butonlar (YUKARIDA)")
+print("   📌 Sağ üstteki butonlar (BYPASS KALDIRILDI)")
 print("========================================")

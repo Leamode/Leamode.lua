@@ -1,5 +1,5 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V3 (BYPASS KALDIRILDI)
+-- HAMSTER LIVES - ULTRA MOD V4 (BUTONLAR YUKARIDA)
 -- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT
 -- ============================================================
 
@@ -8,10 +8,9 @@ local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V3 BAŞLADI...")
+print("🔥 ULTRA MOD V4 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
@@ -198,7 +197,7 @@ local function MainLoop()
 end
 
 -- ============================================================
--- MENU (SADECE 2 BUTON - BYPASS YOK)
+-- MENU (BUTONLAR EN YUKARIDA - btnY = 5)
 -- ============================================================
 local function CreateMenu()
     local old = CoreGui:FindFirstChild("UltraMenu")
@@ -209,7 +208,7 @@ local function CreateMenu()
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     
-    local btnY = 55
+    local btnY = 5  -- EN YUKARI
     local btnGap = 48
     
     -- MEVLANA BUTONU
@@ -293,8 +292,6 @@ local function CreateMenu()
             status2.TextColor3 = Color3.fromRGB(255, 50, 50)
         end
     end)
-    
-    -- BYPASS BUTONU KALDIRILDI
 end
 
 -- ============================================================
@@ -316,8 +313,8 @@ MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V3 HAZIR!")
+print("🔥 ULTRA MOD V4 HAZIR!")
 print("   🌀 Mevlana: 360 dönüş")
 print("   💀 Brutal: Hitbox 40x + TRIGGERBOT")
-print("   📌 Sağ üstteki butonlar (BYPASS KALDIRILDI)")
+print("   📌 Sağ üstteki butonlar (EN YUKARIDA)")
 print("========================================")

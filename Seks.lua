@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - BRUTAL MOD V2 (GELİŞMİŞ)
--- HITBOX 40x | TRIGGERBOT | AIMBOT | TEAM/WALL/KILL CHECK
+-- HAMSTER LIVES - BRUTAL HITBOX MOD V3 (SADE HITBOX)
+-- HITBOX 40x | GÖRÜNMEZ | KASMA YOK | TRIGGERBOT
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -8,19 +8,15 @@ local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("💀 BRUTAL MOD V2 BAŞLADI...")
+print("💀 BRUTAL HITBOX MOD V3 BAŞLADI...")
 
 local BrutalActive = false
-local AimTarget = nil
-local CurrentWeapon = nil
 local HitboxSize = 40
-local FOVRadius = 300
 
 -- ============================================================
--- HITBOX BÜYÜTME (40x)
+-- HITBOX BÜYÜTME (GÖRÜNMEZ - KASMA YOK)
 -- ============================================================
 local function SetHitboxSize()
     if not BrutalActive then return end
@@ -32,15 +28,9 @@ local function SetHitboxSize()
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-                    hrp.Transparency = 0.3
-                    hrp.Material = Enum.Material.Neon
-                    hrp.BrickColor = BrickColor.new("Bright red")
-                end
-                -- Tüm parçaları büyüt
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") and part ~= hrp then
-                        part.Size = part.Size * 2
-                    end
+                    hrp.Transparency = 1
+                    hrp.Material = Enum.Material.Plastic
+                    hrp.CanCollide = false
                 end
             end
         end
@@ -60,78 +50,11 @@ local function ResetHitboxSize()
                     hrp.Size = Vector3.new(2, 2, 2)
                     hrp.Transparency = 0
                     hrp.Material = Enum.Material.Plastic
-                end
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") and part ~= hrp then
-                        part.Size = part.Size / 2
-                    end
+                    hrp.CanCollide = true
                 end
             end
         end
     end
-end
-
--- ============================================================
--- SİLAH TESPİTİ (GELİŞMİŞ)
--- ============================================================
-local function DetectWeapon()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    
-    -- Tool ara
-    for _, child in ipairs(char:GetChildren()) do
-        if child:IsA("Tool") then
-            return child
-        end
-    end
-    
-    -- Accessory ara
-    for _, child in ipairs(char:GetChildren()) do
-        if child:IsA("Accessory") then
-            return child
-        end
-    end
-    
-    -- Humanoid'de EquipTool kontrol et
-    local hum = char:FindFirstChild("Humanoid")
-    if hum then
-        local equipTool = hum:FindFirstChild("EquipTool")
-        if equipTool then
-            return equipTool.Parent
-        end
-    end
-    
-    return nil
-end
-
--- ============================================================
--- WALL CHECK (GELİŞMİŞ)
--- ============================================================
-local function CanSeeTarget(targetPos)
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    
-    -- Raycast ile duvar kontrolü
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {char, LocalPlayer.Character}
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    rayParams.IgnoreWater = true
-    
-    local ray = Workspace:Raycast(hrp.Position, (targetPos - hrp.Position).Unit * 500, rayParams)
-    
-    if ray then
-        local hit = ray.Instance
-        if hit and hit.Parent then
-            if hit.Parent:FindFirstChild("Humanoid") then
-                return true
-            else
-                return false
-            end
-        end
-    end
-    return true
 end
 
 -- ============================================================
@@ -147,23 +70,46 @@ local function IsSameTeam(player)
 end
 
 -- ============================================================
--- EN YAKIN HEDEF BUL (FOV İLE)
+-- WALL CHECK
 -- ============================================================
-local function FindClosestTarget()
+local function CanSeeTarget(targetPos)
     local char = LocalPlayer.Character
-    if not char then return nil end
+    if not char then return false end
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
+    if not hrp then return false end
     
-    local closest = nil
-    local closestDist = FOVRadius
-    local pos = hrp.Position
-    local cam = workspace.CurrentCamera
-    local camPos = cam.CFrame.Position
-    local camLook = cam.CFrame.LookVector
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {char}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local ray = Workspace:Raycast(hrp.Position, (targetPos - hrp.Position).Unit * 300, rayParams)
+    
+    if ray then
+        local hit = ray.Instance
+        if hit and hit.Parent then
+            if hit.Parent:FindFirstChild("Humanoid") then
+                return true
+            end
+            return false
+        end
+    end
+    return true
+end
+
+-- ============================================================
+-- TRIGGERBOT (HITBOX GÖRÜNCE OTOMATİK SIK)
+-- ============================================================
+local function TriggerBot()
+    if not BrutalActive then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
+            
             -- TEAM CHECK
             if IsSameTeam(player) then
                 continue
@@ -178,94 +124,29 @@ local function FindClosestTarget()
             local tHum = tChar:FindFirstChild("Humanoid")
             if not tHum then continue end
             
-            -- KILL CHECK (ÖLÜ MÜ?)
+            -- ÖLÜ MÜ?
             if tHum.Health <= 0 then
                 continue
             end
             
-            local dist = (pos - tHrp.Position).Magnitude
-            
-            -- FOV KONTROLÜ
-            local directionToTarget = (tHrp.Position - camPos).Unit
-            local angle = math.deg(math.acos(camLook:Dot(directionToTarget)))
-            if angle > 45 then
-                continue
-            end
+            local dist = (hrp.Position - tHrp.Position).Magnitude
             
             -- WALL CHECK
             if not CanSeeTarget(tHrp.Position) then
                 continue
             end
             
-            if dist < closestDist then
-                closestDist = dist
-                closest = player
+            -- HITBOX İÇİNDE Mİ? (40x büyütülmüş hitbox)
+            if dist < HitboxSize then
+                -- OTOMATİK SIK
+                pcall(function()
+                    UserInputService:SetKeyDown(Enum.KeyCode.Button1)
+                    task.wait(0.05)
+                    UserInputService:SetKeyUp(Enum.KeyCode.Button1)
+                end)
+                break
             end
         end
-    end
-    
-    return closest
-end
-
--- ============================================================
--- AIMBOT (HEDEFE ODAKLAN)
--- ============================================================
-local function AimBot(target)
-    if not target then return end
-    
-    local tChar = target.Character
-    if not tChar then return end
-    local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-    if not tHrp then return end
-    
-    local cam = workspace.CurrentCamera
-    if not cam then return end
-    
-    -- HEDEFE BAK (SMOOTH)
-    local targetPos = tHrp.Position + Vector3.new(0, 1.5, 0)
-    local newCF = CFrame.new(cam.CFrame.Position, targetPos)
-    
-    TweenService:Create(cam, TweenInfo.new(0.05, Enum.EasingStyle.Linear), {
-        CFrame = newCF
-    }):Play()
-end
-
--- ============================================================
--- TRIGGERBOT (OTOMATİK SIKMA)
--- ============================================================
-local function TriggerBot()
-    if not BrutalActive then return end
-    
-    local target = FindClosestTarget()
-    if not target then
-        CurrentWeapon = DetectWeapon()
-        return
-    end
-    
-    -- HEDEFE ODAKLAN
-    AimBot(target)
-    
-    -- SİLAH VAR MI?
-    local weapon = DetectWeapon()
-    if not weapon then return end
-    
-    -- OTOMATİK SIK
-    pcall(function()
-        UserInputService:SetKeyDown(Enum.KeyCode.Button1)
-        task.wait(0.05)
-        UserInputService:SetKeyUp(Enum.KeyCode.Button1)
-    end)
-end
-
--- ============================================================
--- OTOMATİK HEDEF DEĞİŞTİRME
--- ============================================================
-local function AutoSwitchTarget()
-    if not BrutalActive then return end
-    
-    local target = FindClosestTarget()
-    if target then
-        AimTarget = target
     end
 end
 
@@ -276,36 +157,24 @@ local function ToggleBrutal()
     BrutalActive = not BrutalActive
     
     if BrutalActive then
-        print("💀 BRUTAL MOD V2 AKTİF!")
-        print("   📏 Hitbox 40x büyütüldü")
-        print("   🎯 Aimbot + Triggerbot aktif")
-        print("   🛡️ Team/Wall/Kill check")
-        print("   🔫 Silah otomatik tespit")
+        print("💀 BRUTAL HITBOX MOD V3 AKTİF!")
+        print("   📏 Hitbox 40x büyütüldü (görünmez)")
+        print("   🎯 Triggerbot aktif (hitbox içinde sıkar)")
+        print("   🛡️ Team/Wall check aktif")
         
         SetHitboxSize()
         
-        -- ANA DÖNGÜ
+        -- ANA DÖNGÜ (SADECE HITBOX + TRIGGER)
         task.spawn(function()
             while BrutalActive do
-                -- HITBOX KONTROL
                 SetHitboxSize()
-                
-                -- OTOMATİK HEDEF DEĞİŞTİR
-                AutoSwitchTarget()
-                
-                -- TRIGGERBOT
                 TriggerBot()
-                
-                -- SİLAH TESPİTİ
-                CurrentWeapon = DetectWeapon()
-                
-                task.wait(0.05)
+                task.wait(0.1)
             end
         end)
     else
-        print("💀 BRUTAL MOD V2 KAPATILDI!")
+        print("💀 BRUTAL HITBOX MOD V3 KAPATILDI!")
         ResetHitboxSize()
-        AimTarget = nil
     end
 end
 
@@ -397,11 +266,10 @@ CreateButton()
 
 print("")
 print("========================================")
-print("💀 BRUTAL MOD V2 HAZIR!")
+print("💀 BRUTAL HITBOX MOD V3")
 print("   📌 Sağ üstteki 💀 butonuna tıkla")
-print("   📏 Hitbox 40x büyütülür")
-print("   🎯 Aimbot + Triggerbot")
-print("   🛡️ Team/Wall/Kill check")
-print("   🔫 Silah otomatik tespit")
-print("   👁️ FOV ile hedef seçimi")
+print("   📏 Hitbox 40x (görünmez)")
+print("   🎯 Triggerbot (hitbox içinde sıkar)")
+print("   🛡️ Team/Wall check")
+print("   ⚡ KASMA YOK")
 print("========================================")

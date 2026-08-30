@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - MEVLANA MOD (360 DERECE DÖNÜŞ)
--- KAMERA SABİT | KARAKTER 360 DÖNER | SAĞ ÜST BUTON
+-- HAMSTER LIVES - MEVLANA MOD V2 (HIZ AYARLI)
+-- 360 DERECE DÖNÜŞ | HIZ AYARLI | SAĞ ÜST BUTON
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -10,10 +10,10 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔄 MEVLANA MOD BAŞLADI...")
+print("🌀 MEVLANA MOD V2 BAŞLADI...")
 
 local ModActive = false
-local RotationSpeed = 5
+local RotationSpeed = 30  -- Başlangıç hızı (derece/frame)
 local CurrentAngle = 0
 local Character = nil
 local HumanoidRootPart = nil
@@ -53,7 +53,7 @@ local function ToggleMod()
     GetCharacter()
     
     if ModActive then
-        print("🔄 MEVLANA MOD AKTİF! (360 dönüş)")
+        print("🌀 MEVLANA MOD AKTİF! (Hız: " .. RotationSpeed .. " derece/frame)")
         -- Dönüş döngüsünü başlat
         task.spawn(function()
             while ModActive do
@@ -67,18 +67,26 @@ local function ToggleMod()
 end
 
 -- ============================================================
+-- HIZ AYARLAMA
+-- ============================================================
+local function SetSpeed(value)
+    RotationSpeed = math.clamp(value, 5, 200)
+    print("🌀 Dönüş hızı: " .. RotationSpeed .. " derece/frame")
+end
+
+-- ============================================================
 -- KARAKTER DEĞİŞİMİNİ İZLE
 -- ============================================================
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     GetCharacter()
     if ModActive then
-        print("🔄 Karakter yeniden doğdu, dönüş devam ediyor...")
+        print("🌀 Karakter yeniden doğdu, dönüş devam ediyor...")
     end
 end)
 
 -- ============================================================
--- MENU BUTONU (SAĞ ÜST)
+-- MENU BUTONU + HIZ AYARI (SAĞ ÜST)
 -- ============================================================
 local function CreateButton()
     local old = CoreGui:FindFirstChild("MevlanaButton")
@@ -89,6 +97,7 @@ local function CreateButton()
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     
+    -- ANA BUTON
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 44, 0, 44)
     btn.Position = UDim2.new(1, -54, 0, 60)
@@ -119,6 +128,88 @@ local function CreateButton()
     status.Parent = gui
     status.ZIndex = 999
     
+    -- HIZ ÇUBUĞU (YANINA)
+    local speedFrame = Instance.new("Frame")
+    speedFrame.Size = UDim2.new(0, 80, 0, 20)
+    speedFrame.Position = UDim2.new(1, -90, 0, 108)
+    speedFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    speedFrame.BackgroundTransparency = 0.3
+    speedFrame.Parent = gui
+    speedFrame.ZIndex = 999
+    Instance.new("UICorner", speedFrame).CornerRadius = UDim.new(1, 0)
+    
+    -- DOLU KISIM
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((RotationSpeed - 5) / 195, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    fill.BorderSizePixel = 0
+    fill.Parent = speedFrame
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    -- HIZ ETİKETİ
+    local speedLabel = Instance.new("TextLabel")
+    speedLabel.Size = UDim2.new(1, 0, 1, 0)
+    speedLabel.BackgroundTransparency = 1
+    speedLabel.Text = math.round(RotationSpeed) .. "°"
+    speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    speedLabel.TextSize = 9
+    speedLabel.Font = Enum.Font.GothamBold
+    speedLabel.Parent = speedFrame
+    speedLabel.ZIndex = 1000
+    
+    -- ARTTIR BUTONU
+    local upBtn = Instance.new("TextButton")
+    upBtn.Size = UDim2.new(0, 20, 0, 20)
+    upBtn.Position = UDim2.new(1, -75, 0, 60)
+    upBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    upBtn.Text = "▲"
+    upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    upBtn.TextSize = 12
+    upBtn.Font = Enum.Font.GothamBold
+    upBtn.Parent = gui
+    upBtn.ZIndex = 999
+    Instance.new("UICorner", upBtn).CornerRadius = UDim.new(1, 0)
+    
+    upBtn.MouseEnter:Connect(function()
+        upBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    end)
+    upBtn.MouseLeave:Connect(function()
+        upBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    end)
+    
+    upBtn.MouseButton1Click:Connect(function()
+        SetSpeed(RotationSpeed + 10)
+        fill.Size = UDim2.new((RotationSpeed - 5) / 195, 0, 1, 0)
+        speedLabel.Text = math.round(RotationSpeed) .. "°"
+    end)
+    
+    -- AZALT BUTONU
+    local downBtn = Instance.new("TextButton")
+    downBtn.Size = UDim2.new(0, 20, 0, 20)
+    downBtn.Position = UDim2.new(1, -75, 0, 82)
+    downBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    downBtn.Text = "▼"
+    downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    downBtn.TextSize = 12
+    downBtn.Font = Enum.Font.GothamBold
+    downBtn.Parent = gui
+    downBtn.ZIndex = 999
+    Instance.new("UICorner", downBtn).CornerRadius = UDim.new(1, 0)
+    
+    downBtn.MouseEnter:Connect(function()
+        downBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    end)
+    downBtn.MouseLeave:Connect(function()
+        downBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    end)
+    
+    downBtn.MouseButton1Click:Connect(function()
+        SetSpeed(RotationSpeed - 10)
+        fill.Size = UDim2.new((RotationSpeed - 5) / 195, 0, 1, 0)
+        speedLabel.Text = math.round(RotationSpeed) .. "°"
+    end)
+    
+    -- ANA BUTON İŞLEVİ
     btn.MouseButton1Click:Connect(function()
         ToggleMod()
         if ModActive then
@@ -159,9 +250,10 @@ CreateButton()
 
 print("")
 print("========================================")
-print("🌀 MEVLANA MOD HAZIR!")
+print("🌀 MEVLANA MOD V2 HAZIR!")
 print("   📌 Sağ üstteki 🌀 butonuna tıkla")
 print("   🔄 Karakter 360 derece döner")
 print("   🎥 Kamera sabit kalır")
+print("   📊 ▲▼ ile dönüş hızını ayarla")
 print("   ⏹️ ESC ile kapat")
 print("========================================")

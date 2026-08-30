@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V1
--- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT | BYPASS
+-- HAMSTER LIVES - ULTRA MOD V2 (MENÜLÜ)
+-- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT (OTOMATİK TIK)
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -12,35 +12,31 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V1 BAŞLADI...")
+print("🔥 ULTRA MOD V2 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
 -- ============================================================
 local Mods = {
-    Mevlana = false,     -- 360 dönüş
-    Brutal = false,      -- Hitbox + Triggerbot
-    Bypass = false       -- Anti-cheat bypass
+    Mevlana = false,
+    Brutal = false,
+    Trigger = false,
+    Bypass = false
 }
 
 local MevlanaSpeed = 30
-local CurrentAngle = 0
 local HitboxSize = 40
+local CurrentAngle = 0
+local MenuVisible = false
 local Character = nil
 local HumanoidRootPart = nil
 
 -- ============================================================
--- BYPASS (ANTİ-CHEAT KİLLER)
+-- BYPASS
 -- ============================================================
 local function RunBypass()
     if not Mods.Bypass then return end
-    
-    local patterns = {
-        "AntiCheat", "AC", "Security", "Protect", "Ban",
-        "Kick", "Detect", "Monitor", "Guard", "Watch",
-        "Hyperion", "Byfron", "Luau", "Bytecode"
-    }
-    
+    local patterns = {"AntiCheat","AC","Security","Protect","Ban","Kick","Detect","Monitor","Guard","Watch","Hyperion","Byfron"}
     local killed = 0
     for _, obj in ipairs(game:GetDescendants()) do
         if obj.Name then
@@ -63,11 +59,11 @@ local function RunBypass()
             end
         end
     end
-    print("[BYPASS] " .. killed .. " anticheat nesnesi imha edildi.")
+    print("[BYPASS] " .. killed .. " anticheat imha edildi.")
 end
 
 -- ============================================================
--- 360 DÖNÜŞ (MEVLANA MOD)
+-- 360 DÖNÜŞ
 -- ============================================================
 local function GetCharacter()
     Character = LocalPlayer.Character
@@ -80,29 +76,16 @@ end
 local function StartSpinning()
     if not Mods.Mevlana then return end
     if not HumanoidRootPart then return end
-    
     CurrentAngle = CurrentAngle + MevlanaSpeed
     if CurrentAngle > 360 then CurrentAngle = CurrentAngle - 360 end
-    
     HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
 end
 
-local function ToggleMevlana()
-    Mods.Mevlana = not Mods.Mevlana
-    GetCharacter()
-    if Mods.Mevlana then
-        print("🌀 MEVLANA MOD AKTİF!")
-    else
-        print("🌀 MEVLANA MOD KAPALI!")
-    end
-end
-
 -- ============================================================
--- BRUTAL HITBOX + TRIGGERBOT
+-- HITBOX
 -- ============================================================
 local function SetHitboxSize()
     if not Mods.Brutal then return end
-    
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local char = player.Character
@@ -136,6 +119,9 @@ local function ResetHitboxSize()
     end
 end
 
+-- ============================================================
+-- TEAM CHECK
+-- ============================================================
 local function IsSameTeam(player)
     local localTeam = LocalPlayer.Team
     local targetTeam = player.Team
@@ -145,6 +131,9 @@ local function IsSameTeam(player)
     return false
 end
 
+-- ============================================================
+-- WALL CHECK
+-- ============================================================
 local function CanSeeTarget(targetPos)
     local char = LocalPlayer.Character
     if not char then return false end
@@ -169,8 +158,11 @@ local function CanSeeTarget(targetPos)
     return true
 end
 
+-- ============================================================
+-- TRIGGERBOT (EKRA GÖRÜNCE OTOMATİK TIK)
+-- ============================================================
 local function TriggerBot()
-    if not Mods.Brutal then return end
+    if not Mods.Trigger then return end
     
     local char = LocalPlayer.Character
     if not char then return end
@@ -206,189 +198,258 @@ local function TriggerBot()
     end
 end
 
-local function ToggleBrutal()
-    Mods.Brutal = not Mods.Brutal
-    if Mods.Brutal then
-        print("💀 BRUTAL MOD AKTİF!")
-        SetHitboxSize()
-    else
-        print("💀 BRUTAL MOD KAPALI!")
-        ResetHitboxSize()
-    end
-end
-
 -- ============================================================
--- BYPASS AÇ/KAPA
--- ============================================================
-local function ToggleBypass()
-    Mods.Bypass = not Mods.Bypass
-    if Mods.Bypass then
-        print("🔓 BYPASS AKTİF!")
-        RunBypass()
-    else
-        print("🔓 BYPASS KAPALI!")
-    end
-end
-
--- ============================================================
--- ANA DÖNGÜ (HER ŞEY)
+-- ANA DÖNGÜ
 -- ============================================================
 local function MainLoop()
     task.spawn(function()
         while true do
-            -- 360 DÖNÜŞ
-            if Mods.Mevlana then
-                StartSpinning()
-            end
-            
-            -- BRUTAL HITBOX
-            if Mods.Brutal then
-                SetHitboxSize()
-                TriggerBot()
-            end
-            
-            task.wait(0.016) -- ~60 FPS
+            if Mods.Mevlana then StartSpinning() end
+            if Mods.Brutal then SetHitboxSize() end
+            if Mods.Trigger then TriggerBot() end
+            task.wait(0.016)
         end
     end)
 end
 
 -- ============================================================
--- MENU (SAĞ ÜST - 3 BUTON)
+-- MENU (EKRA ORTASI - AÇ/KAPA BUTONU İLE)
 -- ============================================================
 local function CreateMenu()
-    local old = CoreGui:FindFirstChild("UltraMenu")
+    local old = CoreGui:FindFirstChild("UltraMenuV2")
     if old then old:Destroy() end
     
     local gui = Instance.new("ScreenGui")
-    gui.Name = "UltraMenu"
+    gui.Name = "UltraMenuV2"
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
+    gui.Enabled = false
     
-    local btnY = 55
-    local btnGap = 48
+    -- ANA PANEL (ORTA)
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(0, 220, 0, 280)
+    panel.Position = UDim2.new(0.5, -110, 0.3, 0)
+    panel.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+    panel.BackgroundTransparency = 0.1
+    panel.Parent = gui
+    panel.ZIndex = 999
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
     
-    -- MEVLANA BUTONU (EN ÜST)
-    local btn1 = Instance.new("TextButton")
-    btn1.Size = UDim2.new(0, 40, 0, 40)
-    btn1.Position = UDim2.new(1, -50, 0, btnY)
-    btn1.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btn1.BackgroundTransparency = 0.3
-    btn1.Text = "🌀"
-    btn1.TextColor3 = Color3.fromRGB(100, 200, 255)
-    btn1.TextSize = 20
-    btn1.Font = Enum.Font.GothamBold
-    btn1.Parent = gui
-    btn1.ZIndex = 999
-    Instance.new("UICorner", btn1).CornerRadius = UDim.new(1, 0)
+    local stroke = Instance.new("UIStroke", panel)
+    stroke.Thickness = 1.5
+    stroke.Color = Color3.fromRGB(255, 200, 0)
+    stroke.Transparency = 0.5
     
-    local status1 = Instance.new("TextLabel")
-    status1.Size = UDim2.new(0, 50, 0, 14)
-    status1.Position = UDim2.new(1, -55, 0, btnY - 18)
-    status1.BackgroundTransparency = 1
-    status1.Text = "KAPALI"
-    status1.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status1.TextSize = 7
-    status1.Font = Enum.Font.GothamBold
-    status1.TextXAlignment = Enum.TextXAlignment.Right
-    status1.Parent = gui
-    status1.ZIndex = 999
+    -- BAŞLIK
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    title.Text = "🔥 ULTRA MOD"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 13
+    title.Font = Enum.Font.GothamBold
+    title.Parent = panel
+    Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
     
-    btn1.MouseButton1Click:Connect(function()
-        ToggleMevlana()
-        if Mods.Mevlana then
-            btn1.Text = "🌀⚡"
-            btn1.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-            status1.Text = "AKTİF"
-            status1.TextColor3 = Color3.fromRGB(0, 255, 200)
-        else
-            btn1.Text = "🌀"
-            btn1.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            status1.Text = "KAPALI"
-            status1.TextColor3 = Color3.fromRGB(255, 50, 50)
+    local yPos = 38
+    
+    -- MEVLANA MOD (360 DÖNÜŞ)
+    local mevBtn = Instance.new("TextButton")
+    mevBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    mevBtn.Position = UDim2.new(0.05, 0, 0, yPos)
+    mevBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    mevBtn.Text = "🌀 MEVLANA: KAPALI"
+    mevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    mevBtn.TextSize = 10
+    mevBtn.Font = Enum.Font.GothamBold
+    mevBtn.Parent = panel
+    Instance.new("UICorner", mevBtn).CornerRadius = UDim.new(0, 4)
+    
+    mevBtn.MouseButton1Click:Connect(function()
+        Mods.Mevlana = not Mods.Mevlana
+        mevBtn.Text = Mods.Mevlana and "🌀 MEVLANA: AKTİF" or "🌀 MEVLANA: KAPALI"
+        mevBtn.BackgroundColor3 = Mods.Mevlana and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(20, 20, 40)
+    end)
+    
+    yPos = yPos + 38
+    
+    -- MEVLANA HIZ AYARI
+    local speedLabel = Instance.new("TextLabel")
+    speedLabel.Size = UDim2.new(0.4, 0, 0, 18)
+    speedLabel.Position = UDim2.new(0.05, 0, 0, yPos)
+    speedLabel.BackgroundTransparency = 1
+    speedLabel.Text = "Hız: " .. MevlanaSpeed
+    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    speedLabel.TextSize = 9
+    speedLabel.Font = Enum.Font.Gotham
+    speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    speedLabel.Parent = panel
+    
+    local speedSlider = Instance.new("Frame")
+    speedSlider.Size = UDim2.new(0.4, 0, 0, 14)
+    speedSlider.Position = UDim2.new(0.5, 0, 0, yPos + 2)
+    speedSlider.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    speedSlider.Parent = panel
+    Instance.new("UICorner", speedSlider).CornerRadius = UDim.new(1, 0)
+    
+    local speedFill = Instance.new("Frame")
+    speedFill.Size = UDim2.new(MevlanaSpeed / 200, 0, 1, 0)
+    speedFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    speedFill.Parent = speedSlider
+    Instance.new("UICorner", speedFill).CornerRadius = UDim.new(1, 0)
+    
+    speedSlider.MouseButton1Click:Connect(function(input)
+        local x = input.Position.X - speedSlider.AbsolutePosition.X
+        local w = speedSlider.AbsoluteSize.X
+        local val = math.clamp(math.floor((x / w) * 200), 1, 200)
+        MevlanaSpeed = val
+        speedFill.Size = UDim2.new(val / 200, 0, 1, 0)
+        speedLabel.Text = "Hız: " .. val
+    end)
+    
+    yPos = yPos + 28
+    
+    -- BRUTAL MOD (HITBOX)
+    local brutBtn = Instance.new("TextButton")
+    brutBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    brutBtn.Position = UDim2.new(0.05, 0, 0, yPos)
+    brutBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    brutBtn.Text = "💀 BRUTAL: KAPALI"
+    brutBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    brutBtn.TextSize = 10
+    brutBtn.Font = Enum.Font.GothamBold
+    brutBtn.Parent = panel
+    Instance.new("UICorner", brutBtn).CornerRadius = UDim.new(0, 4)
+    
+    brutBtn.MouseButton1Click:Connect(function()
+        Mods.Brutal = not Mods.Brutal
+        brutBtn.Text = Mods.Brutal and "💀 BRUTAL: AKTİF" or "💀 BRUTAL: KAPALI"
+        brutBtn.BackgroundColor3 = Mods.Brutal and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(20, 20, 40)
+        if not Mods.Brutal then ResetHitboxSize() end
+    end)
+    
+    yPos = yPos + 38
+    
+    -- HITBOX BOYUT AYARI
+    local sizeLabel = Instance.new("TextLabel")
+    sizeLabel.Size = UDim2.new(0.4, 0, 0, 18)
+    sizeLabel.Position = UDim2.new(0.05, 0, 0, yPos)
+    sizeLabel.BackgroundTransparency = 1
+    sizeLabel.Text = "Hitbox: " .. HitboxSize
+    sizeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    sizeLabel.TextSize = 9
+    sizeLabel.Font = Enum.Font.Gotham
+    sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    sizeLabel.Parent = panel
+    
+    local sizeSlider = Instance.new("Frame")
+    sizeSlider.Size = UDim2.new(0.4, 0, 0, 14)
+    sizeSlider.Position = UDim2.new(0.5, 0, 0, yPos + 2)
+    sizeSlider.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    sizeSlider.Parent = panel
+    Instance.new("UICorner", sizeSlider).CornerRadius = UDim.new(1, 0)
+    
+    local sizeFill = Instance.new("Frame")
+    sizeFill.Size = UDim2.new(HitboxSize / 1000, 0, 1, 0)
+    sizeFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    sizeFill.Parent = sizeSlider
+    Instance.new("UICorner", sizeFill).CornerRadius = UDim.new(1, 0)
+    
+    sizeSlider.MouseButton1Click:Connect(function(input)
+        local x = input.Position.X - sizeSlider.AbsolutePosition.X
+        local w = sizeSlider.AbsoluteSize.X
+        local val = math.clamp(math.floor((x / w) * 1000), 5, 1000)
+        HitboxSize = val
+        sizeFill.Size = UDim2.new(val / 1000, 0, 1, 0)
+        sizeLabel.Text = "Hitbox: " .. val
+    end)
+    
+    yPos = yPos + 28
+    
+    -- TRIGGERBOT
+    local trigBtn = Instance.new("TextButton")
+    trigBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    trigBtn.Position = UDim2.new(0.05, 0, 0, yPos)
+    trigBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    trigBtn.Text = "🎯 TRIGGER: KAPALI"
+    trigBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    trigBtn.TextSize = 10
+    trigBtn.Font = Enum.Font.GothamBold
+    trigBtn.Parent = panel
+    Instance.new("UICorner", trigBtn).CornerRadius = UDim.new(0, 4)
+    
+    trigBtn.MouseButton1Click:Connect(function()
+        Mods.Trigger = not Mods.Trigger
+        trigBtn.Text = Mods.Trigger and "🎯 TRIGGER: AKTİF" or "🎯 TRIGGER: KAPALI"
+        trigBtn.BackgroundColor3 = Mods.Trigger and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(20, 20, 40)
+    end)
+    
+    yPos = yPos + 38
+    
+    -- BYPASS
+    local bypassBtn = Instance.new("TextButton")
+    bypassBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    bypassBtn.Position = UDim2.new(0.05, 0, 0, yPos)
+    bypassBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    bypassBtn.Text = "🔓 BYPASS: KAPALI"
+    bypassBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    bypassBtn.TextSize = 10
+    bypassBtn.Font = Enum.Font.GothamBold
+    bypassBtn.Parent = panel
+    Instance.new("UICorner", bypassBtn).CornerRadius = UDim.new(0, 4)
+    
+    bypassBtn.MouseButton1Click:Connect(function()
+        Mods.Bypass = not Mods.Bypass
+        bypassBtn.Text = Mods.Bypass and "🔓 BYPASS: AKTİF" or "🔓 BYPASS: KAPALI"
+        bypassBtn.BackgroundColor3 = Mods.Bypass and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(20, 20, 40)
+        if Mods.Bypass then RunBypass() end
+    end)
+    
+    -- KAPATMA BUTONU
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -28, 0, 4)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = panel
+    closeBtn.ZIndex = 1000
+    closeBtn.MouseButton1Click:Connect(function()
+        gui.Enabled = false
+        MenuVisible = false
+    end)
+    
+    return gui
+end
+
+-- ============================================================
+-- AÇMA/KAPAMA BUTONU (SAĞ ÜST)
+-- ============================================================
+local function CreateToggleButton()
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 40, 0, 40)
+    btn.Position = UDim2.new(1, -50, 0, 10)
+    btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    btn.Text = "⚡"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 20
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = CoreGui
+    btn.ZIndex = 999
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+    
+    local menu = CreateMenu()
+    
+    btn.MouseButton1Click:Connect(function()
+        if menu then
+            MenuVisible = not MenuVisible
+            menu.Enabled = MenuVisible
         end
     end)
     
-    -- BRUTAL BUTONU (ORTA)
-    local btn2 = Instance.new("TextButton")
-    btn2.Size = UDim2.new(0, 40, 0, 40)
-    btn2.Position = UDim2.new(1, -50, 0, btnY + btnGap)
-    btn2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btn2.BackgroundTransparency = 0.3
-    btn2.Text = "💀"
-    btn2.TextColor3 = Color3.fromRGB(255, 50, 50)
-    btn2.TextSize = 20
-    btn2.Font = Enum.Font.GothamBold
-    btn2.Parent = gui
-    btn2.ZIndex = 999
-    Instance.new("UICorner", btn2).CornerRadius = UDim.new(1, 0)
-    
-    local status2 = Instance.new("TextLabel")
-    status2.Size = UDim2.new(0, 50, 0, 14)
-    status2.Position = UDim2.new(1, -55, 0, btnY + btnGap - 18)
-    status2.BackgroundTransparency = 1
-    status2.Text = "KAPALI"
-    status2.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status2.TextSize = 7
-    status2.Font = Enum.Font.GothamBold
-    status2.TextXAlignment = Enum.TextXAlignment.Right
-    status2.Parent = gui
-    status2.ZIndex = 999
-    
-    btn2.MouseButton1Click:Connect(function()
-        ToggleBrutal()
-        if Mods.Brutal then
-            btn2.Text = "💀🔥"
-            btn2.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-            status2.Text = "AKTİF"
-            status2.TextColor3 = Color3.fromRGB(255, 0, 0)
-        else
-            btn2.Text = "💀"
-            btn2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            status2.Text = "KAPALI"
-            status2.TextColor3 = Color3.fromRGB(255, 50, 50)
-        end
-    end)
-    
-    -- BYPASS BUTONU (EN ALT)
-    local btn3 = Instance.new("TextButton")
-    btn3.Size = UDim2.new(0, 40, 0, 40)
-    btn3.Position = UDim2.new(1, -50, 0, btnY + btnGap * 2)
-    btn3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btn3.BackgroundTransparency = 0.3
-    btn3.Text = "🔓"
-    btn3.TextColor3 = Color3.fromRGB(0, 255, 100)
-    btn3.TextSize = 20
-    btn3.Font = Enum.Font.GothamBold
-    btn3.Parent = gui
-    btn3.ZIndex = 999
-    Instance.new("UICorner", btn3).CornerRadius = UDim.new(1, 0)
-    
-    local status3 = Instance.new("TextLabel")
-    status3.Size = UDim2.new(0, 50, 0, 14)
-    status3.Position = UDim2.new(1, -55, 0, btnY + btnGap * 2 - 18)
-    status3.BackgroundTransparency = 1
-    status3.Text = "KAPALI"
-    status3.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status3.TextSize = 7
-    status3.Font = Enum.Font.GothamBold
-    status3.TextXAlignment = Enum.TextXAlignment.Right
-    status3.Parent = gui
-    status3.ZIndex = 999
-    
-    btn3.MouseButton1Click:Connect(function()
-        ToggleBypass()
-        if Mods.Bypass then
-            btn3.Text = "🔓✅"
-            btn3.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            status3.Text = "AKTİF"
-            status3.TextColor3 = Color3.fromRGB(0, 255, 100)
-        else
-            btn3.Text = "🔓"
-            btn3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            status3.Text = "KAPALI"
-            status3.TextColor3 = Color3.fromRGB(255, 50, 50)
-        end
-    end)
+    return btn
 end
 
 -- ============================================================
@@ -397,7 +458,6 @@ end
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     GetCharacter()
-    if Mods.Brutal then SetHitboxSize() end
 end)
 
 -- ============================================================
@@ -405,14 +465,16 @@ end)
 -- ============================================================
 task.wait(0.5)
 GetCharacter()
-CreateMenu()
+CreateToggleButton()
 MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V1 HAZIR!")
-print("   🌀 Mevlana: 360 dönüş")
-print("   💀 Brutal: Hitbox 40x + Triggerbot")
+print("🔥 ULTRA MOD V2 HAZIR!")
+print("   📌 Sağ üstteki ⚡ butonuna tıkla")
+print("   📊 Menü ekranın ortasında açılır")
+print("   🌀 Mevlana: 360 dönüş (hız ayarlı)")
+print("   💀 Brutal: Hitbox (1000'e kadar)")
+print("   🎯 Trigger: Otomatik tık")
 print("   🔓 Bypass: Anti-cheat killer")
-print("   📌 Sağ üstteki butonlar")
 print("========================================")

@@ -1,609 +1,1426 @@
---========================================================
--- HAMSTER METRO V3
--- TEK PARÇA LOCAL SCRIPT
--- OnServerEvent YOK
--- Mevcut GUI'leri SİLMEZ
---========================================================
+-- HAMSTER METRO - FIXED
+-- Kendi Roblox Studio oyununuz icin LocalScript.
+-- Anti-cheat bypass / server protection bypass YOK.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
 
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
---========================================================
--- ESKİ KENDİ MENÜMÜZ VARSA SADECE ONU TEMİZLE
--- BAŞKA HİÇBİR GUI'YE DOKUNMAZ
---========================================================
-
-local old = PlayerGui:FindFirstChild("HamsterMetro_V3")
-
+local old = playerGui:FindFirstChild("HamsterMetroSafe")
 if old then
-	old:Destroy()
+    old:Destroy()
 end
 
---========================================================
--- DEĞİŞKENLER
---========================================================
-
-local Seat = nil
-local Wall = nil
-
-local WallEnabled = false
-local MetroEnabled = false
-
-local MetroDirection = nil
-
-local MetroSpeed = 30000
+local gui = Instance.new("ScreenGui")
+gui.Name = "HamsterMetroSafe"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = playerGui
 
 --========================================================
--- CHARACTER
+-- INTRO
 --========================================================
 
-local function GetCharacter()
+local intro = Instance.new("Frame")
+intro.Size = UDim2.fromScale(1, 1)
+intro.BackgroundColor3 = Color3.fromRGB(3, 3, 8)
+intro.BorderSizePixel = 0
+intro.ZIndex = 100
+intro.Parent = gui
 
-	local Character = Player.Character
+local function planet(size, position, text)
+    local p = Instance.new("TextLabel")
+    p.Size = UDim2.fromOffset(size, size)
+    p.Position = position
+    p.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+    p.BorderSizePixel = 0
+    p.Text = text
+    p.TextSize = math.floor(size * 0.45)
+    p.ZIndex = 101
+    p.Parent = intro
 
-	if not Character then
-		return nil, nil, nil
-	end
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = p
 
-	local Humanoid =
-		Character:FindFirstChildOfClass("Humanoid")
-
-	local Root =
-		Character:FindFirstChild("HumanoidRootPart")
-
-	if not Humanoid or not Root then
-		return nil, nil, nil
-	end
-
-	return Character, Humanoid, Root
+    return p
 end
 
---========================================================
--- GUI
---========================================================
+local leftPlanet = planet(
+    160,
+    UDim2.new(0.5, -280, 0.5, -80),
+    "☀"
+)
 
-local Gui = Instance.new("ScreenGui")
+local rightPlanet = planet(
+    160,
+    UDim2.new(0.5, 120, 0.5, -80),
+    "☀"
+)
 
-Gui.Name = "HamsterMetro_V3"
-Gui.ResetOnSpawn = false
-Gui.IgnoreGuiInset = false
+local glow = Instance.new("TextLabel")
+glow.Size = UDim2.fromScale(1, 1)
+glow.BackgroundTransparency = 1
+glow.Text = "✦"
+glow.TextSize = 70
+glow.TextColor3 = Color3.new(1, 1, 1)
+glow.TextTransparency = 1
+glow.ZIndex = 102
+glow.Parent = intro
 
-Gui.Parent = PlayerGui
+local infoTween = TweenInfo.new(
+    0.7,
+    Enum.EasingStyle.Quad,
+    Enum.EasingDirection.InOut
+)
 
---========================================================
--- OPEN BUTTON
---========================================================
+TweenService:Create(
+    leftPlanet,
+    infoTween,
+    {Position = UDim2.new(0.5, -80, 0.5, -80)}
+):Play()
 
-local Open = Instance.new("TextButton")
+TweenService:Create(
+    rightPlanet,
+    infoTween,
+    {Position = UDim2.new(0.5, -80, 0.5, -80)}
+):Play()
 
-Open.Name = "Open"
-Open.Size = UDim2.fromOffset(58,58)
-Open.Position = UDim2.new(1,-72,0,90)
+task.wait(0.75)
 
-Open.BackgroundColor3 =
-	Color3.fromRGB(170,0,0)
+TweenService:Create(
+    glow,
+    TweenInfo.new(0.12),
+    {
+        TextTransparency = 0,
+        TextSize = 140
+    }
+):Play()
 
-Open.BorderSizePixel = 0
+task.wait(0.15)
 
-Open.Text = "🚇"
-Open.TextSize = 25
+TweenService:Create(
+    intro,
+    TweenInfo.new(0.4),
+    {BackgroundTransparency = 1}
+):Play()
 
-Open.TextColor3 =
-	Color3.new(1,1,1)
+TweenService:Create(
+    leftPlanet,
+    TweenInfo.new(0.4),
+    {
+        TextTransparency = 1,
+        BackgroundTransparency = 1
+    }
+):Play()
 
-Open.Font =
-	Enum.Font.GothamBold
+TweenService:Create(
+    rightPlanet,
+    TweenInfo.new(0.4),
+    {
+        TextTransparency = 1,
+        BackgroundTransparency = 1
+    }
+):Play()
 
-Open.Parent = Gui
+TweenService:Create(
+    glow,
+    TweenInfo.new(0.4),
+    {TextTransparency = 1}
+):Play()
 
-local OpenCorner =
-	Instance.new("UICorner")
+task.wait(0.45)
 
-OpenCorner.CornerRadius =
-	UDim.new(1,0)
-
-OpenCorner.Parent = Open
+if intro then
+    intro:Destroy()
+end
 
 --========================================================
 -- MENU
 --========================================================
 
-local Menu = Instance.new("Frame")
+local toggle = Instance.new("TextButton")
+toggle.Name = "MenuToggle"
+toggle.Size = UDim2.fromOffset(58, 58)
+toggle.Position = UDim2.new(1, -75, 0.5, -29)
+toggle.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+toggle.BorderSizePixel = 0
+toggle.Text = "☰"
+toggle.TextSize = 26
+toggle.TextColor3 = Color3.new(1, 1, 1)
+toggle.ZIndex = 20
+toggle.Parent = gui
 
-Menu.Name = "Menu"
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(1, 0)
+toggleCorner.Parent = toggle
 
-Menu.Size =
-	UDim2.fromOffset(280,310)
+local menu = Instance.new("Frame")
+menu.Name = "SideMenu"
+menu.Size = UDim2.fromOffset(440, 560)
+menu.Position = UDim2.new(1, 20, 0.5, -280)
+menu.BackgroundColor3 = Color3.fromRGB(13, 13, 18)
+menu.BorderSizePixel = 0
+menu.ZIndex = 10
+menu.Parent = gui
 
-Menu.Position =
-	UDim2.new(1,-295,0,160)
+local menuCorner = Instance.new("UICorner")
+menuCorner.CornerRadius = UDim.new(0, 16)
+menuCorner.Parent = menu
 
-Menu.BackgroundColor3 =
-	Color3.fromRGB(15,15,20)
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -60, 0, 46)
+title.Position = UDim2.fromOffset(18, 8)
+title.BackgroundTransparency = 1
+title.Text = "HAMSTER METRO"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 19
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 11
+title.Parent = menu
 
-Menu.BorderSizePixel = 0
+local trash = Instance.new("TextButton")
+trash.Size = UDim2.fromOffset(42, 42)
+trash.Position = UDim2.new(1, -50, 0, 10)
+trash.BackgroundTransparency = 1
+trash.Text = "🗑"
+trash.TextSize = 22
+trash.ZIndex = 12
+trash.Parent = menu
 
-Menu.Visible = false
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, -30, 0, 1)
+divider.Position = UDim2.fromOffset(15, 54)
+divider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+divider.BorderSizePixel = 0
+divider.ZIndex = 11
+divider.Parent = menu
 
-Menu.Parent = Gui
+local leftPanel = Instance.new("Frame")
+leftPanel.Size = UDim2.new(0.5, -12, 1, -70)
+leftPanel.Position = UDim2.fromOffset(10, 64)
+leftPanel.BackgroundTransparency = 1
+leftPanel.ZIndex = 11
+leftPanel.Parent = menu
 
-local MenuCorner =
-	Instance.new("UICorner")
+local rightPanel = Instance.new("Frame")
+rightPanel.Size = UDim2.new(0.5, -12, 1, -70)
+rightPanel.Position = UDim2.new(0.5, 2, 0, 64)
+rightPanel.BackgroundTransparency = 1
+rightPanel.ZIndex = 11
+rightPanel.Parent = menu
 
-MenuCorner.CornerRadius =
-	UDim.new(0,12)
+local function makeButton(parent, text, y)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -8, 0, 44)
+    b.Position = UDim2.fromOffset(4, y)
+    b.BackgroundColor3 = Color3.fromRGB(31, 31, 42)
+    b.BorderSizePixel = 0
+    b.Text = text
+    b.TextColor3 = Color3.new(1, 1, 1)
+    b.TextSize = 12
+    b.Font = Enum.Font.GothamBold
+    b.ZIndex = 12
+    b.AutoButtonColor = true
+    b.Parent = parent
 
-MenuCorner.Parent = Menu
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 9)
+    c.Parent = b
 
---========================================================
--- TITLE
---========================================================
-
-local Title = Instance.new("TextLabel")
-
-Title.Size =
-	UDim2.new(1,-55,0,45)
-
-Title.Position =
-	UDim2.fromOffset(12,5)
-
-Title.BackgroundTransparency = 1
-
-Title.Text =
-	"🚇 HAMSTER METRO"
-
-Title.TextColor3 =
-	Color3.new(1,1,1)
-
-Title.TextSize = 16
-
-Title.Font =
-	Enum.Font.GothamBold
-
-Title.TextXAlignment =
-	Enum.TextXAlignment.Left
-
-Title.Parent = Menu
-
---========================================================
--- CLOSE
---========================================================
-
-local Close = Instance.new("TextButton")
-
-Close.Size =
-	UDim2.fromOffset(38,38)
-
-Close.Position =
-	UDim2.new(1,-43,0,6)
-
-Close.BackgroundTransparency = 1
-
-Close.Text = "✕"
-
-Close.TextColor3 =
-	Color3.new(1,1,1)
-
-Close.TextSize = 20
-
-Close.Font =
-	Enum.Font.GothamBold
-
-Close.Parent = Menu
-
-Close.Activated:Connect(function()
-	Menu.Visible = false
-end)
-
---========================================================
--- BUTTON
---========================================================
-
-local function MakeButton(Name,Text,Y)
-
-	local Button =
-		Instance.new("TextButton")
-
-	Button.Name = Name
-
-	Button.Size =
-		UDim2.new(1,-20,0,50)
-
-	Button.Position =
-		UDim2.fromOffset(10,Y)
-
-	Button.BackgroundColor3 =
-		Color3.fromRGB(35,35,45)
-
-	Button.BorderSizePixel = 0
-
-	Button.Text = Text
-
-	Button.TextColor3 =
-		Color3.new(1,1,1)
-
-	Button.TextSize = 13
-
-	Button.Font =
-		Enum.Font.GothamBold
-
-	Button.Parent = Menu
-
-	local Corner =
-		Instance.new("UICorner")
-
-	Corner.CornerRadius =
-		UDim.new(0,8)
-
-	Corner.Parent = Button
-
-	return Button
+    return b
 end
 
-local SeatButton =
-	MakeButton(
-		"SeatButton",
-		"🪑 SANDALYE OLUŞTUR",
-		55
-	)
+local seatButton =
+    makeButton(leftPanel, "🪑 SANDALYE OLUSTUR", 0)
 
-local SitButton =
-	MakeButton(
-		"SitButton",
-		"🪑 OTUR",
-		110
-	)
+local sitButton =
+    makeButton(leftPanel, "🪑 OTUR", 50)
 
-local WallButton =
-	MakeButton(
-		"WallButton",
-		"🧱 WALL : KAPALI",
-		165
-	)
+local leaveButton =
+    makeButton(leftPanel, "⬇ SANDALYEDEN IN", 100)
 
-local MetroButton =
-	MakeButton(
-		"MetroButton",
-		"🚇 METRO : KAPALI",
-		220
-	)
+local wallButton =
+    makeButton(leftPanel, "🧱 WALL : KAPALI", 150)
+
+local metroButton =
+    makeButton(leftPanel, "🚇 METRO : KAPALI", 200)
+
+local proneButton =
+    makeButton(leftPanel, "⬇ IN (YERE) : KAPALI", 250)
+
+local antikillButton =
+    makeButton(rightPanel, "❤ ANTIKILL : KAPALI", 0)
+
+local eggLockButton =
+    makeButton(rightPanel, "🥚 EGG LOCK : KAPALI", 50)
+
+local antiKnockButton =
+    makeButton(rightPanel, "🛡 AYAKTA KAL : KAPALI", 100)
+
+local serverButton =
+    makeButton(rightPanel, "👤 1 KISILIK SERVER BUL", 150)
+
+local info = Instance.new("TextLabel")
+info.Size = UDim2.new(1, -8, 0, 200)
+info.Position = UDim2.fromOffset(4, 205)
+info.BackgroundTransparency = 1
+info.Text =
+    "ANTIKILL: local demo\n" ..
+    "EGG LOCK: eldeki egg korunur\n" ..
+    "E: yakin egg al\n" ..
+    "AYAKTA KAL: local demo\n\n" ..
+    "Kendi Studio oyunun icin."
+info.TextColor3 = Color3.fromRGB(180, 180, 190)
+info.TextSize = 11
+info.Font = Enum.Font.Gotham
+info.TextWrapped = true
+info.TextYAlignment = Enum.TextYAlignment.Top
+info.ZIndex = 12
+info.Parent = rightPanel
 
 --========================================================
--- SANDALYE OLUŞTUR
+-- STATE
 --========================================================
 
-SeatButton.Activated:Connect(function()
+local seat = nil
+local wall = nil
 
-	local Character,Humanoid,Root =
-		GetCharacter()
+local wallEnabled = false
+local metroEnabled = false
+local proneEnabled = false
+local antikillEnabled = false
+local eggLockEnabled = false
+local antiKnockEnabled = false
 
-	if not Root then
-		return
-	end
+local METRO_SPEED = 180
+local WALL_PUSH = 42
 
-	-- Sadece bizim oluşturduğumuz eski sandalyeyi kaldır.
-	if Seat then
-		Seat:Destroy()
-		Seat = nil
-	end
+-- Daha asagi indirildi.
+local PRONE_DROP = 4.2
 
-	local NewSeat =
-		Instance.new("Seat")
+local EGG_PICK_RANGE = 22
 
-	NewSeat.Name =
-		"HamsterMetroSeat"
+local savedHipHeight = nil
+local savedWalkSpeed = nil
+local savedJumpPower = nil
+local savedJumpHeight = nil
 
-	NewSeat.Size =
-		Vector3.new(2.5,1,2.5)
+local lockedEggTool = nil
+local humanoidConns = {}
 
-	NewSeat.Anchored = true
+--========================================================
+-- CHARACTER
+--========================================================
 
-	NewSeat.CanCollide = true
-	NewSeat.CanTouch = true
+local function getCharacter()
+    local character = player.Character
+    if not character then
+        return nil
+    end
 
-	NewSeat.Transparency = 0
+    local humanoid =
+        character:FindFirstChildOfClass("Humanoid")
 
-	NewSeat.CFrame =
-		Root.CFrame *
-		CFrame.new(0,-2.5,0)
+    local root =
+        character:FindFirstChild("HumanoidRootPart")
 
-	NewSeat.Parent =
-		workspace
+    if humanoid and root then
+        return character, humanoid, root
+    end
 
-	Seat = NewSeat
+    return nil
+end
 
-	SeatButton.Text =
-		"✓ SANDALYE OLUŞTURULDU"
+local function clearHumanoidConns()
+    for _, c in ipairs(humanoidConns) do
+        pcall(function()
+            c:Disconnect()
+        end)
+    end
 
-	task.delay(1,function()
+    table.clear(humanoidConns)
+end
 
-		if SeatButton.Parent then
-			SeatButton.Text =
-				"🪑 SANDALYE OLUŞTUR"
-		end
+--========================================================
+-- EGG HELPERS
+--========================================================
 
-	end)
+local function isEggName(name)
+    if not name then
+        return false
+    end
+
+    local n = string.lower(name)
+
+    return string.find(n, "egg", 1, true) ~= nil
+        or string.find(n, "yumurta", 1, true) ~= nil
+end
+
+local function getToolHandle(tool)
+    if not tool or not tool:IsA("Tool") then
+        return nil
+    end
+
+    local handle = tool:FindFirstChild("Handle")
+
+    if handle and handle:IsA("BasePart") then
+        return handle
+    end
+
+    return tool:FindFirstChildWhichIsA("BasePart")
+end
+
+local function findEggTool(container)
+    if not container then
+        return nil
+    end
+
+    for _, obj in ipairs(container:GetChildren()) do
+        if obj:IsA("Tool") and isEggName(obj.Name) then
+            return obj
+        end
+    end
+
+    return nil
+end
+
+local function equipEgg(tool)
+    local character, humanoid = getCharacter()
+
+    if not character or not humanoid or not tool then
+        return false
+    end
+
+    if not tool:IsA("Tool") then
+        return false
+    end
+
+    pcall(function()
+        tool.CanBeDropped = false
+    end)
+
+    if tool.Parent ~= character then
+        local backpack = player:FindFirstChild("Backpack")
+
+        if backpack and tool.Parent == backpack then
+            pcall(function()
+                humanoid:EquipTool(tool)
+            end)
+        end
+    end
+
+    return true
+end--========================================================
+-- SANDALYE
+--========================================================
+
+seatButton.Activated:Connect(function()
+    local _, _, root = getCharacter()
+
+    if not root then
+        return
+    end
+
+    if seat then
+        pcall(function()
+            seat:Destroy()
+        end)
+        seat = nil
+    end
+
+    local newSeat = Instance.new("Seat")
+    newSeat.Name = "HamsterMetroSeat"
+    newSeat.Size = Vector3.new(2.5, 1, 2.5)
+    newSeat.Anchored = true
+    newSeat.CanCollide = true
+    newSeat.CanTouch = true
+    newSeat.CFrame =
+        root.CFrame * CFrame.new(0, -2.5, 0)
+
+    newSeat.Parent = workspace
+    seat = newSeat
+
+    seatButton.Text = "✓ SANDALYE HAZIR"
+
+    task.delay(1, function()
+        if seatButton.Parent then
+            seatButton.Text = "🪑 SANDALYE OLUSTUR"
+        end
+    end)
 end)
 
---========================================================
--- OTUR
---========================================================
+sitButton.Activated:Connect(function()
+    local _, humanoid, root = getCharacter()
 
-SitButton.Activated:Connect(function()
+    if not humanoid or not root then
+        return
+    end
 
-	local Character,Humanoid,Root =
-		GetCharacter()
+    if not seat or not seat.Parent then
+        sitButton.Text = "ONCE SANDALYE"
 
-	if not Character then
-		return
-	end
+        task.delay(1, function()
+            if sitButton.Parent then
+                sitButton.Text = "🪑 OTUR"
+            end
+        end)
 
-	if not Seat or not Seat.Parent then
+        return
+    end
 
-		SitButton.Text =
-			"ÖNCE SANDALYE OLUŞTUR"
+    root.CFrame =
+        seat.CFrame * CFrame.new(0, 2.5, 0)
 
-		task.delay(1,function()
+    task.wait()
 
-			if SitButton.Parent then
-				SitButton.Text = "🪑 OTUR"
-			end
+    pcall(function()
+        seat:Sit(humanoid)
+    end)
+end)
 
-		end)
+leaveButton.Activated:Connect(function()
+    local _, humanoid = getCharacter()
 
-		return
-	end
+    if not humanoid then
+        return
+    end
 
-	-- Sandalyenin üzerine götür.
-	Root.CFrame =
-		Seat.CFrame *
-		CFrame.new(0,2.6,0)
-
-	task.wait(0.15)
-
-	-- Gerçek Seat oturma sistemi.
-	Seat:Sit(Humanoid)
-
-	SitButton.Text =
-		"✓ OTURULDU"
-
-	task.delay(1,function()
-
-		if SitButton.Parent then
-			SitButton.Text = "🪑 OTUR"
-		end
-
-	end)
+    pcall(function()
+        humanoid.Sit = false
+        humanoid:ChangeState(
+            Enum.HumanoidStateType.GettingUp
+        )
+    end)
 end)
 
 --========================================================
 -- WALL
 --========================================================
 
-local function CreateWall()
+local function createWall()
+    local _, _, root = getCharacter()
 
-	local Character,Humanoid,Root =
-		GetCharacter()
+    if not root then
+        return
+    end
 
-	if not Root then
-		return
-	end
+    if wall then
+        pcall(function()
+            wall:Destroy()
+        end)
+    end
 
-	if Wall then
-		Wall:Destroy()
-		Wall = nil
-	end
+    wall = Instance.new("Part")
+    wall.Name = "HamsterMetroWall"
+    wall.Size = Vector3.new(16, 12, 4)
+    wall.Anchored = true
+    wall.CanCollide = true
+    wall.CanTouch = true
+    wall.CanQuery = false
+    wall.Transparency = 1
+    wall.Parent = workspace
 
-	local NewWall =
-		Instance.new("Part")
-
-	NewWall.Name =
-		"HamsterMetroWall"
-
-	NewWall.Size =
-		Vector3.new(500,300,10)
-
-	NewWall.Anchored = true
-
-	NewWall.CanCollide = true
-	NewWall.CanTouch = false
-	NewWall.CanQuery = false
-
-	NewWall.Transparency = 1
-
-	NewWall.CastShadow = false
-
-	NewWall.Parent =
-		workspace
-
-	Wall = NewWall
-	WallEnabled = true
+    wallEnabled = true
 end
 
-local function RemoveWall()
+wallButton.Activated:Connect(function()
+    if wallEnabled then
+        wallEnabled = false
 
-	WallEnabled = false
+        if wall then
+            pcall(function()
+                wall:Destroy()
+            end)
+            wall = nil
+        end
 
-	if Wall then
-		Wall:Destroy()
-		Wall = nil
-	end
-end
+        wallButton.Text = "🧱 WALL : KAPALI"
+    else
+        createWall()
 
-WallButton.Activated:Connect(function()
-
-	if WallEnabled then
-
-		RemoveWall()
-
-		WallButton.Text =
-			"🧱 WALL : KAPALI"
-
-		WallButton.BackgroundColor3 =
-			Color3.fromRGB(35,35,45)
-
-	else
-
-		CreateWall()
-
-		WallButton.Text =
-			"🧱 WALL : AKTİF"
-
-		WallButton.BackgroundColor3 =
-			Color3.fromRGB(0,120,70)
-
-	end
+        if wall then
+            wallButton.Text = "🧱 WALL : AKTIF"
+        end
+    end
 end)
 
 --========================================================
 -- METRO
 --========================================================
 
-MetroButton.Activated:Connect(function()
+local function getFlatCameraDirection(root)
+    local camera = workspace.CurrentCamera
 
-	local Character,Humanoid,Root =
-		GetCharacter()
+    if not camera then
+        return Vector3.new(
+            root.CFrame.LookVector.X,
+            0,
+            root.CFrame.LookVector.Z
+        ).Unit
+    end
 
-	if not Root then
-		return
-	end
+    local look = camera.CFrame.LookVector
 
-	if not MetroEnabled then
+    local flat = Vector3.new(
+        look.X,
+        0,
+        look.Z
+    )
 
-		local Camera =
-			workspace.CurrentCamera
+    if flat.Magnitude < 0.01 then
+        local fallback = root.CFrame.LookVector
 
-		if not Camera then
-			return
-		end
+        flat = Vector3.new(
+            fallback.X,
+            0,
+            fallback.Z
+        )
+    end
 
-		-- Bastığın anda kameranın baktığı yön.
-		MetroDirection =
-			Camera.CFrame.LookVector.Unit
+    if flat.Magnitude < 0.01 then
+        return Vector3.new(0, 0, -1)
+    end
 
-		MetroEnabled = true
+    return flat.Unit
+end
 
-		MetroButton.Text =
-			"🚇 METRO : AKTİF"
+metroButton.Activated:Connect(function()
+    metroEnabled = not metroEnabled
 
-		MetroButton.BackgroundColor3 =
-			Color3.fromRGB(150,0,0)
+    if metroEnabled then
+        metroButton.Text = "🚇 METRO : AKTIF"
+    else
+        metroButton.Text = "🚇 METRO : KAPALI"
 
-	else
+        local _, _, root = getCharacter()
 
-		MetroEnabled = false
-		MetroDirection = nil
-
-		Root.AssemblyLinearVelocity =
-			Vector3.zero
-
-		MetroButton.Text =
-			"🚇 METRO : KAPALI"
-
-		MetroButton.BackgroundColor3 =
-			Color3.fromRGB(35,35,45)
-
-	end
+        if root then
+            pcall(function()
+                root.AssemblyLinearVelocity =
+                    Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+            end)
+        end
+    end
 end)
 
 --========================================================
--- METRO + WALL UPDATE
+-- IN / YERE
 --========================================================
 
-local Connection
+local function saveMovement(humanoid)
+    if savedHipHeight == nil then
+        savedHipHeight = humanoid.HipHeight
+    end
 
-Connection =
-	RunService.RenderStepped:Connect(function(Delta)
+    if savedWalkSpeed == nil then
+        savedWalkSpeed = humanoid.WalkSpeed
+    end
 
-		local Character,Humanoid,Root =
-			GetCharacter()
+    if humanoid.UseJumpPower then
+        if savedJumpPower == nil then
+            savedJumpPower = humanoid.JumpPower
+        end
+    else
+        if savedJumpHeight == nil then
+            savedJumpHeight = humanoid.JumpHeight
+        end
+    end
+end
 
-		if not Root then
-			return
-		end
+local function lowerCharacterToGround(root, humanoid)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {
+        player.Character
+    }
 
-		-- METRO
-		if MetroEnabled and MetroDirection then
+    local origin =
+        root.Position + Vector3.new(0, 3, 0)
 
-			local Movement =
-				MetroDirection *
-				MetroSpeed *
-				Delta
+    local result = workspace:Raycast(
+        origin,
+        Vector3.new(0, -25, 0),
+        params
+    )
 
-			Root.CFrame =
-				Root.CFrame +
-				Movement
+    if not result then
+        -- Zemin bulunamazsa eskisinden daha asagi indir.
+        root.CFrame =
+            root.CFrame * CFrame.new(0, -PRONE_DROP, 0)
 
-			-- Sandalyeyi karakterin altında tut.
-			if Seat and Seat.Parent then
+        return
+    end
 
-				Seat.CFrame =
-					Root.CFrame *
-					CFrame.new(0,-2.5,0)
+    -- HumanoidRootPart'in zeminden uzakligini dusuruyoruz.
+    -- Fazla yukarida kalmamasi icin offset kucuk tutuldu.
+    local targetY = result.Position.Y + 0.35
 
-			end
-		end
+    local current = root.Position
 
-		-- WALL
-		if WallEnabled and Wall then
+    if current.Y > targetY then
+        root.CFrame =
+            CFrame.new(
+                current.X,
+                targetY,
+                current.Z
+            ) *
+            (root.CFrame - root.CFrame.Position)
+    end
 
-			local Position =
-				Root.Position -
-				Root.CFrame.LookVector * 6
+    pcall(function()
+        root.AssemblyLinearVelocity =
+            Vector3.new(0, 0, 0)
+    end)
+end
 
-			Wall.CFrame =
-				CFrame.lookAt(
-					Position,
-					Position +
-					Root.CFrame.LookVector
-				)
-		end
-	end)
+local function setProne(on)
+    local _, humanoid, root = getCharacter()
 
---========================================================
--- MENU AÇ/KAPA
---========================================================
+    if not humanoid or not root then
+        return
+    end
 
-Open.Activated:Connect(function()
+    if on then
+        if not proneEnabled then
+            saveMovement(humanoid)
+        end
 
-	Menu.Visible =
-		not Menu.Visible
+        proneEnabled = true
 
+        pcall(function()
+            humanoid.HipHeight = 0
+        end)
+
+        humanoid.WalkSpeed = math.min(
+            humanoid.WalkSpeed,
+            8
+        )
+
+        if humanoid.UseJumpPower then
+            humanoid.JumpPower = 0
+        else
+            humanoid.JumpHeight = 0
+        end
+
+        lowerCharacterToGround(
+            root,
+            humanoid
+        )
+
+        proneButton.Text =
+            "⬇ IN (YERE) : AKTIF"
+    else
+        proneEnabled = false
+
+        if savedHipHeight ~= nil then
+            pcall(function()
+                humanoid.HipHeight =
+                    savedHipHeight
+            end)
+        end
+
+        if savedWalkSpeed ~= nil then
+            humanoid.WalkSpeed =
+                savedWalkSpeed
+        end
+
+        if humanoid.UseJumpPower then
+            if savedJumpPower ~= nil then
+                humanoid.JumpPower =
+                    savedJumpPower
+            end
+        else
+            if savedJumpHeight ~= nil then
+                humanoid.JumpHeight =
+                    savedJumpHeight
+            end
+        end
+
+        -- Ayağa kalkarken karakteri tekrar yukari al.
+        root.CFrame =
+            root.CFrame *
+            CFrame.new(0, 3, 0)
+
+        proneButton.Text =
+            "⬇ IN (YERE) : KAPALI"
+    end
+end
+
+proneButton.Activated:Connect(function()
+    setProne(not proneEnabled)
 end)
 
 --========================================================
--- RESPAWN
+-- EGG PICKUP
 --========================================================
 
-Player.CharacterAdded:Connect(function()
+local function findNearestEgg()
+    local character, _, root = getCharacter()
 
-	MetroEnabled = false
-	MetroDirection = nil
+    if not character or not root then
+        return nil
+    end
 
-	if Seat then
-		Seat:Destroy()
-		Seat = nil
-	end
+    local nearest = nil
+    local nearestDistance = EGG_PICK_RANGE
 
-	if Wall then
-		Wall:Destroy()
-		Wall = nil
-	end
+    -- Once Tool'leri ara.
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj:IsA("Tool") and isEggName(obj.Name) then
+            local handle = getToolHandle(obj)
 
-	WallEnabled = false
+            if handle then
+                local distance =
+                    (handle.Position - root.Position).Magnitude
 
-	WallButton.Text =
-		"🧱 WALL : KAPALI"
+                if distance <= nearestDistance then
+                    nearest = obj
+                    nearestDistance = distance
+                end
+            end
+        end
+    end
 
-	WallButton.BackgroundColor3 =
-		Color3.fromRGB(35,35,45)
+    -- Modellerin icindeki Tool'leri de ara.
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool")
+            and isEggName(obj.Name)
+            and not obj:IsDescendantOf(character)
+        then
+            local handle = getToolHandle(obj)
 
-	MetroButton.Text =
-		"🚇 METRO : KAPALI"
+            if handle then
+                local distance =
+                    (handle.Position - root.Position).Magnitude
 
-	MetroButton.BackgroundColor3 =
-		Color3.fromRGB(35,35,45)
+                if distance <= nearestDistance then
+                    nearest = obj
+                    nearestDistance = distance
+                end
+            end
+        end
+    end
+
+    return nearest
+end
+
+local function tryPickupNearestEgg()
+    local character, humanoid, root = getCharacter()
+
+    if not character or not humanoid or not root then
+        return
+    end
+
+    local egg = findNearestEgg()
+
+    if not egg then
+        return
+    end
+
+    -- Kendi Studio oyununuzda Tool zaten oyuncuya
+    -- veriliyorsa bunu EquipTool ile al.
+    local backpack = player:FindFirstChild("Backpack")
+
+    if egg.Parent == backpack or egg.Parent == character then
+        lockedEggTool = egg
+        equipEgg(egg)
+        return
+    end
+
+    -- Workspace'teki Tool'u client tarafinda zorla
+    -- oyuncuya vermek yerine normal Roblox akisini
+    -- kullanmasi icin dokunma/equip denemesi yap.
+    local handle = getToolHandle(egg)
+
+    if handle then
+        pcall(function()
+            firetouchinterest(
+                root,
+                handle,
+                0
+            )
+        end)
+
+        task.wait(0.08)
+
+        pcall(function()
+            firetouchinterest(
+                root,
+                handle,
+                1
+            )
+        end)
+    end
+
+    task.wait(0.08)
+
+    local newTool =
+        findEggTool(character)
+        or findEggTool(backpack)
+
+    if newTool then
+        lockedEggTool = newTool
+        equipEgg(newTool)
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.E then
+        tryPickupNearestEgg()
+    end
+end)--========================================================
+-- EGG LOCK
+--========================================================
+
+local function maintainEggLock()
+    if not eggLockEnabled then
+        return
+    end
+
+    local character, humanoid = getCharacter()
+
+    if not character or not humanoid then
+        return
+    end
+
+    local backpack =
+        player:FindFirstChild("Backpack")
+
+    local characterEgg =
+        findEggTool(character)
+
+    local backpackEgg =
+        findEggTool(backpack)
+
+    -- Once eldeki egg'i kaydet.
+    if characterEgg then
+        lockedEggTool = characterEgg
+    elseif backpackEgg and not lockedEggTool then
+        lockedEggTool = backpackEgg
+    end
+
+    local tool = lockedEggTool
+
+    if not tool then
+        return
+    end
+
+    if not tool.Parent then
+        lockedEggTool = nil
+        return
+    end
+
+    -- Backpack'e gittiyse tekrar Equip et.
+    if tool.Parent == backpack then
+        equipEgg(tool)
+    end
+
+    pcall(function()
+        tool.CanBeDropped = false
+    end)
+end
+
+eggLockButton.Activated:Connect(function()
+    eggLockEnabled = not eggLockEnabled
+
+    if eggLockEnabled then
+        eggLockButton.Text =
+            "🥚 EGG LOCK : AKTIF"
+
+        local character = player.Character
+        local backpack =
+            player:FindFirstChild("Backpack")
+
+        local tool =
+            findEggTool(character)
+
+        if not tool then
+            tool = findEggTool(backpack)
+        end
+
+        if tool then
+            lockedEggTool = tool
+            equipEgg(tool)
+        end
+    else
+        eggLockButton.Text =
+            "🥚 EGG LOCK : KAPALI"
+
+        lockedEggTool = nil
+    end
 end)
+
+--========================================================
+-- ANTIKILL - LOCAL DEMO
+--========================================================
+
+local function bindAntikill(humanoid)
+    if not humanoid then
+        return
+    end
+
+    table.insert(
+        humanoidConns,
+        humanoid.HealthChanged:Connect(function(health)
+            if not antikillEnabled then
+                return
+            end
+
+            if health <= humanoid.MaxHealth * 0.15 then
+                pcall(function()
+                    humanoid.Health =
+                        humanoid.MaxHealth
+                end)
+            end
+        end)
+    )
+end
+
+antikillButton.Activated:Connect(function()
+    antikillEnabled =
+        not antikillEnabled
+
+    if antikillEnabled then
+        antikillButton.Text =
+            "❤ ANTIKILL : AKTIF"
+
+        local _, humanoid = getCharacter()
+
+        if humanoid then
+            pcall(function()
+                humanoid.Health =
+                    humanoid.MaxHealth
+            end)
+        end
+    else
+        antikillButton.Text =
+            "❤ ANTIKILL : KAPALI"
+    end
+end)
+
+--========================================================
+-- AYAKTA KAL
+--========================================================
+
+antiKnockButton.Activated:Connect(function()
+    antiKnockEnabled =
+        not antiKnockEnabled
+
+    if antiKnockEnabled then
+        antiKnockButton.Text =
+            "🛡 AYAKTA KAL : AKTIF"
+    else
+        antiKnockButton.Text =
+            "🛡 AYAKTA KAL : KAPALI"
+    end
+end)
+
+local function maintainAntiKnock(humanoid, root)
+    if not antiKnockEnabled then
+        return
+    end
+
+    if not humanoid or not root then
+        return
+    end
+
+    local state =
+        humanoid:GetState()
+
+    if state == Enum.HumanoidStateType.FallingDown
+        or state == Enum.HumanoidStateType.Ragdoll
+        or state == Enum.HumanoidStateType.Physics
+    then
+        pcall(function()
+            humanoid:ChangeState(
+                Enum.HumanoidStateType.Running
+            )
+        end)
+    end
+
+    pcall(function()
+        humanoid.PlatformStand = false
+    end)
+
+    local velocity =
+        root.AssemblyLinearVelocity
+
+    if math.abs(velocity.X) > 28
+        or math.abs(velocity.Z) > 28
+    then
+        root.AssemblyLinearVelocity =
+            Vector3.new(
+                0,
+                math.min(velocity.Y, 12),
+                0
+            )
+    end
+
+    root.AssemblyAngularVelocity =
+        Vector3.zero
+end
+
+--========================================================
+-- SERVER BULUCU
+--========================================================
+
+local function findOnePlayerServer()
+    local placeId = game.PlaceId
+
+    if not placeId or placeId <= 0 then
+        return nil
+    end
+
+    local cursor = ""
+
+    for _ = 1, 10 do
+        local url =
+            "https://games.roblox.com/v1/games/"
+            .. tostring(placeId)
+            .. "/servers/Public?sortOrder=Asc&limit=100"
+
+        if cursor ~= "" then
+            url =
+                url ..
+                "&cursor=" ..
+                HttpService:UrlEncode(cursor)
+        end
+
+        local ok, body = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if not ok or type(body) ~= "string" then
+            return nil
+        end
+
+        local decodeOk, data =
+            pcall(function()
+                return HttpService:JSONDecode(body)
+            end)
+
+        if not decodeOk or type(data) ~= "table" then
+            return nil
+        end
+
+        for _, server in ipairs(data.data or {}) do
+            local playing =
+                tonumber(server.playing) or 0
+
+            local maxPlayers =
+                tonumber(server.maxPlayers) or 0
+
+            if server.id
+                and playing == 1
+                and maxPlayers > 1
+            then
+                return server.id
+            end
+        end
+
+        cursor =
+            data.nextPageCursor or ""
+
+        if cursor == "" then
+            break
+        end
+    end
+
+    return nil
+end
+
+serverButton.Activated:Connect(function()
+    if serverButton:GetAttribute("Busy") then
+        return
+    end
+
+    serverButton:SetAttribute("Busy", true)
+    serverButton.Text =
+        "🔎 SERVER ARANIYOR..."
+
+    task.spawn(function()
+        local serverId =
+            findOnePlayerServer()
+
+        if not serverId then
+            serverButton.Text =
+                "SERVER BULUNAMADI"
+
+            task.wait(1.2)
+
+            if serverButton.Parent then
+                serverButton.Text =
+                    "👤 1 KISILIK SERVER BUL"
+            end
+
+            serverButton:SetAttribute(
+                "Busy",
+                false
+            )
+
+            return
+        end
+
+        serverButton.Text =
+            "✓ SERVER BULUNDU"
+
+        local ok = pcall(function()
+            TeleportService:TeleportToPlaceInstance(
+                game.PlaceId,
+                serverId,
+                player
+            )
+        end)
+
+        if not ok then
+            serverButton.Text =
+                "TELEPORT BASARISIZ"
+
+            task.wait(1.2)
+
+            if serverButton.Parent then
+                serverButton.Text =
+                    "👤 1 KISILIK SERVER BUL"
+            end
+        end
+
+        serverButton:SetAttribute(
+            "Busy",
+            false
+        )
+    end)
+end)
+
+--========================================================
+-- RENDER LOOP
+--========================================================
+
+RunService.RenderStepped:Connect(function(dt)
+    local character, humanoid, root =
+        getCharacter()
+
+    if not character or not humanoid or not root then
+        return
+    end
+
+    local flatLook =
+        getFlatCameraDirection(root)
+
+    -- METRO
+    if metroEnabled then
+        -- Kamera yonunde stabil hareket.
+        local velocity =
+            flatLook * METRO_SPEED
+
+        pcall(function()
+            root.AssemblyLinearVelocity =
+                Vector3.new(
+                    velocity.X,
+                    root.AssemblyLinearVelocity.Y,
+                    velocity.Z
+                )
+        end)
+
+        -- Karakteri kameranin baktigi yone dondur.
+        pcall(function()
+            root.CFrame =
+                CFrame.lookAt(
+                    root.Position,
+                    root.Position + flatLook
+                )
+        end)
+
+        if seat and seat.Parent then
+            seat.CFrame =
+                root.CFrame *
+                CFrame.new(0, -2.5, 0)
+        end
+    end
+
+    -- WALL
+    if wallEnabled and wall and wall.Parent then
+        local behind =
+            root.Position - flatLook * 5
+
+        wall.CFrame =
+            CFrame.lookAt(
+                behind,
+                behind + flatLook
+            )
+
+        if not metroEnabled then
+            pcall(function()
+                root.AssemblyLinearVelocity =
+                    Vector3.new(
+                        flatLook.X * WALL_PUSH,
+                        root.AssemblyLinearVelocity.Y,
+                        flatLook.Z * WALL_PUSH
+                    )
+            end)
+        end
+
+        if seat and seat.Parent and not metroEnabled then
+            seat.CFrame =
+                root.CFrame *
+                CFrame.new(0, -2.5, 0)
+        end
+    end
+
+    -- YERE IN
+    if proneEnabled then
+        pcall(function()
+            humanoid.HipHeight = 0
+        end)
+
+        lowerCharacterToGround(
+            root,
+            humanoid
+        )
+    end
+
+    maintainEggLock()
+    maintainAntiKnock(
+        humanoid,
+        root
+    )
+end)
+
+--========================================================
+-- CHARACTER BIND
+--========================================================
+
+local function onCharacter(character)
+    clearHumanoidConns()
+
+    metroEnabled = false
+    wallEnabled = false
+    proneEnabled = false
+
+    if seat then
+        pcall(function()
+            seat:Destroy()
+        end)
+        seat = nil
+    end
+
+    if wall then
+        pcall(function()
+            wall:Destroy()
+        end)
+        wall = nil
+    end
+
+    metroButton.Text =
+        "🚇 METRO : KAPALI"
+
+    wallButton.Text =
+        "🧱 WALL : KAPALI"
+
+    proneButton.Text =
+        "⬇ IN (YERE) : KAPALI"
+
+    local humanoid =
+        character:WaitForChild(
+            "Humanoid",
+            8
+        )
+
+    if humanoid then
+        bindAntikill(humanoid)
+
+        if antikillEnabled then
+            pcall(function()
+                humanoid.Health =
+                    humanoid.MaxHealth
+            end)
+        end
+    end
+
+    character.ChildAdded:Connect(function(child)
+        if eggLockEnabled
+            and child:IsA("Tool")
+            and isEggName(child.Name)
+        then
+            lockedEggTool = child
+
+            pcall(function()
+                child.CanBeDropped = false
+            end)
+        end
+    end)
+end
+
+if player.Character then
+    task.spawn(
+        onCharacter,
+        player.Character
+    )
+end
+
+player.CharacterAdded:Connect(onCharacter)
+
+--========================================================
+-- MENU ANIMATION
+--========================================================
+
+local menuOpen = false
+
+local function setMenu(value)
+    menuOpen = value
+
+    local target
+
+    if menuOpen then
+        target =
+            UDim2.new(
+                1,
+                -455,
+                0.5,
+                -280
+            )
+    else
+        target =
+            UDim2.new(
+                1,
+                20,
+                0.5,
+                -280
+            )
+    end
+
+    TweenService:Create(
+        menu,
+        TweenInfo.new(
+            0.28,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out
+        ),
+        {
+            Position = target
+        }
+    ):Play()
+end
+
+toggle.Activated:Connect(function()
+    setMenu(not menuOpen)
+end)
+
+trash.Activated:Connect(function()
+    setMenu(false)
+end)
+
+print(
+    "[HamsterMetro] Fixed v4 loaded"
+	) 

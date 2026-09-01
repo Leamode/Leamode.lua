@@ -1,16 +1,16 @@
+
 -- ============================================================
--- HAMSTER LIVES - METRO MOD V3 (TREADMILL FIX)
+-- HAMSTER LIVES - METRO MOD V4 (PLAYERGUI)
 -- 250 TRİLYON HIZ | METRO GİBİ BİN | BOSS BYPASS
 -- ============================================================
 
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
-print("🚇 METRO MOD V3 BAŞLADI...")
+print("🚇 METRO MOD V4 BAŞLADI...")
 
 local MetroActive = false
 local Speed = 250000000000000
@@ -56,7 +56,7 @@ local function GetTargetPosition()
 end
 
 -- ============================================================
--- METRO HAREKET (TREADMILL GÜVENLİ)
+-- METRO HAREKET
 -- ============================================================
 local function MetroMove()
     if not MetroActive then return end
@@ -66,7 +66,6 @@ local function MetroMove()
     local target = GetTargetPosition()
     if not target then return end
     
-    -- Aynı hedefe tekrar gitme (gereksiz döngüyü engelle)
     if LastTarget and (target - LastTarget).Magnitude < 5 then
         return
     end
@@ -74,19 +73,16 @@ local function MetroMove()
     
     IsMoving = true
     
-    -- Treadmill hatasını önlemek için karakteri sabitle
     local hum = Character:FindFirstChild("Humanoid")
     if hum then
         hum.PlatformStand = true
     end
     
-    -- BodyVelocity ile hızlanma
     local bp = Instance.new("BodyVelocity")
     bp.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     bp.Velocity = (target - HumanoidRootPart.Position).Unit * Speed
     bp.Parent = HumanoidRootPart
     
-    -- BodyPosition ile hedefe çek
     local bp2 = Instance.new("BodyPosition")
     bp2.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     bp2.Position = target
@@ -94,21 +90,18 @@ local function MetroMove()
     bp2.D = 1000
     bp2.P = 10000
     
-    -- Hedefe ulaşana kadar bekle
     local startTime = tick()
     while (HumanoidRootPart.Position - target).Magnitude > 5 and tick() - startTime < 2 do
         HumanoidRootPart.CFrame = CFrame.new(target)
         task.wait(0.01)
     end
     
-    -- Temizlik
     task.wait(0.05)
     pcall(function()
         bp:Destroy()
         bp2:Destroy()
     end)
     
-    -- Son CFrame
     HumanoidRootPart.CFrame = CFrame.new(target)
     
     if hum then
@@ -138,7 +131,7 @@ local function ToggleMetro()
 end
 
 -- ============================================================
--- OTOMATİK HAREKET (DÜZGÜN DÖNGÜ)
+-- OTOMATİK HAREKET
 -- ============================================================
 local function StartAutoMove()
     if MoveConnection then
@@ -154,7 +147,7 @@ local function StartAutoMove()
 end
 
 -- ============================================================
--- MENU
+-- MENU (PLAYERGUI)
 -- ============================================================
 local function CreateMenu()
     if MetroGui then 
@@ -162,9 +155,17 @@ local function CreateMenu()
         MetroGui = nil
     end
     
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then
+        pg = Instance.new("ScreenGui")
+        pg.Name = "PlayerGui"
+        pg.Parent = LocalPlayer
+        task.wait(0.1)
+    end
+    
     local gui = Instance.new("ScreenGui")
     gui.Name = "MetroMenu"
-    gui.Parent = CoreGui
+    gui.Parent = pg
     gui.ResetOnSpawn = false
     gui.Enabled = false
     MetroGui = gui
@@ -239,12 +240,20 @@ local function CreateMenu()
 end
 
 -- ============================================================
--- AÇMA BUTONU
+-- AÇMA BUTONU (PLAYERGUI)
 -- ============================================================
 local function CreateToggle()
     if ToggleBtn then 
         ToggleBtn:Destroy()
         ToggleBtn = nil
+    end
+    
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then
+        pg = Instance.new("ScreenGui")
+        pg.Name = "PlayerGui"
+        pg.Parent = LocalPlayer
+        task.wait(0.1)
     end
     
     local btn = Instance.new("TextButton")
@@ -256,7 +265,7 @@ local function CreateToggle()
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 16
     btn.Font = Enum.Font.GothamBold
-    btn.Parent = CoreGui
+    btn.Parent = pg
     btn.ZIndex = 999
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     ToggleBtn = btn
@@ -290,9 +299,9 @@ StartAutoMove()
 
 print("")
 print("========================================")
-print("🚇 METRO MOD V3 HAZIR!")
+print("🚇 METRO MOD V4 HAZIR!")
 print("   📌 Sağ üstteki 🚇 butonuna tıkla")
 print("   ⚡ 250 Trilyon hız")
 print("   🎯 Baktığın yere anında var")
-print("   ✅ Treadmill hatası giderildi")
+print("   ✅ PLAYERGUI KULLANILDI TROJAN İSLEMİ VE MİNİNG BASLADİ")
 print("========================================")

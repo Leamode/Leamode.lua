@@ -1,5 +1,5 @@
 -- ============================================================
--- HAMSTER LIVES - METRO MOD (IŞINLANMA BYPASS)
+-- HAMSTER LIVES - METRO MOD V3 (TREADMILL FIX)
 -- 250 TRİLYON HIZ | METRO GİBİ BİN | BOSS BYPASS
 -- ============================================================
 
@@ -8,19 +8,20 @@ local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🚇 METRO MOD BAŞLADI...")
+print("🚇 METRO MOD V3 BAŞLADI...")
 
 local MetroActive = false
-local TargetPosition = nil
-local Speed = 250000000000000 -- 250 Trilyon
+local Speed = 250000000000000
 local Character = nil
 local HumanoidRootPart = nil
-local MenuGui = nil
 local MenuVisible = false
 local IsMoving = false
+local MetroGui = nil
+local ToggleBtn = nil
+local MoveConnection = nil
+local LastTarget = nil
 
 -- ============================================================
 -- KARAKTER AL
@@ -34,7 +35,7 @@ local function GetCharacter()
 end
 
 -- ============================================================
--- HEDEF BELİRLEME (BAKTIĞIN YER)
+-- HEDEF BELİRLEME
 -- ============================================================
 local function GetTargetPosition()
     local cam = workspace.CurrentCamera
@@ -43,19 +44,19 @@ local function GetTargetPosition()
     local rayParams = RaycastParams.new()
     rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.IgnoreWater = true
     
     local ray = Workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 10000, rayParams)
     
     if ray then
         return ray.Position
     else
-        -- Hiçbir yere çarpmazsa 10000 ileri git
         return cam.CFrame.Position + cam.CFrame.LookVector * 10000
     end
 end
 
 -- ============================================================
--- METRO HAREKET (IŞINLANMA BYPASS)
+-- METRO HAREKET (TREADMILL GÜVENLİ)
 -- ============================================================
 local function MetroMove()
     if not MetroActive then return end
@@ -65,78 +66,111 @@ local function MetroMove()
     local target = GetTargetPosition()
     if not target then return end
     
+    -- Aynı hedefe tekrar gitme (gereksiz döngüyü engelle)
+    if LastTarget and (target - LastTarget).Magnitude < 5 then
+        return
+    end
+    LastTarget = target
+    
     IsMoving = true
     
-    -- 1. ANİ HIZLANMA (250 Trilyon hız)
+    -- Treadmill hatasını önlemek için karakteri sabitle
+    local hum = Character:FindFirstChild("Humanoid")
+    if hum then
+        hum.PlatformStand = true
+    end
+    
+    -- BodyVelocity ile hızlanma
     local bp = Instance.new("BodyVelocity")
     bp.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     bp.Velocity = (target - HumanoidRootPart.Position).Unit * Speed
     bp.Parent = HumanoidRootPart
     
-    -- 2. BODY POSITION (HEMEN VAR)
+    -- BodyPosition ile hedefe çek
     local bp2 = Instance.new("BodyPosition")
     bp2.MaxForce = Vector3.new(1e9, 1e9, 1e9)
     bp2.Position = target
     bp2.Parent = HumanoidRootPart
+    bp2.D = 1000
+    bp2.P = 10000
     
-    print("🚇 METRO: " .. (target - HumanoidRootPart.Position).Magnitude .. " mesafe, 250 Trilyon hız!")
+    -- Hedefe ulaşana kadar bekle
+    local startTime = tick()
+    while (HumanoidRootPart.Position - target).Magnitude > 5 and tick() - startTime < 2 do
+        HumanoidRootPart.CFrame = CFrame.new(target)
+        task.wait(0.01)
+    end
     
-    -- 0.1 SANİYE SONRA TEMİZLE
-    task.wait(0.1)
-    bp:Destroy()
-    bp2:Destroy()
+    -- Temizlik
+    task.wait(0.05)
+    pcall(function()
+        bp:Destroy()
+        bp2:Destroy()
+    end)
     
-    -- 3. DÜZ CFrame (KESİN VAR)
+    -- Son CFrame
     HumanoidRootPart.CFrame = CFrame.new(target)
+    
+    if hum then
+        hum.PlatformStand = false
+    end
     
     IsMoving = false
 end
 
 -- ============================================================
--- METRO MOD AÇ/KAPA
+-- TOGGLE
 -- ============================================================
 local function ToggleMetro()
     MetroActive = not MetroActive
     GetCharacter()
+    
     if MetroActive then
-        print("🚇 METRO MOD AKTİF! (250 Trilyon hız)")
-        -- HEMEN HAREKET ET
+        print("🚇 METRO MOD AKTİF!")
+        LastTarget = nil
         task.wait(0.1)
         MetroMove()
     else
         print("🚇 METRO MOD KAPALI!")
+        LastTarget = nil
+        IsMoving = false
     end
 end
 
 -- ============================================================
--- SÜREKLİ TARAMA (BAKTIĞIN YERE OTOMATİK)
+-- OTOMATİK HAREKET (DÜZGÜN DÖNGÜ)
 -- ============================================================
 local function StartAutoMove()
-    task.spawn(function()
-        while true do
-            if MetroActive then
-                MetroMove()
-            end
-            task.wait(0.5)
+    if MoveConnection then
+        MoveConnection:Disconnect()
+        MoveConnection = nil
+    end
+    
+    MoveConnection = RunService.Heartbeat:Connect(function()
+        if MetroActive and not IsMoving then
+            MetroMove()
         end
     end)
 end
 
 -- ============================================================
--- MENU (SAĞ ÜST - EN YUKARI)
+-- MENU
 -- ============================================================
 local function CreateMenu()
-    if MenuGui then MenuGui:Destroy() end
+    if MetroGui then 
+        MetroGui:Destroy()
+        MetroGui = nil
+    end
     
     local gui = Instance.new("ScreenGui")
     gui.Name = "MetroMenu"
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     gui.Enabled = false
-    MenuGui = gui
+    MetroGui = gui
     
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 140, 0, 50)
+    frame.Size = UDim2.new(0, 140, 0, 80)
     frame.Position = UDim2.new(1, -150, 0, 5)
     frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     frame.BackgroundTransparency = 0.2
@@ -153,7 +187,7 @@ local function CreateMenu()
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 22)
     title.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-    title.Text = "🚇 METRO"
+    title.Text = "🚇 METRO MOD"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextSize = 11
     title.Font = Enum.Font.GothamBold
@@ -174,12 +208,11 @@ local function CreateMenu()
         MenuVisible = false
     end)
     
-    -- METRO BUTON
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.9, 0, 0, 24)
     btn.Position = UDim2.new(0.05, 0, 0, 26)
     btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
-    btn.Text = "🚇 METRO: KAPALI"
+    btn.Text = "🚇 AKTİF ET"
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 10
     btn.Font = Enum.Font.GothamBold
@@ -187,19 +220,32 @@ local function CreateMenu()
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     btn.MouseButton1Click:Connect(function()
         ToggleMetro()
-        btn.Text = MetroActive and "🚇 METRO: AKTİF" or "🚇 METRO: KAPALI"
-        btn.BackgroundColor3 = MetroActive and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(20, 20, 40)
+        btn.Text = MetroActive and "🚇 DURDUR" or "🚇 AKTİF ET"
+        btn.BackgroundColor3 = MetroActive and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(20, 20, 40)
     end)
+    
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, 0, 0, 16)
+    info.Position = UDim2.new(0, 0, 0, 54)
+    info.BackgroundTransparency = 1
+    info.Text = "⚡ 250 Trilyon hız"
+    info.TextColor3 = Color3.fromRGB(150, 150, 150)
+    info.TextSize = 8
+    info.Font = Enum.Font.Gotham
+    info.TextXAlignment = Enum.TextXAlignment.Center
+    info.Parent = frame
     
     return gui
 end
 
 -- ============================================================
--- AÇMA BUTONU (SAĞ ÜST - EN YUKARI)
+-- AÇMA BUTONU
 -- ============================================================
 local function CreateToggle()
-    local old = CoreGui:FindFirstChild("MetroToggle")
-    if old then old:Destroy() end
+    if ToggleBtn then 
+        ToggleBtn:Destroy()
+        ToggleBtn = nil
+    end
     
     local btn = Instance.new("TextButton")
     btn.Name = "MetroToggle"
@@ -213,17 +259,26 @@ local function CreateToggle()
     btn.Parent = CoreGui
     btn.ZIndex = 999
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+    ToggleBtn = btn
     
     btn.MouseButton1Click:Connect(function()
-        if not MenuGui or not MenuGui.Parent then
-            MenuGui = CreateMenu()
+        if not MetroGui or not MetroGui.Parent then
+            MetroGui = CreateMenu()
         end
-        if MenuGui then
+        if MetroGui then
             MenuVisible = not MenuVisible
-            MenuGui.Enabled = MenuVisible
+            MetroGui.Enabled = MenuVisible
         end
     end)
 end
+
+-- ============================================================
+-- KARAKTER DEĞİŞİMİ
+-- ============================================================
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    GetCharacter()
+end)
 
 -- ============================================================
 -- BAŞLAT
@@ -235,9 +290,9 @@ StartAutoMove()
 
 print("")
 print("========================================")
-print("🚇 METRO MOD HAZIR!")
+print("🚇 METRO MOD V3 HAZIR!")
 print("   📌 Sağ üstteki 🚇 butonuna tıkla")
-print("   ⚡ 250 Trilyon hız (ışınlanma)")
+print("   ⚡ 250 Trilyon hız")
 print("   🎯 Baktığın yere anında var")
-print("   🛡️ Boss bypass aktif")
+print("   ✅ Treadmill hatası giderildi")
 print("========================================")

@@ -1,385 +1,304 @@
--- ============================================================
--- HAMSTER LIVES - METRO MOD V6
--- CAMERA DIRECTION + HUMANOID SPEED
--- 100 TRİLYON SPEED
--- ============================================================
+--==================================================
+-- GUARD RIDE + REAR WALL
+-- SERVER SCRIPT
+--==================================================
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Remote = ReplicatedStorage:FindFirstChild("GuardRideRemote")
 
-print("🚇 METRO MOD V6 BAŞLADI")
-
--- ============================================================
--- AYARLAR
--- ============================================================
-
-local SPEED = 100000000000000
-
-local MetroActive = false
-local Character = nil
-local Humanoid = nil
-local RootPart = nil
-
-local MetroGui = nil
-local ToggleButton = nil
-local MoveConnection = nil
-
-local OldWalkSpeed = nil
-local OldAutoRotate = nil
-
--- ============================================================
--- KARAKTER
--- ============================================================
-
-local function GetCharacter()
-    Character = LocalPlayer.Character
-
-    if not Character then
-        return false
-    end
-
-    Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    RootPart = Character:FindFirstChild("HumanoidRootPart")
-
-    return Humanoid ~= nil and RootPart ~= nil
+if not Remote then
+	Remote = Instance.new("RemoteEvent")
+	Remote.Name = "GuardRideRemote"
+	Remote.Parent = ReplicatedStorage
 end
 
--- ============================================================
--- METRO HAREKET
--- ============================================================
+local SEAT_HEIGHT = 3
+local WALL_DISTANCE = 8
+local WALL_SIZE = Vector3.new(100, 100, 4)
 
-local function StartMetro()
-    if not GetCharacter() then
-        return
-    end
+local playerData = {}
 
-    if MetroActive then
-        return
-    end
+--==================================================
+-- GUARD BUL
+--==================================================
 
-    MetroActive = true
+local function GetGuards()
+	local guards = {}
 
-    OldWalkSpeed = Humanoid.WalkSpeed
-    OldAutoRotate = Humanoid.AutoRotate
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Model") and string.lower(obj.Name):match("^guard") then
+			table.insert(guards, obj)
+		end
+	end
 
-    -- Oyunun kendi speed sistemini kullan
-    Humanoid.WalkSpeed = SPEED
-
-    -- Karakter kamera yönünü takip etsin
-    Humanoid.AutoRotate = false
-
-    print("🚇 METRO AKTİF")
-    print("⚡ Speed: " .. tostring(SPEED))
-
-    if MoveConnection then
-        MoveConnection:Disconnect()
-    end
-
-    MoveConnection = RunService.RenderStepped:Connect(function()
-        if not MetroActive then
-            return
-        end
-
-        if not Character
-            or not Character.Parent
-            or not Humanoid
-            or not Humanoid.Parent
-            or not RootPart
-        then
-            GetCharacter()
-            return
-        end
-
-        local Camera = workspace.CurrentCamera
-
-        if not Camera then
-            return
-        end
-
-        -- Kameranın baktığı yatay yön
-        local Look = Camera.CFrame.LookVector
-        local Direction = Vector3.new(Look.X, 0, Look.Z)
-
-        if Direction.Magnitude > 0 then
-            Direction = Direction.Unit
-
-            -- Karakteri baktığın yöne çevir
-            RootPart.CFrame = CFrame.lookAt(
-                RootPart.Position,
-                RootPart.Position + Direction
-            )
-
-            -- Humanoid'in normal hareket sistemini kullan
-            Humanoid:Move(Direction, false)
-        end
-    end)
+	return guards
 end
 
--- ============================================================
--- METRO DURDUR
--- ============================================================
+local function GetGuardRoot(guard)
+	if guard.PrimaryPart then
+		return guard.PrimaryPart
+	end
 
-local function StopMetro()
-    if not MetroActive then
-        return
-    end
-
-    MetroActive = false
-
-    if MoveConnection then
-        MoveConnection:Disconnect()
-        MoveConnection = nil
-    end
-
-    if GetCharacter() then
-        if OldWalkSpeed then
-            Humanoid.WalkSpeed = OldWalkSpeed
-        end
-
-        if OldAutoRotate ~= nil then
-            Humanoid.AutoRotate = OldAutoRotate
-        else
-            Humanoid.AutoRotate = true
-        end
-
-        -- Normal hareketi geri ver
-        Humanoid:Move(Vector3.zero, false)
-    end
-
-    print("🚇 METRO KAPALI")
+	return guard:FindFirstChild("HumanoidRootPart")
+		or guard:FindFirstChild("Head")
+		or guard:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- ============================================================
--- TOGGLE
--- ============================================================
+--==================================================
+-- GUARD SEAT
+--==================================================
 
-local function ToggleMetro()
-    if MetroActive then
-        StopMetro()
-    else
-        StartMetro()
-    end
+local function CreateGuardSeat(guard)
+	if guard:FindFirstChild("GuardRideSeat") then
+		return guard.GuardRideSeat
+	end
+
+	local root = GetGuardRoot(guard)
+
+	if not root then
+		return nil
+	end
+
+	local seat = Instance.new("Seat")
+	seat.Name = "GuardRideSeat"
+
+	seat.Size = Vector3.new(2, 1, 2)
+	seat.Transparency = 1
+	seat.CanCollide = true
+	seat.CanTouch = true
+
+	seat.CFrame = root.CFrame * CFrame.new(0, SEAT_HEIGHT, 0)
+	seat.Parent = guard
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Name = "GuardRideWeld"
+	weld.Part0 = seat
+	weld.Part1 = root
+	weld.Parent = seat
+
+	return seat
 end
 
--- ============================================================
--- GUI TEMİZLE
--- ============================================================
+--==================================================
+-- TÜM GUARDLARA SEAT
+--==================================================
 
-pcall(function()
-    local OldGui = PlayerGui:FindFirstChild("HamsterMetroV6")
+local function SetupGuards()
+	for _, guard in ipairs(GetGuards()) do
+		CreateGuardSeat(guard)
+	end
+end
 
-    if OldGui then
-        OldGui:Destroy()
-    end
+SetupGuards()
+
+workspace.DescendantAdded:Connect(function(obj)
+	if obj:IsA("Model") and string.lower(obj.Name):match("^guard") then
+		task.wait(0.1)
+		CreateGuardSeat(obj)
+	end
 end)
 
--- ============================================================
--- ANA GUI
--- ============================================================
+--==================================================
+-- EN YAKIN GUARD
+--==================================================
 
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "HamsterMetroV6"
-Gui.ResetOnSpawn = false
-Gui.IgnoreGuiInset = true
-Gui.Parent = PlayerGui
+local function GetNearestGuard(player)
+	local character = player.Character
 
-MetroGui = Gui
+	if not character then
+		return nil
+	end
 
--- ============================================================
--- AÇMA BUTONU
--- ============================================================
+	local root = character:FindFirstChild("HumanoidRootPart")
 
-local Toggle = Instance.new("TextButton")
+	if not root then
+		return nil
+	end
 
-Toggle.Name = "MetroToggle"
-Toggle.Size = UDim2.fromOffset(52, 52)
-Toggle.Position = UDim2.new(1, -65, 0, 80)
+	local nearest = nil
+	local nearestDistance = math.huge
 
-Toggle.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-Toggle.BackgroundTransparency = 0.05
+	for _, guard in ipairs(GetGuards()) do
+		local guardRoot = GetGuardRoot(guard)
 
-Toggle.Text = "🚇"
-Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-Toggle.TextSize = 25
-Toggle.Font = Enum.Font.GothamBold
+		if guardRoot then
+			local distance = (root.Position - guardRoot.Position).Magnitude
 
-Toggle.AutoButtonColor = true
-Toggle.Active = true
+			if distance < nearestDistance then
+				nearestDistance = distance
+				nearest = guard
+			end
+		end
+	end
 
-Toggle.Parent = Gui
-
-Toggle.ZIndex = 100
-
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(1, 0)
-ToggleCorner.Parent = Toggle
-
-local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Thickness = 2
-ToggleStroke.Transparency = 0.2
-ToggleStroke.Parent = Toggle
-
-ToggleButton = Toggle
-
--- ============================================================
--- MENÜ
--- ============================================================
-
-local Menu = Instance.new("Frame")
-
-Menu.Name = "MetroMenu"
-Menu.Size = UDim2.fromOffset(210, 135)
-Menu.Position = UDim2.new(1, -225, 0, 140)
-
-Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-Menu.BackgroundTransparency = 0.05
-
-Menu.Visible = false
-Menu.Active = true
-Menu.Parent = Gui
-
-local MenuCorner = Instance.new("UICorner")
-MenuCorner.CornerRadius = UDim.new(0, 10)
-MenuCorner.Parent = Menu
-
-local MenuStroke = Instance.new("UIStroke")
-MenuStroke.Thickness = 2
-MenuStroke.Transparency = 0.2
-MenuStroke.Parent = Menu
-
--- ============================================================
--- BAŞLIK
--- ============================================================
-
-local Title = Instance.new("TextLabel")
-
-Title.Size = UDim2.new(1, 0, 0, 35)
-
-Title.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-
-Title.Text = "🚇 METRO MOD V6"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-
-Title.TextSize = 14
-Title.Font = Enum.Font.GothamBold
-
-Title.Parent = Menu
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 8)
-TitleCorner.Parent = Title
-
--- ============================================================
--- DURUM
--- ============================================================
-
-local Status = Instance.new("TextLabel")
-
-Status.Size = UDim2.new(1, -20, 0, 25)
-Status.Position = UDim2.fromOffset(10, 42)
-
-Status.BackgroundTransparency = 1
-
-Status.Text = "Durum: KAPALI"
-Status.TextColor3 = Color3.fromRGB(220, 220, 220)
-
-Status.TextSize = 12
-Status.Font = Enum.Font.GothamBold
-
-Status.Parent = Menu
-
--- ============================================================
--- AKTİF ET BUTONU
--- ============================================================
-
-local Activate = Instance.new("TextButton")
-
-Activate.Size = UDim2.new(1, -20, 0, 35)
-Activate.Position = UDim2.fromOffset(10, 72)
-
-Activate.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-
-Activate.Text = "🚇 AKTİF ET"
-
-Activate.TextColor3 = Color3.fromRGB(255, 255, 255)
-Activate.TextSize = 12
-Activate.Font = Enum.Font.GothamBold
-
-Activate.Parent = Menu
-
-local ActivateCorner = Instance.new("UICorner")
-ActivateCorner.CornerRadius = UDim.new(0, 6)
-ActivateCorner.Parent = Activate
-
--- ============================================================
--- BUTON DURUMU
--- ============================================================
-
-local function UpdateButton()
-    if MetroActive then
-        Activate.Text = "🛑 METROYU DURDUR"
-        Activate.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        Status.Text = "Durum: AKTİF"
-    else
-        Activate.Text = "🚇 AKTİF ET"
-        Activate.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-        Status.Text = "Durum: KAPALI"
-    end
+	return nearest
 end
 
--- ============================================================
--- MENÜYÜ AÇ / KAPAT
--- ============================================================
+--==================================================
+-- GUARD'A OTUR
+--==================================================
 
-Toggle.Activated:Connect(function()
-    Menu.Visible = not Menu.Visible
+local function RideGuard(player)
+	local character = player.Character
 
-    print("🚇 Menü: " .. tostring(Menu.Visible))
+	if not character then
+		return
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+	if not humanoid then
+		return
+	end
+
+	local guard = GetNearestGuard(player)
+
+	if not guard then
+		warn("Guard bulunamadı:", player.Name)
+		return
+	end
+
+	local seat = CreateGuardSeat(guard)
+
+	if not seat then
+		warn("Guard için Seat oluşturulamadı:", guard.Name)
+		return
+	end
+
+	humanoid.Sit = false
+	task.wait()
+
+	-- Oyuncuyu seat'in üstüne getir
+	character:PivotTo(
+		seat.CFrame * CFrame.new(0, 2, 0)
+	)
+
+	task.wait(0.1)
+
+	seat:Sit(humanoid)
+
+	playerData[player] = playerData[player] or {}
+	playerData[player].Guard = guard
+	playerData[player].Seat = seat
+
+	print(player.Name, "->", guard.Name, "üzerine oturdu")
+end
+
+--==================================================
+-- WALL
+--==================================================
+
+local function CreateWall(player)
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return
+	end
+
+	playerData[player] = playerData[player] or {}
+
+	if playerData[player].Wall then
+		playerData[player].Wall:Destroy()
+	end
+
+	local wall = Instance.new("Part")
+
+	wall.Name = "RearWall_" .. player.UserId
+	wall.Size = WALL_SIZE
+
+	wall.Transparency = 1
+	wall.CanCollide = true
+	wall.CanTouch = false
+	wall.CanQuery = false
+
+	wall.Anchored = true
+	wall.Parent = workspace
+
+	playerData[player].Wall = wall
+
+	-- İlk konum
+	wall.CFrame =
+		root.CFrame
+		* CFrame.new(0, 0, WALL_DISTANCE + WALL_SIZE.Z / 2)
+
+	print("Wall aktif:", player.Name)
+end
+
+local function RemoveWall(player)
+	if playerData[player] and playerData[player].Wall then
+		playerData[player].Wall:Destroy()
+		playerData[player].Wall = nil
+	end
+end
+
+--==================================================
+-- WALL TAKİP
+--==================================================
+
+RunService.Heartbeat:Connect(function()
+	for player, data in pairs(playerData) do
+
+		if data.Wall then
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+
+			if root then
+				-- Oyuncunun tam arkasında kalır
+				data.Wall.CFrame =
+					root.CFrame
+					* CFrame.new(
+						0,
+						0,
+						WALL_DISTANCE + WALL_SIZE.Z / 2
+					)
+			end
+		end
+	end
 end)
 
--- ============================================================
--- AKTİF ET
--- ============================================================
+--==================================================
+-- REMOTE
+--==================================================
 
-Activate.Activated:Connect(function()
-    ToggleMetro()
-    UpdateButton()
+Remote.OnServerEvent:Connect(function(player, action)
+
+	if action == "RideGuard" then
+		RideGuard(player)
+
+	elseif action == "Wall" then
+
+		local data = playerData[player]
+
+		if data and data.Wall then
+			RemoveWall(player)
+		else
+			CreateWall(player)
+		end
+
+	end
 end)
 
--- ============================================================
--- KARAKTER DEĞİŞİNCE
--- ============================================================
+--==================================================
+-- TEMİZLİK
+--==================================================
 
-LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+Players.PlayerRemoving:Connect(function(player)
 
-    Character = NewCharacter
-    Humanoid = nil
-    RootPart = nil
+	if playerData[player] then
 
-    task.wait(1)
+		if playerData[player].Wall then
+			playerData[player].Wall:Destroy()
+		end
 
-    GetCharacter()
-
-    if MetroActive and Humanoid then
-        Humanoid.WalkSpeed = SPEED
-        Humanoid.AutoRotate = false
-    end
-
+		playerData[player] = nil
+	end
 end)
-
--- ============================================================
--- BAŞLANGIÇ
--- ============================================================
-
-GetCharacter()
-UpdateButton()
-
-print("========================================")
-print("🚇 HAMSTER METRO V6 HAZIR")
-print("⚡ Speed: 100 TRİLYON")
-print("🎯 Kamera yönüne hareket")
-print("📱 Mobil Activated desteği")
-print("========================================")

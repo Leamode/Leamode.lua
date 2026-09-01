@@ -1,693 +1,609 @@
---// HAMSTER METRO V2 - SERVER
---// ServerScriptService içine normal Script olarak koy.
+--========================================================
+-- HAMSTER METRO V3
+-- TEK PARÇA LOCAL SCRIPT
+-- OnServerEvent YOK
+-- Mevcut GUI'leri SİLMEZ
+--========================================================
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
--- Sadece kendi RemoteEvent'imizi kullanıyoruz.
-local remote = ReplicatedStorage:FindFirstChild("HamsterMetroRemote")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
-if not remote then
-	remote = Instance.new("RemoteEvent")
-	remote.Name = "HamsterMetroRemote"
-	remote.Parent = ReplicatedStorage
+--========================================================
+-- ESKİ KENDİ MENÜMÜZ VARSA SADECE ONU TEMİZLE
+-- BAŞKA HİÇBİR GUI'YE DOKUNMAZ
+--========================================================
+
+local old = PlayerGui:FindFirstChild("HamsterMetro_V3")
+
+if old then
+	old:Destroy()
 end
 
-local playerData = {}
+--========================================================
+-- DEĞİŞKENLER
+--========================================================
 
-local METRO_SPEED = 30000
-local SEAT_OFFSET = CFrame.new(0, -2.5, 0)
+local Seat = nil
+local Wall = nil
 
-local function getCharacter(player)
-	local character = player.Character
-	if not character then
-		return nil
+local WallEnabled = false
+local MetroEnabled = false
+
+local MetroDirection = nil
+
+local MetroSpeed = 30000
+
+--========================================================
+-- CHARACTER
+--========================================================
+
+local function GetCharacter()
+
+	local Character = Player.Character
+
+	if not Character then
+		return nil, nil, nil
 	end
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local root = character:FindFirstChild("HumanoidRootPart")
+	local Humanoid =
+		Character:FindFirstChildOfClass("Humanoid")
 
-	if not humanoid or not root then
-		return nil
+	local Root =
+		Character:FindFirstChild("HumanoidRootPart")
+
+	if not Humanoid or not Root then
+		return nil, nil, nil
 	end
 
-	return character, humanoid, root
+	return Character, Humanoid, Root
 end
 
-local function getData(player)
-	if not playerData[player] then
-		playerData[player] = {
-			seat = nil,
-			metro = false,
-			direction = nil,
-			wall = nil,
-			wallEnabled = false
-		}
-	end
+--========================================================
+-- GUI
+--========================================================
 
-	return playerData[player]
-end
+local Gui = Instance.new("ScreenGui")
 
---==================================================
--- SANDALYE
---==================================================
+Gui.Name = "HamsterMetro_V3"
+Gui.ResetOnSpawn = false
+Gui.IgnoreGuiInset = false
 
-local function createSeat(player)
+Gui.Parent = PlayerGui
 
-	local character, humanoid, root = getCharacter(player)
-	if not root then
-		return
-	end
+--========================================================
+-- OPEN BUTTON
+--========================================================
 
-	local data = getData(player)
+local Open = Instance.new("TextButton")
 
-	if data.seat then
-		data.seat:Destroy()
-		data.seat = nil
-	end
+Open.Name = "Open"
+Open.Size = UDim2.fromOffset(58,58)
+Open.Position = UDim2.new(1,-72,0,90)
 
-	local seat = Instance.new("Seat")
+Open.BackgroundColor3 =
+	Color3.fromRGB(170,0,0)
 
-	seat.Name = "HamsterMetroSeat_" .. player.UserId
-	seat.Size = Vector3.new(2.5, 1, 2.5)
+Open.BorderSizePixel = 0
 
-	seat.Anchored = true
-	seat.CanCollide = true
-	seat.CanTouch = true
+Open.Text = "🚇"
+Open.TextSize = 25
 
-	seat.CFrame = root.CFrame * SEAT_OFFSET
+Open.TextColor3 =
+	Color3.new(1,1,1)
 
-	seat.Parent = workspace
-
-	data.seat = seat
-end
-
---==================================================
--- OTUR
---==================================================
-
-local function sitPlayer(player)
-
-	local character, humanoid, root = getCharacter(player)
-	if not root then
-		return
-	end
-
-	local data = getData(player)
-	local seat = data.seat
-
-	if not seat or not seat.Parent then
-		return
-	end
-
-	-- Önce karakteri sandalyenin üzerine götür.
-	root.CFrame = seat.CFrame * CFrame.new(0, 2.5, 0)
-
-	task.wait(0.1)
-
-	-- Gerçek Roblox Seat.
-	seat:Sit(humanoid)
-end
-
---==================================================
--- WALL
---==================================================
-
-local function enableWall(player)
-
-	local character, humanoid, root = getCharacter(player)
-	if not root then
-		return
-	end
-
-	local data = getData(player)
-
-	if data.wall then
-		data.wall:Destroy()
-	end
-
-	local wall = Instance.new("Part")
-
-	wall.Name = "HamsterMetroWall_" .. player.UserId
-
-	wall.Size = Vector3.new(500, 100, 5)
-
-	wall.Anchored = true
-	wall.CanCollide = true
-	wall.CanTouch = false
-	wall.CanQuery = false
-
-	wall.Transparency = 1
-
-	wall.Parent = workspace
-
-	data.wall = wall
-	data.wallEnabled = true
-end
-
-local function disableWall(player)
-
-	local data = getData(player)
-
-	data.wallEnabled = false
-
-	if data.wall then
-		data.wall:Destroy()
-		data.wall = nil
-	end
-end
-
---==================================================
--- REMOTE
---==================================================
-
-remote.OnServerEvent:Connect(function(player, action, value)
-
-	if typeof(action) ~= "string" then
-		return
-	end
-
-	local data = getData(player)
-
-	if action == "CreateSeat" then
-
-		createSeat(player)
-
-	elseif action == "Sit" then
-
-		sitPlayer(player)
-
-	elseif action == "Wall" then
-
-		if data.wallEnabled then
-			disableWall(player)
-		else
-			enableWall(player)
-		end
-
-	elseif action == "Metro" then
-
-		if typeof(value) ~= "Vector3" then
-			return
-		end
-
-		if value.Magnitude < 0.01 then
-			return
-		end
-
-		data.metro = true
-		data.direction = value.Unit
-
-	elseif action == "StopMetro" then
-
-		data.metro = false
-		data.direction = nil
-
-		local character, humanoid, root = getCharacter(player)
-
-		if root then
-			root.AssemblyLinearVelocity = Vector3.zero
-		end
-	end
-end)
-
---==================================================
--- METRO / WALL UPDATE
---==================================================
-
-RunService.Heartbeat:Connect(function(deltaTime)
-
-	for player, data in pairs(playerData) do
-
-		local character, humanoid, root = getCharacter(player)
-
-		if root then
-
-			-- METRO
-			if data.metro and data.direction then
-
-				local movement =
-					data.direction *
-					METRO_SPEED *
-					deltaTime
-
-				root.CFrame =
-					root.CFrame + movement
-
-				-- Sandalye karakterle beraber hareket eder.
-				if data.seat and data.seat.Parent then
-					data.seat.CFrame =
-						root.CFrame *
-						SEAT_OFFSET
-				end
-			end
-
-			-- WALL
-			if data.wallEnabled and data.wall then
-
-				local position =
-					root.Position -
-					root.CFrame.LookVector * 6
-
-				data.wall.CFrame =
-					CFrame.lookAt(
-						position,
-						position + root.CFrame.LookVector
-					)
-			end
-		end
-	end
-end)
-
---==================================================
--- PLAYER
---==================================================
-
-Players.PlayerAdded:Connect(function(player)
-
-	playerData[player] = {
-		seat = nil,
-		metro = false,
-		direction = nil,
-		wall = nil,
-		wallEnabled = false
-	}
-
-	player.CharacterRemoving:Connect(function()
-
-		local data = playerData[player]
-
-		if data then
-			data.metro = false
-			data.direction = nil
-
-			if data.seat then
-				data.seat:Destroy()
-				data.seat = nil
-			end
-
-			if data.wall then
-				data.wall:Destroy()
-				data.wall = nil
-			end
-		end
-	end)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-
-	local data = playerData[player]
-
-	if data then
-
-		if data.seat then
-			data.seat:Destroy()
-		end
-
-		if data.wall then
-			data.wall:Destroy()
-		end
-	end
-
-	playerData[player] = nil
-end)--// HAMSTER METRO V2 - CLIENT
---// StarterPlayer > StarterPlayerScripts içine LocalScript koy.
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- Server'ın oluşturduğu RemoteEvent'i bekle.
-local remote = ReplicatedStorage:WaitForChild(
-	"HamsterMetroRemote",
-	15
-)
-
-if not remote then
-	warn("HamsterMetroRemote bulunamadı.")
-	return
-end
-
---==================================================
--- SADECE KENDİ GUI'MİZ
---==================================================
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "HamsterMetro_V2"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = false
-
--- ÖNEMLİ:
--- Mevcut GUI'lere dokunmuyoruz.
--- Hiçbir GUI Destroy edilmiyor.
-gui.Parent = playerGui
-
---==================================================
--- AÇ/KAPA
---==================================================
-
-local openButton = Instance.new("TextButton")
-
-openButton.Name = "OpenButton"
-openButton.Size = UDim2.fromOffset(55, 55)
-openButton.Position = UDim2.new(1, -70, 0, 100)
-
-openButton.BackgroundColor3 =
-	Color3.fromRGB(170, 0, 0)
-
-openButton.Text = "🚇"
-openButton.TextSize = 24
-openButton.TextColor3 = Color3.new(1, 1, 1)
-
-openButton.Font =
+Open.Font =
 	Enum.Font.GothamBold
 
-openButton.Parent = gui
+Open.Parent = Gui
 
-local openCorner =
+local OpenCorner =
 	Instance.new("UICorner")
 
-openCorner.CornerRadius =
-	UDim.new(1, 0)
+OpenCorner.CornerRadius =
+	UDim.new(1,0)
 
-openCorner.Parent =
-	openButton
+OpenCorner.Parent = Open
 
---==================================================
--- ANA MENÜ
---==================================================
+--========================================================
+-- MENU
+--========================================================
 
-local menu = Instance.new("Frame")
+local Menu = Instance.new("Frame")
 
-menu.Name = "MetroMenu"
+Menu.Name = "Menu"
 
-menu.Size =
-	UDim2.fromOffset(270, 300)
+Menu.Size =
+	UDim2.fromOffset(280,310)
 
-menu.Position =
-	UDim2.new(1, -285, 0, 165)
+Menu.Position =
+	UDim2.new(1,-295,0,160)
 
-menu.BackgroundColor3 =
-	Color3.fromRGB(15, 15, 20)
+Menu.BackgroundColor3 =
+	Color3.fromRGB(15,15,20)
 
-menu.BorderSizePixel = 0
+Menu.BorderSizePixel = 0
 
-menu.Visible = false
+Menu.Visible = false
 
-menu.Parent = gui
+Menu.Parent = Gui
 
-local menuCorner =
+local MenuCorner =
 	Instance.new("UICorner")
 
-menuCorner.CornerRadius =
-	UDim.new(0, 12)
+MenuCorner.CornerRadius =
+	UDim.new(0,12)
 
-menuCorner.Parent =
-	menu
+MenuCorner.Parent = Menu
 
---==================================================
--- BAŞLIK
---==================================================
+--========================================================
+-- TITLE
+--========================================================
 
-local title = Instance.new("TextLabel")
+local Title = Instance.new("TextLabel")
 
-title.Name = "Title"
+Title.Size =
+	UDim2.new(1,-55,0,45)
 
-title.Size =
-	UDim2.new(1, -50, 0, 45)
+Title.Position =
+	UDim2.fromOffset(12,5)
 
-title.Position =
-	UDim2.fromOffset(12, 5)
+Title.BackgroundTransparency = 1
 
-title.BackgroundTransparency = 1
-
-title.Text =
+Title.Text =
 	"🚇 HAMSTER METRO"
 
-title.TextColor3 =
-	Color3.new(1, 1, 1)
+Title.TextColor3 =
+	Color3.new(1,1,1)
 
-title.TextSize = 16
+Title.TextSize = 16
 
-title.Font =
+Title.Font =
 	Enum.Font.GothamBold
 
-title.TextXAlignment =
+Title.TextXAlignment =
 	Enum.TextXAlignment.Left
 
-title.Parent =
-	menu
+Title.Parent = Menu
 
---==================================================
--- KAPAT
---==================================================
+--========================================================
+-- CLOSE
+--========================================================
 
-local closeButton =
-	Instance.new("TextButton")
+local Close = Instance.new("TextButton")
 
-closeButton.Name = "Close"
+Close.Size =
+	UDim2.fromOffset(38,38)
 
-closeButton.Size =
-	UDim2.fromOffset(35, 35)
+Close.Position =
+	UDim2.new(1,-43,0,6)
 
-closeButton.Position =
-	UDim2.new(1, -42, 0, 7)
+Close.BackgroundTransparency = 1
 
-closeButton.BackgroundTransparency = 1
+Close.Text = "✕"
 
-closeButton.Text = "X"
+Close.TextColor3 =
+	Color3.new(1,1,1)
 
-closeButton.TextSize = 18
+Close.TextSize = 20
 
-closeButton.TextColor3 =
-	Color3.new(1, 1, 1)
-
-closeButton.Font =
+Close.Font =
 	Enum.Font.GothamBold
 
-closeButton.Parent =
-	menu
+Close.Parent = Menu
 
---==================================================
--- BUTTON FONKSİYONU
---==================================================
+Close.Activated:Connect(function()
+	Menu.Visible = false
+end)
 
-local function makeButton(name, text, y)
+--========================================================
+-- BUTTON
+--========================================================
 
-	local button =
+local function MakeButton(Name,Text,Y)
+
+	local Button =
 		Instance.new("TextButton")
 
-	button.Name = name
+	Button.Name = Name
 
-	button.Size =
-		UDim2.new(1, -20, 0, 48)
+	Button.Size =
+		UDim2.new(1,-20,0,50)
 
-	button.Position =
-		UDim2.fromOffset(10, y)
+	Button.Position =
+		UDim2.fromOffset(10,Y)
 
-	button.BackgroundColor3 =
-		Color3.fromRGB(35, 35, 45)
+	Button.BackgroundColor3 =
+		Color3.fromRGB(35,35,45)
 
-	button.BorderSizePixel = 0
+	Button.BorderSizePixel = 0
 
-	button.Text = text
+	Button.Text = Text
 
-	button.TextColor3 =
-		Color3.new(1, 1, 1)
+	Button.TextColor3 =
+		Color3.new(1,1,1)
 
-	button.TextSize = 13
+	Button.TextSize = 13
 
-	button.Font =
+	Button.Font =
 		Enum.Font.GothamBold
 
-	button.Parent =
-		menu
+	Button.Parent = Menu
 
-	local corner =
+	local Corner =
 		Instance.new("UICorner")
 
-	corner.CornerRadius =
-		UDim.new(0, 8)
+	Corner.CornerRadius =
+		UDim.new(0,8)
 
-	corner.Parent =
-		button
+	Corner.Parent = Button
 
-	return button
+	return Button
 end
 
---==================================================
--- BUTONLAR
---==================================================
-
-local seatButton =
-	makeButton(
+local SeatButton =
+	MakeButton(
 		"SeatButton",
 		"🪑 SANDALYE OLUŞTUR",
 		55
 	)
 
-local sitButton =
-	makeButton(
+local SitButton =
+	MakeButton(
 		"SitButton",
 		"🪑 OTUR",
 		110
 	)
 
-local wallButton =
-	makeButton(
+local WallButton =
+	MakeButton(
 		"WallButton",
 		"🧱 WALL : KAPALI",
 		165
 	)
 
-local metroButton =
-	makeButton(
+local MetroButton =
+	MakeButton(
 		"MetroButton",
 		"🚇 METRO : KAPALI",
 		220
 	)
 
---==================================================
--- SANDALYE
---==================================================
+--========================================================
+-- SANDALYE OLUŞTUR
+--========================================================
 
-seatButton.Activated:Connect(function()
+SeatButton.Activated:Connect(function()
 
-	remote:FireServer("CreateSeat")
+	local Character,Humanoid,Root =
+		GetCharacter()
 
-	seatButton.Text =
-		"✓ SANDALYE OLUŞTURULDU"
-
-	task.delay(1.2, function()
-
-		if seatButton.Parent then
-
-			seatButton.Text =
-				"🪑 SANDALYE OLUŞTUR"
-
-		end
-	end)
-end)
-
---==================================================
--- OTUR
---==================================================
-
-sitButton.Activated:Connect(function()
-
-	remote:FireServer("Sit")
-
-	sitButton.Text =
-		"✓ OTURULDU"
-
-	task.delay(1, function()
-
-		if sitButton.Parent then
-			sitButton.Text = "🪑 OTUR"
-		end
-
-	end)
-end)
-
---==================================================
--- WALL
---==================================================
-
-local wallEnabled = false
-
-wallButton.Activated:Connect(function()
-
-	wallEnabled =
-		not wallEnabled
-
-	remote:FireServer("Wall")
-
-	if wallEnabled then
-
-		wallButton.Text =
-			"🧱 WALL : AKTİF"
-
-		wallButton.BackgroundColor3 =
-			Color3.fromRGB(0, 120, 70)
-
-	else
-
-		wallButton.Text =
-			"🧱 WALL : KAPALI"
-
-		wallButton.BackgroundColor3 =
-			Color3.fromRGB(35, 35, 45)
-
-	end
-end)
-
---==================================================
--- METRO
---==================================================
-
-local metroEnabled = false
-
-metroButton.Activated:Connect(function()
-
-	local camera =
-		workspace.CurrentCamera
-
-	if not camera then
+	if not Root then
 		return
 	end
 
-	if not metroEnabled then
+	-- Sadece bizim oluşturduğumuz eski sandalyeyi kaldır.
+	if Seat then
+		Seat:Destroy()
+		Seat = nil
+	end
 
-		local direction =
-			camera.CFrame.LookVector.Unit
+	local NewSeat =
+		Instance.new("Seat")
 
-		metroEnabled = true
+	NewSeat.Name =
+		"HamsterMetroSeat"
 
-		-- Kameranın o anda baktığı yönü server'a gönder.
-		remote:FireServer(
-			"Metro",
-			direction
-		)
+	NewSeat.Size =
+		Vector3.new(2.5,1,2.5)
 
-		metroButton.Text =
-			"🚇 METRO : AKTİF"
+	NewSeat.Anchored = true
 
-		metroButton.BackgroundColor3 =
-			Color3.fromRGB(150, 0, 0)
+	NewSeat.CanCollide = true
+	NewSeat.CanTouch = true
+
+	NewSeat.Transparency = 0
+
+	NewSeat.CFrame =
+		Root.CFrame *
+		CFrame.new(0,-2.5,0)
+
+	NewSeat.Parent =
+		workspace
+
+	Seat = NewSeat
+
+	SeatButton.Text =
+		"✓ SANDALYE OLUŞTURULDU"
+
+	task.delay(1,function()
+
+		if SeatButton.Parent then
+			SeatButton.Text =
+				"🪑 SANDALYE OLUŞTUR"
+		end
+
+	end)
+end)
+
+--========================================================
+-- OTUR
+--========================================================
+
+SitButton.Activated:Connect(function()
+
+	local Character,Humanoid,Root =
+		GetCharacter()
+
+	if not Character then
+		return
+	end
+
+	if not Seat or not Seat.Parent then
+
+		SitButton.Text =
+			"ÖNCE SANDALYE OLUŞTUR"
+
+		task.delay(1,function()
+
+			if SitButton.Parent then
+				SitButton.Text = "🪑 OTUR"
+			end
+
+		end)
+
+		return
+	end
+
+	-- Sandalyenin üzerine götür.
+	Root.CFrame =
+		Seat.CFrame *
+		CFrame.new(0,2.6,0)
+
+	task.wait(0.15)
+
+	-- Gerçek Seat oturma sistemi.
+	Seat:Sit(Humanoid)
+
+	SitButton.Text =
+		"✓ OTURULDU"
+
+	task.delay(1,function()
+
+		if SitButton.Parent then
+			SitButton.Text = "🪑 OTUR"
+		end
+
+	end)
+end)
+
+--========================================================
+-- WALL
+--========================================================
+
+local function CreateWall()
+
+	local Character,Humanoid,Root =
+		GetCharacter()
+
+	if not Root then
+		return
+	end
+
+	if Wall then
+		Wall:Destroy()
+		Wall = nil
+	end
+
+	local NewWall =
+		Instance.new("Part")
+
+	NewWall.Name =
+		"HamsterMetroWall"
+
+	NewWall.Size =
+		Vector3.new(500,300,10)
+
+	NewWall.Anchored = true
+
+	NewWall.CanCollide = true
+	NewWall.CanTouch = false
+	NewWall.CanQuery = false
+
+	NewWall.Transparency = 1
+
+	NewWall.CastShadow = false
+
+	NewWall.Parent =
+		workspace
+
+	Wall = NewWall
+	WallEnabled = true
+end
+
+local function RemoveWall()
+
+	WallEnabled = false
+
+	if Wall then
+		Wall:Destroy()
+		Wall = nil
+	end
+end
+
+WallButton.Activated:Connect(function()
+
+	if WallEnabled then
+
+		RemoveWall()
+
+		WallButton.Text =
+			"🧱 WALL : KAPALI"
+
+		WallButton.BackgroundColor3 =
+			Color3.fromRGB(35,35,45)
 
 	else
 
-		metroEnabled = false
+		CreateWall()
 
-		remote:FireServer(
-			"StopMetro"
-		)
+		WallButton.Text =
+			"🧱 WALL : AKTİF"
 
-		metroButton.Text =
-			"🚇 METRO : KAPALI"
-
-		metroButton.BackgroundColor3 =
-			Color3.fromRGB(35, 35, 45)
+		WallButton.BackgroundColor3 =
+			Color3.fromRGB(0,120,70)
 
 	end
 end)
 
---==================================================
--- MENÜ AÇ / KAPA
---==================================================
+--========================================================
+-- METRO
+--========================================================
 
-openButton.Activated:Connect(function()
+MetroButton.Activated:Connect(function()
 
-	menu.Visible =
-		not menu.Visible
+	local Character,Humanoid,Root =
+		GetCharacter()
+
+	if not Root then
+		return
+	end
+
+	if not MetroEnabled then
+
+		local Camera =
+			workspace.CurrentCamera
+
+		if not Camera then
+			return
+		end
+
+		-- Bastığın anda kameranın baktığı yön.
+		MetroDirection =
+			Camera.CFrame.LookVector.Unit
+
+		MetroEnabled = true
+
+		MetroButton.Text =
+			"🚇 METRO : AKTİF"
+
+		MetroButton.BackgroundColor3 =
+			Color3.fromRGB(150,0,0)
+
+	else
+
+		MetroEnabled = false
+		MetroDirection = nil
+
+		Root.AssemblyLinearVelocity =
+			Vector3.zero
+
+		MetroButton.Text =
+			"🚇 METRO : KAPALI"
+
+		MetroButton.BackgroundColor3 =
+			Color3.fromRGB(35,35,45)
+
+	end
+end)
+
+--========================================================
+-- METRO + WALL UPDATE
+--========================================================
+
+local Connection
+
+Connection =
+	RunService.RenderStepped:Connect(function(Delta)
+
+		local Character,Humanoid,Root =
+			GetCharacter()
+
+		if not Root then
+			return
+		end
+
+		-- METRO
+		if MetroEnabled and MetroDirection then
+
+			local Movement =
+				MetroDirection *
+				MetroSpeed *
+				Delta
+
+			Root.CFrame =
+				Root.CFrame +
+				Movement
+
+			-- Sandalyeyi karakterin altında tut.
+			if Seat and Seat.Parent then
+
+				Seat.CFrame =
+					Root.CFrame *
+					CFrame.new(0,-2.5,0)
+
+			end
+		end
+
+		-- WALL
+		if WallEnabled and Wall then
+
+			local Position =
+				Root.Position -
+				Root.CFrame.LookVector * 6
+
+			Wall.CFrame =
+				CFrame.lookAt(
+					Position,
+					Position +
+					Root.CFrame.LookVector
+				)
+		end
+	end)
+
+--========================================================
+-- MENU AÇ/KAPA
+--========================================================
+
+Open.Activated:Connect(function()
+
+	Menu.Visible =
+		not Menu.Visible
 
 end)
 
-closeButton.Activated:Connect(function()
+--========================================================
+-- RESPAWN
+--========================================================
 
-	menu.Visible = false
+Player.CharacterAdded:Connect(function()
 
+	MetroEnabled = false
+	MetroDirection = nil
+
+	if Seat then
+		Seat:Destroy()
+		Seat = nil
+	end
+
+	if Wall then
+		Wall:Destroy()
+		Wall = nil
+	end
+
+	WallEnabled = false
+
+	WallButton.Text =
+		"🧱 WALL : KAPALI"
+
+	WallButton.BackgroundColor3 =
+		Color3.fromRGB(35,35,45)
+
+	MetroButton.Text =
+		"🚇 METRO : KAPALI"
+
+	MetroButton.BackgroundColor3 =
+		Color3.fromRGB(35,35,45)
 end)

@@ -1,529 +1,139 @@
 --============================================================
--- HAMSTER METRO SYSTEM
--- SERVER SCRIPT
+-- HAMSTER LIVES - GUARD SEAT + WALL
+-- PLAYERGUI VERSION
 --============================================================
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
---============================================================
--- REMOTE EVENT
---============================================================
+local LocalPlayer = Players.LocalPlayer
 
-local Remote = ReplicatedStorage:FindFirstChild("MetroRemote")
-
-if not Remote then
-	Remote = Instance.new("RemoteEvent")
-	Remote.Name = "MetroRemote"
-	Remote.Parent = ReplicatedStorage
+if not LocalPlayer then
+    warn("[METRO] LocalPlayer bulunamadı.")
+    return
 end
 
 --============================================================
--- AYARLAR
+-- PLAYER GUI
 --============================================================
 
-local WALL_SIZE = Vector3.new(150, 80, 4)
-local WALL_DISTANCE = 8
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 15)
 
--- Aşırı yüksek fizik değerleri Roblox fiziğini bozabilir.
-local MAX_SPEED = 5000
-
---============================================================
--- OYUNCU VERİLERİ
---============================================================
-
-local PlayerData = {}
-
-local function GetData(Player)
-
-	if not PlayerData[Player] then
-		PlayerData[Player] = {
-			Seat = nil,
-			Wall = nil,
-			SpeedEnabled = false,
-			Direction = nil
-		}
-	end
-
-	return PlayerData[Player]
+if not PlayerGui then
+    warn("[METRO] PlayerGui bulunamadı.")
+    return
 end
+
+-- Eski sistemi temizle
+pcall(function()
+    local old = PlayerGui:FindFirstChild("GuardRideSystem")
+    if old then
+        old:Destroy()
+    end
+end)
+
+--============================================================
+-- DEĞİŞKENLER
+--============================================================
+
+local WallEnabled = false
+local SeatEnabled = false
+
+local WallPart = nil
+local RideSeat = nil
+
+local Character = nil
+local Root = nil
+local Humanoid = nil
+
+local Connections = {}
 
 --============================================================
 -- KARAKTER
 --============================================================
 
-local function GetCharacter(Player)
+local function UpdateCharacter()
 
-	local Character = Player.Character
+    Character = LocalPlayer.Character
 
-	if not Character then
-		return nil, nil, nil
-	end
+    if not Character then
+        Root = nil
+        Humanoid = nil
+        return
+    end
 
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	local RootPart = Character:FindFirstChild("HumanoidRootPart")
+    Root = Character:FindFirstChild("HumanoidRootPart")
+    Humanoid = Character:FindFirstChildOfClass("Humanoid")
 
-	return Character, Humanoid, RootPart
 end
 
---============================================================
--- SANDALYE OLUŞTUR
---============================================================
-
-local function CreateSeat(Player)
-
-	local Character, Humanoid, RootPart = GetCharacter(Player)
-
-	if not Character or not Humanoid or not RootPart then
-		warn("Karakter hazır değil:", Player.Name)
-		return
-	end
-
-	local Data = GetData(Player)
-
-	-- Önce eski sandalyeyi temizle
-	if Data.Seat and Data.Seat.Parent then
-		Data.Seat:Destroy()
-	end
-
-	local Seat = Instance.new("Seat")
-
-	Seat.Name = "MetroSeat"
-
-	Seat.Size = Vector3.new(2, 1, 2)
-
-	-- Oyuncunun bulunduğu yere yakın oluştur
-	Seat.CFrame =
-		RootPart.CFrame *
-		CFrame.new(0, -2.5, 0)
-
-	Seat.Anchored = true
-	Seat.CanCollide = true
-	Seat.CanTouch = true
-	Seat.Transparency = 1
-
-	Seat.Parent = workspace
-
-	Data.Seat = Seat
-
-	print("[Metro] Seat oluşturuldu:", Player.Name)
-end
+UpdateCharacter()
 
 --============================================================
--- SANDALYEYE OTUR
---============================================================
-
-local function SitOnSeat(Player)
-
-	local Character, Humanoid, RootPart = GetCharacter(Player)
-
-	if not Character or not Humanoid or not RootPart then
-		return
-	end
-
-	local Data = GetData(Player)
-
-	-- Sandalye yoksa oluştur
-	if not Data.Seat or not Data.Seat.Parent then
-		CreateSeat(Player)
-	end
-
-	local Seat = Data.Seat
-
-	if not Seat or not Seat.Parent then
-		return
-	end
-
-	-- Karakteri sandalyenin üzerine getir
-	Character:PivotTo(
-		Seat.CFrame *
-		CFrame.new(0, 2.5, 0)
-	)
-
-	task.wait(0.1)
-
-	-- Oturt
-	Seat:Sit(Humanoid)
-
-	print("[Metro] Oyuncu sandalyeye oturdu:", Player.Name)
-end
-
---============================================================
--- WALL OLUŞTUR
---============================================================
-
-local function CreateWall(Player)
-
-	local Character, Humanoid, RootPart = GetCharacter(Player)
-
-	if not Character or not RootPart then
-		return
-	end
-
-	local Data = GetData(Player)
-
-	-- Eski wall varsa sil
-	if Data.Wall and Data.Wall.Parent then
-		Data.Wall:Destroy()
-	end
-
-	local Wall = Instance.new("Part")
-
-	Wall.Name = "MetroRearWall_" .. Player.UserId
-
-	Wall.Size = WALL_SIZE
-
-	Wall.Anchored = true
-
-	-- Görünmez
-	Wall.Transparency = 1
-
-	-- Çarpışmalı
-	Wall.CanCollide = true
-
-	Wall.CanTouch = false
-	Wall.CanQuery = false
-
-	Wall.CastShadow = false
-
-	Wall.Parent = workspace
-
-	Data.Wall = Wall
-
-	-- İlk konum
-	Wall.CFrame =
-		RootPart.CFrame *
-		CFrame.new(
-			0,
-			0,
-			WALL_DISTANCE + (WALL_SIZE.Z / 2)
-		)
-
-	print("[Metro] Wall açıldı:", Player.Name)
-end
-
---============================================================
--- WALL KAPAT
---============================================================
-
-local function RemoveWall(Player)
-
-	local Data = GetData(Player)
-
-	if Data.Wall then
-
-		Data.Wall:Destroy()
-
-		Data.Wall = nil
-
-	end
-
-	print("[Metro] Wall kapandı:", Player.Name)
-end
-
---============================================================
--- WALL TOGGLE
---============================================================
-
-local function ToggleWall(Player)
-
-	local Data = GetData(Player)
-
-	if Data.Wall and Data.Wall.Parent then
-
-		RemoveWall(Player)
-
-	else
-
-		CreateWall(Player)
-
-	end
-end
-
---============================================================
--- HIZI AÇ
---============================================================
-
-local function EnableSpeed(Player, Direction)
-
-	local Data = GetData(Player)
-
-	if typeof(Direction) ~= "Vector3" then
-		return
-	end
-
-	if Direction.Magnitude <= 0 then
-		return
-	end
-
-	Data.SpeedEnabled = true
-	Data.Direction = Direction.Unit
-
-	print("[Metro] Hız açıldı:", Player.Name)
-end
-
---============================================================
--- HIZI KAPAT
---============================================================
-
-local function DisableSpeed(Player)
-
-	local Data = GetData(Player)
-
-	Data.SpeedEnabled = false
-	Data.Direction = nil
-
-	local Character, Humanoid, RootPart = GetCharacter(Player)
-
-	if RootPart then
-		RootPart.AssemblyLinearVelocity = Vector3.zero
-	end
-
-	print("[Metro] Hız kapandı:", Player.Name)
-end
-
---============================================================
--- REMOTE EVENT
---============================================================
-
-Remote.OnServerEvent:Connect(function(Player, Action, Value)
-
-	if Action == "CreateSeat" then
-
-		CreateSeat(Player)
-
-	elseif Action == "Sit" then
-
-		SitOnSeat(Player)
-
-	elseif Action == "Wall" then
-
-		ToggleWall(Player)
-
-	elseif Action == "SpeedOn" then
-
-		EnableSpeed(Player, Value)
-
-	elseif Action == "SpeedOff" then
-
-		DisableSpeed(Player)
-
-	end
-end)
-
---============================================================
--- SÜREKLİ SİSTEM
---============================================================
-
-RunService.Heartbeat:Connect(function()
-
-	for Player, Data in pairs(PlayerData) do
-
-		local Character, Humanoid, RootPart =
-			GetCharacter(Player)
-
-		if RootPart then
-
-			--==================================================
-			-- WALL TAKİP
-			--==================================================
-
-			if Data.Wall and Data.Wall.Parent then
-
-				Data.Wall.CFrame =
-					RootPart.CFrame *
-					CFrame.new(
-						0,
-						0,
-						WALL_DISTANCE + (WALL_SIZE.Z / 2)
-					)
-
-			end
-
-			--==================================================
-			-- HIZ
-			--==================================================
-
-			if Data.SpeedEnabled
-				and Data.Direction
-				and Data.Direction.Magnitude > 0 then
-
-				RootPart.AssemblyLinearVelocity =
-					Data.Direction * MAX_SPEED
-
-			end
-		end
-	end
-end)
-
---============================================================
--- KARAKTER YENİLENMESİ
---============================================================
-
-local function SetupPlayer(Player)
-
-	GetData(Player)
-
-	Player.CharacterAdded:Connect(function()
-
-		local Data = GetData(Player)
-
-		-- Eski wall yeni karaktere taşınmasın
-		if Data.Wall then
-			Data.Wall:Destroy()
-			Data.Wall = nil
-		end
-
-		Data.SpeedEnabled = false
-		Data.Direction = nil
-		Data.Seat = nil
-
-	end)
-end
-
-Players.PlayerAdded:Connect(SetupPlayer)
-
-for _, Player in ipairs(Players:GetPlayers()) do
-	SetupPlayer(Player)
-end
-
---============================================================
--- OYUNCU ÇIKIŞI
---============================================================
-
-Players.PlayerRemoving:Connect(function(Player)
-
-	local Data = PlayerData[Player]
-
-	if Data then
-
-		if Data.Seat then
-			Data.Seat:Destroy()
-		end
-
-		if Data.Wall then
-			Data.Wall:Destroy()
-		end
-
-	end
-
-	PlayerData[Player] = nil
-end)
-
-print("============================================")
-print("🚇 HAMSTER METRO SERVER SYSTEM HAZIR")
-print("============================================")--============================================================
--- HAMSTER METRO SYSTEM
--- CLIENT / MOBILE GUI
---============================================================
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-
-local Remote = ReplicatedStorage:WaitForChild("MetroRemote")
-
---============================================================
--- ESKİ GUI TEMİZLE
---============================================================
-
-local OldGui = PlayerGui:FindFirstChild("HamsterMetroUI")
-
-if OldGui then
-	OldGui:Destroy()
-end
-
---============================================================
--- ANA GUI
+-- GUI
 --============================================================
 
 local Gui = Instance.new("ScreenGui")
-
-Gui.Name = "HamsterMetroUI"
+Gui.Name = "GuardRideSystem"
 Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
-
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 Gui.Parent = PlayerGui
 
 --============================================================
--- AÇMA BUTONU
+-- AÇ/KAPAT BUTONU
 --============================================================
 
 local OpenButton = Instance.new("TextButton")
 
 OpenButton.Name = "OpenButton"
+OpenButton.Size = UDim2.fromOffset(52, 52)
+OpenButton.Position = UDim2.new(1, -65, 0, 70)
 
-OpenButton.Size = UDim2.fromOffset(55, 55)
-
-OpenButton.Position =
-	UDim2.new(1, -70, 0, 80)
-
-OpenButton.BackgroundColor3 =
-	Color3.fromRGB(170, 0, 0)
-
-OpenButton.Text = "🚇"
-
-OpenButton.TextColor3 =
-	Color3.fromRGB(255, 255, 255)
-
-OpenButton.TextSize = 25
-
-OpenButton.Font =
-	Enum.Font.GothamBold
+OpenButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.Text = "⚙"
+OpenButton.TextSize = 24
+OpenButton.Font = Enum.Font.GothamBold
 
 OpenButton.Active = true
-
-OpenButton.AutoButtonColor = true
+OpenButton.Selectable = true
+OpenButton.ZIndex = 100
 
 OpenButton.Parent = Gui
 
 local OpenCorner = Instance.new("UICorner")
-
-OpenCorner.CornerRadius =
-	UDim.new(1, 0)
-
+OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
 --============================================================
--- ANA PANEL
+-- PANEL
 --============================================================
 
 local Panel = Instance.new("Frame")
 
-Panel.Name = "MetroPanel"
+Panel.Name = "Panel"
+Panel.Size = UDim2.fromOffset(260, 230)
+Panel.Position = UDim2.new(1, -280, 0, 135)
 
-Panel.Size =
-	UDim2.fromOffset(240, 250)
+Panel.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+Panel.BackgroundTransparency = 0.05
 
-Panel.Position =
-	UDim2.new(1, -255, 0, 145)
-
-Panel.BackgroundColor3 =
-	Color3.fromRGB(15, 15, 20)
-
-Panel.Visible = false
-
+Panel.Visible = true
 Panel.Active = true
+Panel.ZIndex = 50
 
 Panel.Parent = Gui
 
 local PanelCorner = Instance.new("UICorner")
-
-PanelCorner.CornerRadius =
-	UDim.new(0, 10)
-
+PanelCorner.CornerRadius = UDim.new(0, 12)
 PanelCorner.Parent = Panel
 
-local PanelStroke = Instance.new("UIStroke")
-
-PanelStroke.Thickness = 2
-
-PanelStroke.Transparency = 0.25
-
-PanelStroke.Parent = Panel
+local Border = Instance.new("UIStroke")
+Border.Thickness = 2
+Border.Color = Color3.fromRGB(210, 40, 40)
+Border.Parent = Panel
 
 --============================================================
 -- BAŞLIK
@@ -531,118 +141,422 @@ PanelStroke.Parent = Panel
 
 local Title = Instance.new("TextLabel")
 
-Title.Name = "Title"
+Title.Size = UDim2.new(1, -50, 0, 40)
+Title.Position = UDim2.fromOffset(12, 5)
 
-Title.Size =
-	UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "GUARD RIDE"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 19
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
-Title.BackgroundColor3 =
-	Color3.fromRGB(150, 0, 0)
-
-Title.Text = "🚇 METRO SYSTEM"
-
-Title.TextColor3 =
-	Color3.fromRGB(255, 255, 255)
-
-Title.TextSize = 15
-
-Title.Font =
-	Enum.Font.GothamBold
-
+Title.ZIndex = 51
 Title.Parent = Panel
 
-local TitleCorner = Instance.new("UICorner")
-
-TitleCorner.CornerRadius =
-	UDim.new(0, 10)
-
-TitleCorner.Parent = Title
-
 --============================================================
--- BUTON FONKSİYONU
+-- KAPAT
 --============================================================
 
-local function CreateButton(Name, Text, Y)
+local Close = Instance.new("TextButton")
 
-	local Button = Instance.new("TextButton")
+Close.Size = UDim2.fromOffset(35, 35)
+Close.Position = UDim2.new(1, -40, 0, 5)
 
-	Button.Name = Name
+Close.BackgroundTransparency = 1
+Close.Text = "✕"
+Close.TextColor3 = Color3.fromRGB(255, 255, 255)
+Close.TextSize = 20
+Close.Font = Enum.Font.GothamBold
 
-	Button.Size =
-		UDim2.new(1, -20, 0, 42)
+Close.ZIndex = 52
+Close.Parent = Panel
 
-	Button.Position =
-		UDim2.fromOffset(10, Y)
+--============================================================
+-- YARDIMCI BUTON
+--============================================================
 
-	Button.BackgroundColor3 =
-		Color3.fromRGB(35, 35, 45)
+local function MakeButton(name, text, y)
 
-	Button.Text = Text
+    local Button = Instance.new("TextButton")
 
-	Button.TextColor3 =
-		Color3.fromRGB(255, 255, 255)
+    Button.Name = name
+    Button.Size = UDim2.new(1, -30, 0, 42)
+    Button.Position = UDim2.fromOffset(15, y)
 
-	Button.TextSize = 12
+    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 
-	Button.Font =
-		Enum.Font.GothamBold
+    Button.Text = text
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 13
+    Button.Font = Enum.Font.GothamBold
 
-	Button.Active = true
+    Button.Active = true
+    Button.Selectable = true
+    Button.ZIndex = 52
 
-	Button.AutoButtonColor = true
+    Button.Parent = Panel
 
-	Button.Parent = Panel
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 7)
+    Corner.Parent = Button
 
-	local Corner = Instance.new("UICorner")
+    return Button
+end
 
-	Corner.CornerRadius =
-		UDim.new(0, 7)
+local WallButton = MakeButton(
+    "WallButton",
+    "🧱 WALL: KAPALI",
+    50
+)
 
-	Corner.Parent = Button
+local SeatButton = MakeButton(
+    "SeatButton",
+    "🪑 SANDALYE OLUŞTUR",
+    100
+)
 
-	return Button
+local SitButton = MakeButton(
+    "SitButton",
+    "🪑 SANDALYEYE OTUR",
+    150
+)
+
+--============================================================
+-- DURUM
+--============================================================
+
+local Status = Instance.new("TextLabel")
+
+Status.Size = UDim2.new(1, -20, 0, 22)
+Status.Position = UDim2.fromOffset(10, 200)
+
+Status.BackgroundTransparency = 1
+Status.Text = "Hazır"
+Status.TextColor3 = Color3.fromRGB(180, 180, 180)
+Status.TextSize = 11
+Status.Font = Enum.Font.Gotham
+
+Status.ZIndex = 52
+Status.Parent = Panel
+
+--============================================================
+-- GUARD BUL
+--============================================================
+
+local function IsGuardName(name)
+
+    name = string.lower(name)
+
+    -- Guard
+    if name == "guard" then
+        return true
+    end
+
+    -- Guard1 / Guard2 / Guard_1 / Guard-1
+    if string.match(name, "^guard[%d_%- ]*$") then
+        return true
+    end
+
+    return false
+end
+
+local function FindGuard()
+
+    -- Önce doğrudan Workspace çocuklarını kontrol et
+    for _, obj in ipairs(Workspace:GetChildren()) do
+
+        if IsGuardName(obj.Name) then
+            return obj
+        end
+
+    end
+
+    -- Sonra tüm descendantları kontrol et
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+
+        if IsGuardName(obj.Name) then
+            return obj
+        end
+
+    end
+
+    return nil
 end
 
 --============================================================
--- BUTONLAR
+-- MODEL POZİSYONU
 --============================================================
 
-local CreateSeatButton =
-	CreateButton(
-		"CreateSeat",
-		"🪑 SANDALYE OLUŞTUR",
-		50
-	)
+local function GetObjectPosition(obj)
 
-local SitButton =
-	CreateButton(
-		"Sit",
-		"🪑 OTUR",
-		100
-	)
+    if not obj then
+        return nil
+    end
 
-local WallButton =
-	CreateButton(
-		"Wall",
-		"🧱 WALL: KAPALI",
-		150
-	)
+    if obj:IsA("BasePart") then
+        return obj.Position
+    end
 
-local SpeedButton =
-	CreateButton(
-		"Speed",
-		"🚀 HIZ: KAPALI",
-		200
-	)
+    if obj:IsA("Model") then
+
+        local Primary = obj.PrimaryPart
+
+        if Primary then
+            return Primary.Position
+        end
+
+        local Part = obj:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+        if Part then
+            return Part.Position
+        end
+
+    end
+
+    return nil
+end
 
 --============================================================
--- MENÜ AÇ / KAPAT
+-- GUARD ÜSTÜNDEKİ NOKTA
 --============================================================
 
-OpenButton.Activated:Connect(function()
+local function GetGuardSeatPosition()
 
-	Panel.Visible =
-		not Panel.Visible
+    local Guard = FindGuard()
+
+    if not Guard then
+        return nil
+    end
+
+    local Position = GetObjectPosition(Guard)
+
+    if not Position then
+        return nil
+    end
+
+    -- Yaklaşık 1 stud yukarı
+    return Position + Vector3.new(0, 3, 0)
+
+end
+
+--============================================================
+-- SANDALYE OLUŞTUR
+--============================================================
+
+local function CreateSeat()
+
+    if RideSeat then
+        RideSeat:Destroy()
+        RideSeat = nil
+    end
+
+    local Position = GetGuardSeatPosition()
+
+    if not Position then
+
+        Status.Text = "Guard bulunamadı!"
+        warn("[GUARD RIDE] Guard bulunamadı.")
+
+        return false
+    end
+
+    local Seat = Instance.new("Seat")
+
+    Seat.Name = "GuardRideSeat"
+
+    Seat.Size = Vector3.new(2, 1, 2)
+
+    Seat.Anchored = true
+    Seat.CanCollide = true
+
+    Seat.Transparency = 0.35
+
+    Seat.CFrame = CFrame.new(Position)
+
+    Seat.Parent = Workspace
+
+    RideSeat = Seat
+    SeatEnabled = true
+
+    Status.Text = "Sandalye oluşturuldu."
+
+    return true
+end
+
+--============================================================
+-- SANDALYEYİ GUARD'A TAKİP ETTİR
+--============================================================
+
+local function UpdateSeat()
+
+    if not SeatEnabled then
+        return
+    end
+
+    if not RideSeat then
+        return
+    end
+
+    if not RideSeat.Parent then
+        RideSeat = nil
+        SeatEnabled = false
+        return
+    end
+
+    local Position = GetGuardSeatPosition()
+
+    if not Position then
+        return
+    end
+
+    RideSeat.CFrame = CFrame.new(Position)
+
+end
+
+--============================================================
+-- OTUR
+--============================================================
+
+local function SitOnSeat()
+
+    if not Humanoid then
+        UpdateCharacter()
+    end
+
+    if not Humanoid then
+        Status.Text = "Humanoid bulunamadı."
+        return
+    end
+
+    if not RideSeat or not RideSeat.Parent then
+
+        if not CreateSeat() then
+            return
+        end
+
+    end
+
+    -- Sandalyeye yaklaş
+    if Root then
+        Root.CFrame = RideSeat.CFrame + Vector3.new(0, 2, 0)
+    end
+
+    task.wait(0.15)
+
+    if Humanoid and RideSeat then
+        RideSeat:Sit(Humanoid)
+        Status.Text = "Sandalyeye oturuldu."
+    end
+
+end
+
+--============================================================
+-- WALL OLUŞTUR
+--============================================================
+
+local function CreateWall()
+
+    if WallPart then
+        WallPart:Destroy()
+        WallPart = nil
+    end
+
+    local Wall = Instance.new("Part")
+
+    Wall.Name = "InvisiblePushWall"
+
+    -- Büyük hitbox
+    Wall.Size = Vector3.new(30, 30, 2)
+
+    Wall.Transparency = 1
+
+    Wall.CanCollide = true
+    Wall.CanTouch = false
+    Wall.CanQuery = false
+
+    Wall.Anchored = true
+
+    Wall.Parent = Workspace
+
+    WallPart = Wall
+
+    return Wall
+end
+
+--============================================================
+-- WALL KONUMU
+--============================================================
+
+local function UpdateWall()
+
+    if not WallEnabled then
+        return
+    end
+
+    if not Root then
+        UpdateCharacter()
+    end
+
+    if not Root then
+        return
+    end
+
+    if not WallPart or not WallPart.Parent then
+        CreateWall()
+    end
+
+    if not WallPart then
+        return
+    end
+
+    -- Karakterin baktığı yönün arkasına koy
+    local BackPosition =
+        Root.Position - Root.CFrame.LookVector * 4
+
+    WallPart.CFrame =
+        CFrame.lookAt(
+            BackPosition,
+            Root.Position
+        )
+
+end
+
+--============================================================
+-- WALL AÇ/KAPAT
+--============================================================
+
+WallButton.Activated:Connect(function()
+
+    WallEnabled = not WallEnabled
+
+    if WallEnabled then
+
+        CreateWall()
+
+        WallButton.Text = "🧱 WALL: AÇIK"
+        WallButton.BackgroundColor3 =
+            Color3.fromRGB(150, 0, 0)
+
+        Status.Text = "Wall aktif."
+
+    else
+
+        if WallPart then
+            WallPart:Destroy()
+            WallPart = nil
+        end
+
+        WallButton.Text = "🧱 WALL: KAPALI"
+        WallButton.BackgroundColor3 =
+            Color3.fromRGB(40, 40, 50)
+
+        Status.Text = "Wall kapalı."
+
+    end
 
 end)
 
@@ -650,28 +564,13 @@ end)
 -- SANDALYE OLUŞTUR
 --============================================================
 
-CreateSeatButton.Activated:Connect(function()
+SeatButton.Activated:Connect(function()
 
-	CreateSeatButton.Text =
-		"⏳ OLUŞTURULUYOR..."
-
-	Remote:FireServer(
-		"CreateSeat"
-	)
-
-	task.wait(0.4)
-
-	CreateSeatButton.Text =
-		"✅ SANDALYE OLUŞTURULDU"
-
-	task.wait(1)
-
-	if CreateSeatButton.Parent then
-
-		CreateSeatButton.Text =
-			"🪑 SANDALYE OLUŞTUR"
-
-	end
+    if CreateSeat() then
+        SeatButton.Text = "🪑 SANDALYE HAZIR"
+        SeatButton.BackgroundColor3 =
+            Color3.fromRGB(0, 120, 70)
+    end
 
 end)
 
@@ -681,158 +580,62 @@ end)
 
 SitButton.Activated:Connect(function()
 
-	SitButton.Text =
-		"🪑 OTURUYOR..."
-
-	Remote:FireServer(
-		"Sit"
-	)
-
-	task.wait(0.5)
-
-	if SitButton.Parent then
-
-		SitButton.Text =
-			"🪑 OTUR"
-
-	end
+    SitOnSeat()
 
 end)
 
 --============================================================
--- WALL
+-- MENÜ
 --============================================================
 
-local WallActive = false
+OpenButton.Activated:Connect(function()
 
-WallButton.Activated:Connect(function()
+    Panel.Visible = not Panel.Visible
 
-	WallActive =
-		not WallActive
+end)
 
-	Remote:FireServer(
-		"Wall"
-	)
+Close.Activated:Connect(function()
 
-	if WallActive then
-
-		WallButton.Text =
-			"🧱 WALL: AÇIK"
-
-		WallButton.BackgroundColor3 =
-			Color3.fromRGB(150, 0, 0)
-
-	else
-
-		WallButton.Text =
-			"🧱 WALL: KAPALI"
-
-		WallButton.BackgroundColor3 =
-			Color3.fromRGB(35, 35, 45)
-
-	end
+    Panel.Visible = false
 
 end)
 
 --============================================================
--- HIZ
+-- KARAKTER DEĞİŞİNCE
 --============================================================
 
-local SpeedActive = false
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
 
-SpeedButton.Activated:Connect(function()
+    Character = NewCharacter
 
-	local Camera =
-		workspace.CurrentCamera
+    task.wait(0.5)
 
-	if not Camera then
-		return
-	end
-
-	SpeedActive =
-		not SpeedActive
-
-	if SpeedActive then
-
-		-- Kameranın baktığı yön
-		local Look =
-			Camera.CFrame.LookVector
-
-		-- Y eksenini çıkar
-		local Direction =
-			Vector3.new(
-				Look.X,
-				0,
-				Look.Z
-			)
-
-		if Direction.Magnitude <= 0 then
-
-			SpeedActive = false
-
-			return
-
-		end
-
-		Direction =
-			Direction.Unit
-
-		Remote:FireServer(
-			"SpeedOn",
-			Direction
-		)
-
-		SpeedButton.Text =
-			"🚀 HIZ: AÇIK"
-
-		SpeedButton.BackgroundColor3 =
-			Color3.fromRGB(150, 0, 0)
-
-	else
-
-		Remote:FireServer(
-			"SpeedOff"
-		)
-
-		SpeedButton.Text =
-			"🚀 HIZ: KAPALI"
-
-		SpeedButton.BackgroundColor3 =
-			Color3.fromRGB(35, 35, 45)
-
-	end
+    UpdateCharacter()
 
 end)
 
 --============================================================
--- RESPAWN
+-- ANA DÖNGÜ
 --============================================================
 
-Player.CharacterAdded:Connect(function()
+RunService.Heartbeat:Connect(function()
 
-	task.wait(1)
-
-	SpeedActive = false
-	WallActive = false
-
-	SpeedButton.Text =
-		"🚀 HIZ: KAPALI"
-
-	SpeedButton.BackgroundColor3 =
-		Color3.fromRGB(35, 35, 45)
-
-	WallButton.Text =
-		"🧱 WALL: KAPALI"
-
-	WallButton.BackgroundColor3 =
-		Color3.fromRGB(35, 35, 45)
+    UpdateSeat()
+    UpdateWall()
 
 end)
 
-print("============================================")
-print("🚇 HAMSTER METRO CLIENT HAZIR")
-print("📱 Mobil Activated desteği aktif")
-print("🪑 Seat sistemi aktif")
-print("🧱 Wall sistemi aktif")
-print("🚀 Speed sistemi aktif")
-print("============================================")
+--============================================================
+-- BAŞLANGIÇ
+--============================================================
+
+Status.Text = "Sistem hazır."
+
+print("======================================")
+print("[GUARD RIDE] Sistem başlatıldı.")
+print("[GUARD RIDE] PlayerGui kullanılıyor.")
+print("[GUARD RIDE] CoreGui kullanılmıyor.")
+print("[GUARD RIDE] Guard arama sistemi hazır.")
+print("[GUARD RIDE] Wall sistemi hazır.")
+print("[GUARD RIDE] Seat sistemi hazır.")
+print("======================================")

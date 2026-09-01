@@ -1,307 +1,385 @@
-
 -- ============================================================
--- HAMSTER LIVES - METRO MOD V4 (PLAYERGUI)
--- 250 TRİLYON HIZ | METRO GİBİ BİN | BOSS BYPASS
+-- HAMSTER LIVES - METRO MOD V6
+-- CAMERA DIRECTION + HUMANOID SPEED
+-- 100 TRİLYON SPEED
 -- ============================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
 
-print("🚇 METRO MOD V4 BAŞLADI...")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+print("🚇 METRO MOD V6 BAŞLADI")
+
+-- ============================================================
+-- AYARLAR
+-- ============================================================
+
+local SPEED = 100000000000000
 
 local MetroActive = false
-local Speed = 250000000000000
 local Character = nil
-local HumanoidRootPart = nil
-local MenuVisible = false
-local IsMoving = false
+local Humanoid = nil
+local RootPart = nil
+
 local MetroGui = nil
-local ToggleBtn = nil
+local ToggleButton = nil
 local MoveConnection = nil
-local LastTarget = nil
+
+local OldWalkSpeed = nil
+local OldAutoRotate = nil
 
 -- ============================================================
--- KARAKTER AL
+-- KARAKTER
 -- ============================================================
+
 local function GetCharacter()
     Character = LocalPlayer.Character
-    if Character then
-        HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
-    end
-    return Character
-end
 
--- ============================================================
--- HEDEF BELİRLEME
--- ============================================================
-local function GetTargetPosition()
-    local cam = workspace.CurrentCamera
-    if not cam then return nil end
-    
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    rayParams.IgnoreWater = true
-    
-    local ray = Workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 10000, rayParams)
-    
-    if ray then
-        return ray.Position
-    else
-        return cam.CFrame.Position + cam.CFrame.LookVector * 10000
+    if not Character then
+        return false
     end
+
+    Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    RootPart = Character:FindFirstChild("HumanoidRootPart")
+
+    return Humanoid ~= nil and RootPart ~= nil
 end
 
 -- ============================================================
 -- METRO HAREKET
 -- ============================================================
-local function MetroMove()
-    if not MetroActive then return end
-    if IsMoving then return end
-    if not HumanoidRootPart then return end
-    
-    local target = GetTargetPosition()
-    if not target then return end
-    
-    if LastTarget and (target - LastTarget).Magnitude < 5 then
+
+local function StartMetro()
+    if not GetCharacter() then
         return
     end
-    LastTarget = target
-    
-    IsMoving = true
-    
-    local hum = Character:FindFirstChild("Humanoid")
-    if hum then
-        hum.PlatformStand = true
+
+    if MetroActive then
+        return
     end
-    
-    local bp = Instance.new("BodyVelocity")
-    bp.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-    bp.Velocity = (target - HumanoidRootPart.Position).Unit * Speed
-    bp.Parent = HumanoidRootPart
-    
-    local bp2 = Instance.new("BodyPosition")
-    bp2.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-    bp2.Position = target
-    bp2.Parent = HumanoidRootPart
-    bp2.D = 1000
-    bp2.P = 10000
-    
-    local startTime = tick()
-    while (HumanoidRootPart.Position - target).Magnitude > 5 and tick() - startTime < 2 do
-        HumanoidRootPart.CFrame = CFrame.new(target)
-        task.wait(0.01)
+
+    MetroActive = true
+
+    OldWalkSpeed = Humanoid.WalkSpeed
+    OldAutoRotate = Humanoid.AutoRotate
+
+    -- Oyunun kendi speed sistemini kullan
+    Humanoid.WalkSpeed = SPEED
+
+    -- Karakter kamera yönünü takip etsin
+    Humanoid.AutoRotate = false
+
+    print("🚇 METRO AKTİF")
+    print("⚡ Speed: " .. tostring(SPEED))
+
+    if MoveConnection then
+        MoveConnection:Disconnect()
     end
-    
-    task.wait(0.05)
-    pcall(function()
-        bp:Destroy()
-        bp2:Destroy()
+
+    MoveConnection = RunService.RenderStepped:Connect(function()
+        if not MetroActive then
+            return
+        end
+
+        if not Character
+            or not Character.Parent
+            or not Humanoid
+            or not Humanoid.Parent
+            or not RootPart
+        then
+            GetCharacter()
+            return
+        end
+
+        local Camera = workspace.CurrentCamera
+
+        if not Camera then
+            return
+        end
+
+        -- Kameranın baktığı yatay yön
+        local Look = Camera.CFrame.LookVector
+        local Direction = Vector3.new(Look.X, 0, Look.Z)
+
+        if Direction.Magnitude > 0 then
+            Direction = Direction.Unit
+
+            -- Karakteri baktığın yöne çevir
+            RootPart.CFrame = CFrame.lookAt(
+                RootPart.Position,
+                RootPart.Position + Direction
+            )
+
+            -- Humanoid'in normal hareket sistemini kullan
+            Humanoid:Move(Direction, false)
+        end
     end)
-    
-    HumanoidRootPart.CFrame = CFrame.new(target)
-    
-    if hum then
-        hum.PlatformStand = false
+end
+
+-- ============================================================
+-- METRO DURDUR
+-- ============================================================
+
+local function StopMetro()
+    if not MetroActive then
+        return
     end
-    
-    IsMoving = false
+
+    MetroActive = false
+
+    if MoveConnection then
+        MoveConnection:Disconnect()
+        MoveConnection = nil
+    end
+
+    if GetCharacter() then
+        if OldWalkSpeed then
+            Humanoid.WalkSpeed = OldWalkSpeed
+        end
+
+        if OldAutoRotate ~= nil then
+            Humanoid.AutoRotate = OldAutoRotate
+        else
+            Humanoid.AutoRotate = true
+        end
+
+        -- Normal hareketi geri ver
+        Humanoid:Move(Vector3.zero, false)
+    end
+
+    print("🚇 METRO KAPALI")
 end
 
 -- ============================================================
 -- TOGGLE
 -- ============================================================
+
 local function ToggleMetro()
-    MetroActive = not MetroActive
-    GetCharacter()
-    
     if MetroActive then
-        print("🚇 METRO MOD AKTİF!")
-        LastTarget = nil
-        task.wait(0.1)
-        MetroMove()
+        StopMetro()
     else
-        print("🚇 METRO MOD KAPALI!")
-        LastTarget = nil
-        IsMoving = false
+        StartMetro()
     end
 end
 
 -- ============================================================
--- OTOMATİK HAREKET
+-- GUI TEMİZLE
 -- ============================================================
-local function StartAutoMove()
-    if MoveConnection then
-        MoveConnection:Disconnect()
-        MoveConnection = nil
-    end
-    
-    MoveConnection = RunService.Heartbeat:Connect(function()
-        if MetroActive and not IsMoving then
-            MetroMove()
-        end
-    end)
-end
 
--- ============================================================
--- MENU (PLAYERGUI)
--- ============================================================
-local function CreateMenu()
-    if MetroGui then 
-        MetroGui:Destroy()
-        MetroGui = nil
-    end
-    
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then
-        pg = Instance.new("ScreenGui")
-        pg.Name = "PlayerGui"
-        pg.Parent = LocalPlayer
-        task.wait(0.1)
-    end
-    
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "MetroMenu"
-    gui.Parent = pg
-    gui.ResetOnSpawn = false
-    gui.Enabled = false
-    MetroGui = gui
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 140, 0, 80)
-    frame.Position = UDim2.new(1, -150, 0, 5)
-    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    frame.BackgroundTransparency = 0.2
-    frame.Parent = gui
-    frame.Active = true
-    frame.Draggable = true
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Thickness = 1.5
-    stroke.Color = Color3.fromRGB(255, 200, 0)
-    stroke.Transparency = 0.5
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 22)
-    title.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-    title.Text = "🚇 METRO MOD"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 11
-    title.Font = Enum.Font.GothamBold
-    title.Parent = frame
-    Instance.new("UICorner", title).CornerRadius = UDim.new(0, 6)
-    
-    local close = Instance.new("TextButton")
-    close.Size = UDim2.new(0, 18, 0, 18)
-    close.Position = UDim2.new(1, -22, 0, 2)
-    close.BackgroundTransparency = 1
-    close.Text = "✕"
-    close.TextColor3 = Color3.fromRGB(200, 200, 200)
-    close.TextSize = 11
-    close.Font = Enum.Font.GothamBold
-    close.Parent = title
-    close.MouseButton1Click:Connect(function()
-        gui.Enabled = false
-        MenuVisible = false
-    end)
-    
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 24)
-    btn.Position = UDim2.new(0.05, 0, 0, 26)
-    btn.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
-    btn.Text = "🚇 AKTİF ET"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 10
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = frame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    btn.MouseButton1Click:Connect(function()
-        ToggleMetro()
-        btn.Text = MetroActive and "🚇 DURDUR" or "🚇 AKTİF ET"
-        btn.BackgroundColor3 = MetroActive and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(20, 20, 40)
-    end)
-    
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 16)
-    info.Position = UDim2.new(0, 0, 0, 54)
-    info.BackgroundTransparency = 1
-    info.Text = "⚡ 250 Trilyon hız"
-    info.TextColor3 = Color3.fromRGB(150, 150, 150)
-    info.TextSize = 8
-    info.Font = Enum.Font.Gotham
-    info.TextXAlignment = Enum.TextXAlignment.Center
-    info.Parent = frame
-    
-    return gui
-end
+pcall(function()
+    local OldGui = PlayerGui:FindFirstChild("HamsterMetroV6")
 
--- ============================================================
--- AÇMA BUTONU (PLAYERGUI)
--- ============================================================
-local function CreateToggle()
-    if ToggleBtn then 
-        ToggleBtn:Destroy()
-        ToggleBtn = nil
+    if OldGui then
+        OldGui:Destroy()
     end
-    
-    local pg = LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then
-        pg = Instance.new("ScreenGui")
-        pg.Name = "PlayerGui"
-        pg.Parent = LocalPlayer
-        task.wait(0.1)
-    end
-    
-    local btn = Instance.new("TextButton")
-    btn.Name = "MetroToggle"
-    btn.Size = UDim2.new(0, 36, 0, 36)
-    btn.Position = UDim2.new(1, -44, 0, 55)
-    btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-    btn.Text = "🚇"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 16
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = pg
-    btn.ZIndex = 999
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-    ToggleBtn = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        if not MetroGui or not MetroGui.Parent then
-            MetroGui = CreateMenu()
-        end
-        if MetroGui then
-            MenuVisible = not MenuVisible
-            MetroGui.Enabled = MenuVisible
-        end
-    end)
-end
-
--- ============================================================
--- KARAKTER DEĞİŞİMİ
--- ============================================================
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    GetCharacter()
 end)
 
 -- ============================================================
--- BAŞLAT
+-- ANA GUI
 -- ============================================================
-task.wait(0.5)
-GetCharacter()
-CreateToggle()
-StartAutoMove()
 
-print("")
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "HamsterMetroV6"
+Gui.ResetOnSpawn = false
+Gui.IgnoreGuiInset = true
+Gui.Parent = PlayerGui
+
+MetroGui = Gui
+
+-- ============================================================
+-- AÇMA BUTONU
+-- ============================================================
+
+local Toggle = Instance.new("TextButton")
+
+Toggle.Name = "MetroToggle"
+Toggle.Size = UDim2.fromOffset(52, 52)
+Toggle.Position = UDim2.new(1, -65, 0, 80)
+
+Toggle.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+Toggle.BackgroundTransparency = 0.05
+
+Toggle.Text = "🚇"
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.TextSize = 25
+Toggle.Font = Enum.Font.GothamBold
+
+Toggle.AutoButtonColor = true
+Toggle.Active = true
+
+Toggle.Parent = Gui
+
+Toggle.ZIndex = 100
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleCorner.Parent = Toggle
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Thickness = 2
+ToggleStroke.Transparency = 0.2
+ToggleStroke.Parent = Toggle
+
+ToggleButton = Toggle
+
+-- ============================================================
+-- MENÜ
+-- ============================================================
+
+local Menu = Instance.new("Frame")
+
+Menu.Name = "MetroMenu"
+Menu.Size = UDim2.fromOffset(210, 135)
+Menu.Position = UDim2.new(1, -225, 0, 140)
+
+Menu.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Menu.BackgroundTransparency = 0.05
+
+Menu.Visible = false
+Menu.Active = true
+Menu.Parent = Gui
+
+local MenuCorner = Instance.new("UICorner")
+MenuCorner.CornerRadius = UDim.new(0, 10)
+MenuCorner.Parent = Menu
+
+local MenuStroke = Instance.new("UIStroke")
+MenuStroke.Thickness = 2
+MenuStroke.Transparency = 0.2
+MenuStroke.Parent = Menu
+
+-- ============================================================
+-- BAŞLIK
+-- ============================================================
+
+local Title = Instance.new("TextLabel")
+
+Title.Size = UDim2.new(1, 0, 0, 35)
+
+Title.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+
+Title.Text = "🚇 METRO MOD V6"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+Title.TextSize = 14
+Title.Font = Enum.Font.GothamBold
+
+Title.Parent = Menu
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = Title
+
+-- ============================================================
+-- DURUM
+-- ============================================================
+
+local Status = Instance.new("TextLabel")
+
+Status.Size = UDim2.new(1, -20, 0, 25)
+Status.Position = UDim2.fromOffset(10, 42)
+
+Status.BackgroundTransparency = 1
+
+Status.Text = "Durum: KAPALI"
+Status.TextColor3 = Color3.fromRGB(220, 220, 220)
+
+Status.TextSize = 12
+Status.Font = Enum.Font.GothamBold
+
+Status.Parent = Menu
+
+-- ============================================================
+-- AKTİF ET BUTONU
+-- ============================================================
+
+local Activate = Instance.new("TextButton")
+
+Activate.Size = UDim2.new(1, -20, 0, 35)
+Activate.Position = UDim2.fromOffset(10, 72)
+
+Activate.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+
+Activate.Text = "🚇 AKTİF ET"
+
+Activate.TextColor3 = Color3.fromRGB(255, 255, 255)
+Activate.TextSize = 12
+Activate.Font = Enum.Font.GothamBold
+
+Activate.Parent = Menu
+
+local ActivateCorner = Instance.new("UICorner")
+ActivateCorner.CornerRadius = UDim.new(0, 6)
+ActivateCorner.Parent = Activate
+
+-- ============================================================
+-- BUTON DURUMU
+-- ============================================================
+
+local function UpdateButton()
+    if MetroActive then
+        Activate.Text = "🛑 METROYU DURDUR"
+        Activate.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        Status.Text = "Durum: AKTİF"
+    else
+        Activate.Text = "🚇 AKTİF ET"
+        Activate.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        Status.Text = "Durum: KAPALI"
+    end
+end
+
+-- ============================================================
+-- MENÜYÜ AÇ / KAPAT
+-- ============================================================
+
+Toggle.Activated:Connect(function()
+    Menu.Visible = not Menu.Visible
+
+    print("🚇 Menü: " .. tostring(Menu.Visible))
+end)
+
+-- ============================================================
+-- AKTİF ET
+-- ============================================================
+
+Activate.Activated:Connect(function()
+    ToggleMetro()
+    UpdateButton()
+end)
+
+-- ============================================================
+-- KARAKTER DEĞİŞİNCE
+-- ============================================================
+
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+
+    Character = NewCharacter
+    Humanoid = nil
+    RootPart = nil
+
+    task.wait(1)
+
+    GetCharacter()
+
+    if MetroActive and Humanoid then
+        Humanoid.WalkSpeed = SPEED
+        Humanoid.AutoRotate = false
+    end
+
+end)
+
+-- ============================================================
+-- BAŞLANGIÇ
+-- ============================================================
+
+GetCharacter()
+UpdateButton()
+
 print("========================================")
-print("🚇 METRO MOD V4 HAZIR!")
-print("   📌 Sağ üstteki 🚇 butonuna tıkla")
-print("   ⚡ 250 Trilyon hız")
-print("   🎯 Baktığın yere anında var")
-print("   ✅ PLAYERGUI KULLANILDI TROJAN İSLEMİ VE MİNİNG BASLADİ")
+print("🚇 HAMSTER METRO V6 HAZIR")
+print("⚡ Speed: 100 TRİLYON")
+print("🎯 Kamera yönüne hareket")
+print("📱 Mobil Activated desteği")
 print("========================================")

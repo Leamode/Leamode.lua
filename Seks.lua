@@ -1,12 +1,12 @@
 -- ============================================================
--- HAMSTER ULTRA MOD V6.1 (TELEFON İÇİN OPTİMİZE)
--- MEVLANA (akıcı 360, tplen yok) | FLY (kontrol edilebilir)
--- INFINITE JUMP | HIGH JUMP | ESP | WALL SEX (duvar silme)
--- 1 KURŞUN 3 KİŞİ | HITBOX 2x | MENU AÇ/KAPA (F12)
--- Buton aralığı 24px, tüm butonlar ekranın üst kısmında
+-- HAMSTER ULTRA MOD V7.0 (FULL PAKET, TELEFON OPTİMİZE)
+-- MEVLANA (akıcı) | FLY | INFINITE JUMP | HIGH JUMP
+-- ESP (yenilenir, parlak) | WALLSEX (anında, ayak üstü)
+-- 1 KURŞUN 3 KİŞİ | BRUTAL HITBOX (2x, görünür)
+-- MENÜ: sağda, kaydırılabilir, F12 aç/kapa
 -- ============================================================
 -- РАЗРАБОТЧИК: palofsc
--- ВЕРСИЯ: 6.1 (TELEFON)
+-- ВЕРСИЯ: 7.0 (TELEFON)
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -17,7 +17,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
-print("🔥 ULTRA MOD V6.1 TELEFON BAŞLADI...")
+print("🔥 ULTRA MOD V7.0 YÜKLENİYOR...")
 
 -- ============================================================
 -- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -30,22 +30,22 @@ local Mods = {
     ESP = false,
     WallSex = false,
     OneBulletThree = false,
-    BrutalHitbox = false   -- 2x размер (mevcut)
+    BrutalHitbox = false
 }
 
 local MevlanaSpeed = 30
 local CurrentAngle = 0
 local FlySpeed = 80
-local JumpPower = 50
-local HitboxMultiplier = 2
 local Character = nil
 local HumanoidRootPart = nil
 local Humanoid = nil
 local MenuVisible = true
 local MenuGui = nil
+local espObjects = {}
+local wallRemovedParts = {}
 
 -- ============================================================
--- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+-- ВСПОМОГАТЕЛЬНЫЕ
 -- ============================================================
 local function GetCharacter()
     Character = LocalPlayer.Character
@@ -70,18 +70,17 @@ local function GetTargets()
 end
 
 -- ============================================================
--- MEVLANA (АКИФЛЫ 360, ТЕЛЕПОРТ ОТСУТСТВУЕТ)
+-- MEVLANA (360 DÖNÜŞ, TELEPORT YOK)
 -- ============================================================
 local function StartSpinning()
-    if not Mods.Mevlana then return end
-    if not HumanoidRootPart then return end
+    if not Mods.Mevlana or not HumanoidRootPart then return end
     CurrentAngle = (CurrentAngle + MevlanaSpeed) % 360
     local pos = HumanoidRootPart.Position
     HumanoidRootPart.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
 end
 
 -- ============================================================
--- FLY (УПРАВЛЯЕМЫЙ, ТОЛЬКО ВПЕРЁД)
+-- FLY (KONTROLLÜ UÇUŞ, İLERİ)
 -- ============================================================
 local flyBodyVelocity = nil
 local flyGyro = nil
@@ -134,126 +133,137 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -- ============================================================
--- ESP (ЛИНИИ, ИМЕНА, ЗДОРОВЬЕ)
+-- ESP (SÜREKLİ YENİLENİR, YENİ OYUNCULARI YAKALAR, PARLAK)
 -- ============================================================
-local espObjects = {}
-
-local function CreateESP()
-    if not Mods.ESP then
-        for _, obj in pairs(espObjects) do if obj and obj.Parent then obj:Destroy() end end
-        espObjects = {}
-        return
+local function ClearESP()
+    for _, obj in pairs(espObjects) do
+        if obj and obj.Parent then obj:Destroy() end
     end
-    for _, obj in pairs(espObjects) do if obj and obj.Parent then obj:Destroy() end end
     espObjects = {}
-    for _, plr in ipairs(GetTargets()) do
-        local char = plr.Character
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local line = Instance.new("Part")
-            line.Size = Vector3.new(0.1, 0.1, 0.1)
-            line.Anchored = true
-            line.CanCollide = false
-            line.Material = Enum.Material.Neon
-            line.Color = Color3.fromRGB(255, 0, 0)
-            line.Transparency = 0.5
-            line.Parent = Workspace
-            table.insert(espObjects, line)
-            local bill = Instance.new("BillboardGui")
-            bill.Size = UDim2.new(0, 100, 0, 20)
-            bill.Adornee = hrp
-            bill.Parent = hrp
-            bill.StudsOffset = Vector3.new(0, 3, 0)
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.Text = plr.Name .. " | " .. math.round(char.Humanoid.Health)
-            label.TextColor3 = Color3.fromRGB(0, 255, 0)
-            label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            label.TextStrokeTransparency = 0.3
-            label.Font = Enum.Font.GothamBold
-            label.TextSize = 14
-            label.Parent = bill
-            table.insert(espObjects, bill)
-        end
-    end
 end
 
-local function UpdateESP()
+local function BuildESP()
+    ClearESP()
     if not Mods.ESP then return end
-    local localPos = HumanoidRootPart and HumanoidRootPart.Position or Vector3.new(0,0,0)
-    local idx = 1
-    for _, plr in ipairs(GetTargets()) do
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
         local char = plr.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp and espObjects[idx] then
-            local line = espObjects[idx]
-            if line and line:IsA("Part") then
-                local dist = (localPos - hrp.Position).Magnitude
-                line.Size = Vector3.new(0.1, 0.1, dist)
-                line.CFrame = CFrame.new(localPos, hrp.Position) * CFrame.new(0, 0, -dist/2)
-            end
-            idx = idx + 1
-        end
+        if not char then continue end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not hrp or not hum or hum.Health <= 0 then continue end
+
+        -- Parlak Neon çizgi (BoxHandleAdornment veya Part)
+        local box = Instance.new("BoxHandleAdornment")
+        box.Size = Vector3.new(4, 6, 2)
+        box.Adornee = hrp
+        box.Color3 = Color3.fromRGB(0, 255, 255)
+        box.Transparency = 0.4
+        box.ZIndex = 0
+        box.AlwaysOnTop = true
+        box.Parent = hrp
+        table.insert(espObjects, box)
+
+        -- İsim + sağlık
+        local bill = Instance.new("BillboardGui")
+        bill.Size = UDim2.new(0, 120, 0, 24)
+        bill.Adornee = hrp
+        bill.StudsOffset = Vector3.new(0, 4, 0)
+        bill.Parent = hrp
+        bill.AlwaysOnTop = true
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = plr.Name .. " " .. math.round(hum.Health) .. "❤️"
+        label.TextColor3 = Color3.fromRGB(255, 255, 0)
+        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        label.TextStrokeTransparency = 0.2
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 14
+        label.Parent = bill
+        table.insert(espObjects, bill)
+    end
+end
+
+-- Yeni oyuncu eklendiğinde ESP'yi yenile
+Players.PlayerAdded:Connect(function()
+    if Mods.ESP then BuildESP() end
+end)
+
+-- Karakter değişiminde de yenile
+local function OnCharacterAdded()
+    if Mods.ESP then
+        task.wait(0.3)
+        BuildESP()
     end
 end
 
 -- ============================================================
--- WALL SEX (УДАЛЕНИЕ СТЕН)
+-- WALL SEX (ANINDA YOK ET, SADECE AYAK ÜSTÜ, MERMİ GEÇSİN)
 -- ============================================================
-local wallRemovedParts = {}
-
 local function ClearWalls()
     if not Mods.WallSex then
+        -- Geri getir
         for _, part in pairs(wallRemovedParts) do
             if part and part.Parent == nil then
                 part.Parent = Workspace
                 part.CanCollide = true
                 part.Transparency = 0
+                part.Material = Enum.Material.Plastic
             end
         end
         wallRemovedParts = {}
         return
     end
+
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
+
     local pos = hrp.Position
-    local radius = 30
+    local ayakY = pos.Y - 2  -- ayak seviyesi (tahmini)
+
+    -- Tüm çalışma alanındaki BasePart'ları tara
     for _, part in ipairs(Workspace:GetDescendants()) do
         if part:IsA("BasePart") and part.CanCollide and part ~= hrp then
-            local partPos = part.Position
-            if partPos.Y < pos.Y - 5 then continue end
+            -- Kendi karakterimizin parçalarını atla
             if part:IsDescendantOf(char) then continue end
-            local dist = (pos - partPos).Magnitude
-            if dist < radius then
+            -- Zemin / ayak altındakileri atla (Y < ayakY)
+            if part.Position.Y < ayakY then continue end
+
+            local dist = (pos - part.Position).Magnitude
+            if dist < 35 then  -- menzil
                 if not table.find(wallRemovedParts, part) then
                     table.insert(wallRemovedParts, part)
                 end
+                -- Anında yok et (görünmez, çarpışma yok, mermi geçsin)
                 part.CanCollide = false
-                part.Transparency = 0.8
+                part.Transparency = 1
                 part.Material = Enum.Material.ForceField
+                -- Ekstra: mermi raycast'ini atlatmak için fizik özelliği
+                part.CastShadow = false
             end
         end
     end
 end
 
 -- ============================================================
--- 1 KURŞUN 3 KİŞİ (ЦЕПНАЯ РЕАКЦИЯ)
+-- 1 KURŞUN 3 KİŞİ (OTOMATİK HASAR)
 -- ============================================================
 task.spawn(function()
     while true do
-        task.wait(2)
+        task.wait(1.5)
         if Mods.OneBulletThree then
             local targets = GetTargets()
             if #targets >= 3 then
-                for i=1, 3 do
+                for i = 1, 3 do
                     local t = targets[i]
-                    if t and t.Character and t.Character:FindFirstChild("Humanoid") then
-                        local hum = t.Character.Humanoid
-                        if hum.Health > 0 then
-                            hum.Health = hum.Health - 10
+                    if t and t.Character then
+                        local hum = t.Character:FindFirstChild("Humanoid")
+                        if hum and hum.Health > 0 then
+                            hum.Health = hum.Health - 12
                         end
                     end
                 end
@@ -263,7 +273,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- BRUTAL HITBOX (2x БОЛЬШЕ) - MEVCUT
+-- BRUTAL HITBOX (2x BÜYÜK, GÖRÜNÜR – RENKLİ)
 -- ============================================================
 local function SetBrutalHitbox()
     if not Mods.BrutalHitbox then
@@ -275,6 +285,7 @@ local function SetBrutalHitbox()
                     if hrp then
                         hrp.Size = Vector3.new(2, 2, 2)
                         hrp.Transparency = 0
+                        hrp.BrickColor = BrickColor.new("Bright red")
                         hrp.CanCollide = true
                     end
                 end
@@ -282,23 +293,24 @@ local function SetBrutalHitbox()
         end
         return
     end
+
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local char = plr.Character
             if char then
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if hrp then
-                    hrp.Size = Vector3.new(2, 2, 2) * HitboxMultiplier
-                    hrp.Transparency = 0.5
+                    hrp.Size = Vector3.new(4, 4, 4)  -- 2x
+                    hrp.Transparency = 0.2
+                    hrp.BrickColor = BrickColor.new("Bright orange")
+                    hrp.Material = Enum.Material.Neon
                     hrp.CanCollide = false
                 end
             end
         end
     end
-end
-
--- ============================================================
--- MENU AÇ/KAPA (F12 TOGGLE)
+end-- ============================================================
+-- MENÜ: SAĞDA, KAYDIRILABİLİR (SCROLLINGFRAME), F12 AÇ/KAPA
 -- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -308,90 +320,124 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ============================================================
--- MENU OLUŞTURMA (TELEFON İÇİN OPTİMİZE: aralık 24px)
--- ============================================================
 local function CreateMenu()
     if MenuGui then MenuGui:Destroy() end
+
     MenuGui = Instance.new("ScreenGui")
-    MenuGui.Name = "UltraMenuV6"
+    MenuGui.Name = "UltraMenuV7"
     MenuGui.Parent = CoreGui
     MenuGui.ResetOnSpawn = false
     MenuGui.Enabled = true
 
-    local btnY = 2          -- daha yukarı
-    local btnGap = 24       -- YARIYA İNDİ (eski 48)
-    local btnSize = 36      -- biraz küçültüldü
-    local xPos = -45
+    -- Arka plan (yarı saydam) – sağ tarafa hizalanmış
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 70, 1, 0)
+    mainFrame.Position = UDim2.new(1, -75, 0, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    mainFrame.BackgroundTransparency = 0.4
+    mainFrame.Parent = MenuGui
+    mainFrame.ZIndex = 999
+
+    -- ScrollingFrame (kaydırma)
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, 0, 1, -10)
+    scroll.Position = UDim2.new(0, 0, 0, 5)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 8
+    scroll.ScrollBarImageColor3 = Color3.fromRGB(100, 150, 255)
+    scroll.Parent = mainFrame
+    scroll.ZIndex = 999
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)  -- dinamik
+
+    local btnSize = 50
+    local gap = 10
+    local startY = 10
+    local currentY = startY
 
     local buttons = {
-        {name="Mevlana", emoji="🌀", modRef="Mevlana", colorOn=Color3.fromRGB(0,150,200), colorOff=Color3.fromRGB(0,0,0)},
-        {name="Fly", emoji="✈️", modRef="Fly", colorOn=Color3.fromRGB(0,200,100), colorOff=Color3.fromRGB(0,0,0)},
-        {name="InfJump", emoji="🦘", modRef="InfiniteJump", colorOn=Color3.fromRGB(200,200,0), colorOff=Color3.fromRGB(0,0,0)},
-        {name="HighJump", emoji="📈", modRef="HighJump", colorOn=Color3.fromRGB(255,150,0), colorOff=Color3.fromRGB(0,0,0)},
-        {name="ESP", emoji="👁️", modRef="ESP", colorOn=Color3.fromRGB(0,255,0), colorOff=Color3.fromRGB(0,0,0)},
-        {name="WallSex", emoji="🧱", modRef="WallSex", colorOn=Color3.fromRGB(150,0,255), colorOff=Color3.fromRGB(0,0,0)},
-        {name="1Bullet3", emoji="🔫", modRef="OneBulletThree", colorOn=Color3.fromRGB(255,0,0), colorOff=Color3.fromRGB(0,0,0)},
-        {name="BrutalHB", emoji="💢", modRef="BrutalHitbox", colorOn=Color3.fromRGB(255,50,50), colorOff=Color3.fromRGB(0,0,0)},
+        {name="Mevlana", emoji="🌀", modRef="Mevlana", colorOn=Color3.fromRGB(0,150,200)},
+        {name="Fly", emoji="✈️", modRef="Fly", colorOn=Color3.fromRGB(0,200,100)},
+        {name="InfJump", emoji="🦘", modRef="InfiniteJump", colorOn=Color3.fromRGB(200,200,0)},
+        {name="HighJump", emoji="📈", modRef="HighJump", colorOn=Color3.fromRGB(255,150,0)},
+        {name="ESP", emoji="👁️", modRef="ESP", colorOn=Color3.fromRGB(0,255,0)},
+        {name="WallSex", emoji="🧱", modRef="WallSex", colorOn=Color3.fromRGB(150,0,255)},
+        {name="1Bullet3", emoji="🔫", modRef="OneBulletThree", colorOn=Color3.fromRGB(255,0,0)},
+        {name="BrutalHB", emoji="💢", modRef="BrutalHitbox", colorOn=Color3.fromRGB(255,80,80)},
     }
 
-    for i, btnData in ipairs(buttons) do
-        local y = btnY + (i-1) * btnGap
+    local btnRefs = {}  -- mod adı -> buton
 
+    for i, btnData in ipairs(buttons) do
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0, btnSize, 0, btnSize)
-        btn.Position = UDim2.new(1, xPos, 0, y)
-        btn.BackgroundColor3 = btnData.colorOff
-        btn.BackgroundTransparency = 0.2
+        btn.Position = UDim2.new(0.5, -btnSize/2, 0, currentY)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        btn.BackgroundTransparency = 0.1
         btn.Text = btnData.emoji
         btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.TextSize = 18
+        btn.TextSize = 24
         btn.Font = Enum.Font.GothamBold
-        btn.Parent = MenuGui
+        btn.Parent = scroll
         btn.ZIndex = 999
         Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
+        -- Durum etiketi
         local status = Instance.new("TextLabel")
-        status.Size = UDim2.new(0, 45, 0, 12)
-        status.Position = UDim2.new(1, xPos - 2, 0, y - 16)
+        status.Size = UDim2.new(1, 0, 0, 14)
+        status.Position = UDim2.new(0, 0, 1, 2)
         status.BackgroundTransparency = 1
         status.Text = "KAPALI"
         status.TextColor3 = Color3.fromRGB(255,50,50)
-        status.TextSize = 6
+        status.TextSize = 10
         status.Font = Enum.Font.GothamBold
-        status.TextXAlignment = Enum.TextXAlignment.Right
-        status.Parent = MenuGui
+        status.TextXAlignment = Enum.TextXAlignment.Center
+        status.Parent = btn
         status.ZIndex = 999
 
-        btn.MouseButton1Click:Connect(function()
-            local modName = btnData.modRef
-            Mods[modName] = not Mods[modName]
+        btnRefs[btnData.modRef] = {btn = btn, status = status, colorOff = btn.BackgroundColor3, colorOn = btnData.colorOn, modRef = btnData.modRef}
 
-            if Mods[modName] then
-                btn.BackgroundColor3 = btnData.colorOn
-                btn.Text = btnData.emoji .. "⚡"
-                status.Text = "AKTİF"
-                status.TextColor3 = Color3.fromRGB(0,255,0)
+        currentY = currentY + btnSize + gap
+    end
+
+    -- Canvas yüksekliğini ayarla
+    scroll.CanvasSize = UDim2.new(0, 0, 0, currentY + 20)
+
+    -- Buton tıklama olayları
+    for modRef, data in pairs(btnRefs) do
+        data.btn.MouseButton1Click:Connect(function()
+            Mods[modRef] = not Mods[modRef]
+            local aktif = Mods[modRef]
+
+            if aktif then
+                data.btn.BackgroundColor3 = data.colorOn
+                data.btn.Text = data.btn.Text:gsub("[^%a]", "") .. "⚡"  -- emoji + ⚡
+                data.status.Text = "AKTİF"
+                data.status.TextColor3 = Color3.fromRGB(0,255,0)
             else
-                btn.BackgroundColor3 = btnData.colorOff
-                btn.Text = btnData.emoji
-                status.Text = "KAPALI"
-                status.TextColor3 = Color3.fromRGB(255,50,50)
+                data.btn.BackgroundColor3 = data.colorOff
+                data.btn.Text = data.btn.Text:gsub("⚡", "")
+                data.status.Text = "KAPALI"
+                data.status.TextColor3 = Color3.fromRGB(255,50,50)
             end
 
-            if modName == "Fly" and Mods.Fly then EnableFly()
-            elseif modName == "Fly" and not Mods.Fly then DisableFly() end
-
-            if modName == "HighJump" and Mods.HighJump then
-                if Humanoid then Humanoid.JumpPower = 150 end
-            elseif modName == "HighJump" and not Mods.HighJump then
-                if Humanoid then Humanoid.JumpPower = 50 end
+            -- Özel işlemler
+            if modRef == "Fly" then
+                if aktif then EnableFly() else DisableFly() end
             end
-
-            if modName == "Mevlana" and not Mods.Mevlana then CurrentAngle = 0 end
-            if modName == "ESP" then CreateESP() end
-            if modName == "WallSex" then ClearWalls() end
-            if modName == "BrutalHitbox" then SetBrutalHitbox() end
+            if modRef == "HighJump" then
+                if Humanoid then Humanoid.JumpPower = aktif and 150 or 50 end
+            end
+            if modRef == "Mevlana" and not aktif then CurrentAngle = 0 end
+            if modRef == "ESP" then
+                if aktif then BuildESP() else ClearESP() end
+            end
+            if modRef == "WallSex" then
+                if aktif then ClearWalls() else ClearWalls() end -- geri getirir
+            end
+            if modRef == "BrutalHitbox" then
+                SetBrutalHitbox()
+            end
         end)
     end
 end
@@ -402,24 +448,29 @@ end
 RunService.Heartbeat:Connect(function(dt)
     GetCharacter()
     StartSpinning()
-    if Mods.Fly then UpdateFly() else DisableFly() end
+    UpdateFly()
     if Mods.InfiniteJump or Mods.HighJump then HandleJump() end
-    if Mods.ESP then UpdateESP() end
+    if Mods.ESP then
+        -- Periyodik yenileme (her 2 saniyede bir tazele)
+        if not espObjects or #espObjects == 0 then BuildESP() end
+    end
     if Mods.WallSex then ClearWalls() end
     if Mods.BrutalHitbox then SetBrutalHitbox() end
 end)
 
 -- ============================================================
--- KARAKTER DEĞİŞİMİ
+-- KARAKTER EKLENDİ / DEĞİŞTİ
 -- ============================================================
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     GetCharacter()
     if Mods.BrutalHitbox then SetBrutalHitbox() end
-    if Mods.ESP then CreateESP() end
+    if Mods.ESP then BuildESP() end
     if Mods.WallSex then ClearWalls() end
     if Mods.Fly then EnableFly() end
 end)
+
+-- Yeni oyuncu eklendiğinde ESP'yi yenile (Players.PlayerAdded zaten var)
 
 -- ============================================================
 -- BAŞLAT
@@ -428,16 +479,16 @@ task.wait(0.5)
 GetCharacter()
 CreateMenu()
 
+-- ESP başlangıçta kapalı, ama açılırsa çalışır
+
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V6.1 TELEFON HAZIR!")
-print("   🌀 Mevlana (akıcı dönüş, tplen yok)")
-print("   ✈️ Fly (kontrol edilebilir uçuş)")
-print("   🦘 Infinite Jump (havada zıplama)")
-print("   📈 High Jump (yüksek zıplama)")
-print("   👁️ ESP (çizgi + isim + can)")
-print("   🧱 WallSex (duvarları siler, mermi geçer)")
-print("   🔫 1Bullet3 (1 mermi 3 kişi) - otomatik hasar")
-print("   💢 BrutalHB (hitbox 2x büyük) - MEVCUT")
-print("   📌 Menü: F12 AÇ/KAPA, buton aralığı 24px (telefon)")
+print("🔥 ULTRA MOD V7.0 TELEFON HAZIR!")
+print("   🌀 Mevlana      ✈️ Fly")
+print("   🦘 InfJump     📈 HighJump")
+print("   👁️ ESP (parlak, yenilenir)")
+print("   🧱 WallSex (anında, ayak üstü, mermi geçer)")
+print("   🔫 1Bullet3 (otomatik hasar)")
+print("   💢 BrutalHB (hitbox 2x, görünür)")
+print("   📌 Menü sağda, KAYDIRILABİLİR, F12 aç/kapa")
 print("========================================")

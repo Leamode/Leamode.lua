@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V5 (FULL)
--- 360 DÖNÜŞ | BRUTAL HITBOX 40x | TRIGGERBOT | ESP | INF JUMP | SPEED | TP RAKİBE
+-- HAMSTER LIVES - ULTRA MOD V6 (FULL FIX)
+-- 360 DÖNÜŞ | HITBOX 40x | TRIGGERBOT | ESP | INF JUMP | SPEED | WALLBANG
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -11,7 +11,7 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V5 BAŞLADI...")
+print("🔥 ULTRA MOD V6 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
@@ -21,7 +21,8 @@ local Mods = {
     Brutal = false,
     InfJump = false,
     Speed = false,
-    TpEnemy = false
+    Esp = false,
+    Wallbang = false
 }
 
 local MevlanaSpeed = 30
@@ -32,6 +33,8 @@ local JumpPower = 100
 local Character = nil
 local HumanoidRootPart = nil
 local Humanoid = nil
+local EspObjects = {}
+local EspActive = false
 
 -- ============================================================
 -- KARAKTER AL
@@ -46,13 +49,15 @@ local function GetCharacter()
 end
 
 -- ============================================================
--- 360 DÖNÜŞ
+-- MEVLANA 360 DÖNÜŞ (ESKİ VERSİYON - BOZULMADI)
 -- ============================================================
 local function StartSpinning()
     if not Mods.Mevlana then return end
     if not HumanoidRootPart then return end
+    
     CurrentAngle = CurrentAngle + MevlanaSpeed
     if CurrentAngle > 360 then CurrentAngle = CurrentAngle - 360 end
+    
     HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
 end
 
@@ -63,7 +68,7 @@ local function ToggleMevlana()
 end
 
 -- ============================================================
--- BRUTAL HITBOX + TRIGGERBOT
+-- BRUTAL HITBOX + TRIGGERBOT + WALLBANG
 -- ============================================================
 local function SetHitboxSize()
     if not Mods.Brutal then return end
@@ -109,7 +114,14 @@ local function IsSameTeam(player)
     return false
 end
 
-local function CanSeeTarget(targetPos)
+-- WALLBANG: DUVAR ARKASINI DELER (WALL CHECK YOK)
+local function CanSeeTargetWallbang(targetPos)
+    -- WALLBANG AKTİFSE DUVAR KONTROLÜ YAPMA, HER ZAMAN GÖRÜR
+    if Mods.Wallbang then
+        return true
+    end
+    
+    -- NORMAL KONTROL
     local char = LocalPlayer.Character
     if not char then return false end
     local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -133,9 +145,7 @@ local function CanSeeTarget(targetPos)
     return true
 end
 
--- ============================================================
 -- TRIGGERBOT
--- ============================================================
 local function TriggerBot()
     if not Mods.Brutal then return end
     local char = LocalPlayer.Character
@@ -153,8 +163,9 @@ local function TriggerBot()
             local tHum = tChar:FindFirstChild("Humanoid")
             if not tHum then continue end
             if tHum.Health <= 0 then continue end
+            
             local dist = (hrp.Position - tHrp.Position).Magnitude
-            if not CanSeeTarget(tHrp.Position) then continue end
+            if not CanSeeTargetWallbang(tHrp.Position) then continue end
             if dist < HitboxSize then
                 pcall(function()
                     UserInputService:SetKeyDown(Enum.KeyCode.Button1)
@@ -179,7 +190,15 @@ local function ToggleBrutal()
 end
 
 -- ============================================================
--- INFINITE JUMP
+-- WALLBANG (DUVAR ARKASI VURMA)
+-- ============================================================
+local function ToggleWallbang()
+    Mods.Wallbang = not Mods.Wallbang
+    print("🧱 WALLBANG: " .. (Mods.Wallbang and "AKTİF (Duvarları deler)" or "KAPALI"))
+end
+
+-- ============================================================
+-- INFINITE JUMP (DÜZELTİLDİ)
 -- ============================================================
 local function ToggleInfJump()
     Mods.InfJump = not Mods.InfJump
@@ -203,10 +222,8 @@ local function ToggleSpeed()
 end
 
 -- ============================================================
--- ESP (WALL CHECK + TEAM CHECK OTOMATİK)
+-- ESP (SÜREKLİ GÜNCELLENİR - YENİ OYUNCULARI GÖRÜR)
 -- ============================================================
-local EspObjects = {}
-
 local function UpdateESP()
     -- Eski ESP'leri temizle
     for _, obj in ipairs(EspObjects) do
@@ -214,18 +231,19 @@ local function UpdateESP()
     end
     EspObjects = {}
     
+    if not EspActive then return end
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local char = player.Character
             if char then
-                -- Team check (takımdaş değilse kırmızı, takımdaşsa yeşil)
                 local isEnemy = not IsSameTeam(player)
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 if hrp then
                     local highlight = Instance.new("Highlight")
                     highlight.Parent = char
                     highlight.FillColor = isEnemy and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-                    highlight.FillTransparency = 0.5
+                    highlight.FillTransparency = 0.4
                     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                     highlight.OutlineTransparency = 0
                     highlight.Adornee = char
@@ -236,44 +254,15 @@ local function UpdateESP()
     end
 end
 
--- ============================================================
--- TP RAKİBE (EN YAKIN DÜŞMAN)
--- ============================================================
-local function TpToEnemy()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    local closest = nil
-    local closestDist = math.huge
-    local pos = hrp.Position
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            if IsSameTeam(player) then continue end
-            local tChar = player.Character
-            if not tChar then continue end
-            local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-            if not tHrp then continue end
-            local tHum = tChar:FindFirstChild("Humanoid")
-            if not tHum then continue end
-            if tHum.Health <= 0 then continue end
-            
-            local dist = (pos - tHrp.Position).Magnitude
-            if dist < closestDist then
-                closestDist = dist
-                closest = tHrp
-            end
+local function ToggleEsp()
+    EspActive = not EspActive
+    if not EspActive then
+        for _, obj in ipairs(EspObjects) do
+            pcall(function() obj:Destroy() end)
         end
+        EspObjects = {}
     end
-    
-    if closest then
-        hrp.CFrame = CFrame.new(closest.Position + Vector3.new(0, 3, 0))
-        print("🚀 En yakın düşmana ışınlandı!")
-    else
-        print("❌ Düşman bulunamadı!")
-    end
+    print("👁️ ESP: " .. (EspActive and "AKTİF" or "KAPALI"))
 end
 
 -- ============================================================
@@ -287,17 +276,17 @@ local function MainLoop()
                 SetHitboxSize()
                 TriggerBot()
             end
-            -- ESP'yi her 0.5 saniyede güncelle
-            if not Mods.Brutal then
+            -- ESP sürekli güncellenir
+            if EspActive then
                 UpdateESP()
             end
-            task.wait(0.5)
+            task.wait(0.3)
         end
     end)
 end
 
 -- ============================================================
--- MENU (BUTONLAR EN YUKARIDA - btnY = 5)
+-- MENU
 -- ============================================================
 local function CreateMenu()
     local old = CoreGui:FindFirstChild("UltraMenu")
@@ -309,160 +298,210 @@ local function CreateMenu()
     gui.ResetOnSpawn = false
     
     local btnY = 5
-    local btnGap = 48
+    local btnGap = 42
     
-    -- MEVLANA
+    -- 1. MEVLANA
     local btn1 = Instance.new("TextButton")
-    btn1.Size = UDim2.new(0, 40, 0, 40)
-    btn1.Position = UDim2.new(1, -50, 0, btnY)
+    btn1.Size = UDim2.new(0, 36, 0, 36)
+    btn1.Position = UDim2.new(1, -44, 0, btnY)
     btn1.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn1.BackgroundTransparency = 0.3
     btn1.Text = "🌀"
     btn1.TextColor3 = Color3.fromRGB(100, 200, 255)
-    btn1.TextSize = 20
+    btn1.TextSize = 18
     btn1.Font = Enum.Font.GothamBold
     btn1.Parent = gui
     btn1.ZIndex = 999
     Instance.new("UICorner", btn1).CornerRadius = UDim.new(1, 0)
     
-    local status1 = Instance.new("TextLabel")
-    status1.Size = UDim2.new(0, 50, 0, 14)
-    status1.Position = UDim2.new(1, -55, 0, btnY - 18)
-    status1.BackgroundTransparency = 1
-    status1.Text = "KAPALI"
-    status1.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status1.TextSize = 7
-    status1.Font = Enum.Font.GothamBold
-    status1.TextXAlignment = Enum.TextXAlignment.Right
-    status1.Parent = gui
-    status1.ZIndex = 999
+    local st1 = Instance.new("TextLabel")
+    st1.Size = UDim2.new(0, 40, 0, 12)
+    st1.Position = UDim2.new(1, -48, 0, btnY - 14)
+    st1.BackgroundTransparency = 1
+    st1.Text = "KAPALI"
+    st1.TextColor3 = Color3.fromRGB(255, 50, 50)
+    st1.TextSize = 6
+    st1.Font = Enum.Font.GothamBold
+    st1.TextXAlignment = Enum.TextXAlignment.Right
+    st1.Parent = gui
+    st1.ZIndex = 999
     
     btn1.MouseButton1Click:Connect(function()
         ToggleMevlana()
-        status1.Text = Mods.Mevlana and "AKTİF" or "KAPALI"
-        status1.TextColor3 = Mods.Mevlana and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(255, 50, 50)
+        st1.Text = Mods.Mevlana and "AKTİF" or "KAPALI"
+        st1.TextColor3 = Mods.Mevlana and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(255, 50, 50)
         btn1.BackgroundColor3 = Mods.Mevlana and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(0, 0, 0)
         btn1.Text = Mods.Mevlana and "🌀⚡" or "🌀"
     end)
     
-    -- BRUTAL
+    -- 2. BRUTAL (HITBOX + TRIGGER)
     local btn2 = Instance.new("TextButton")
-    btn2.Size = UDim2.new(0, 40, 0, 40)
-    btn2.Position = UDim2.new(1, -50, 0, btnY + btnGap)
+    btn2.Size = UDim2.new(0, 36, 0, 36)
+    btn2.Position = UDim2.new(1, -44, 0, btnY + btnGap)
     btn2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn2.BackgroundTransparency = 0.3
     btn2.Text = "💀"
     btn2.TextColor3 = Color3.fromRGB(255, 50, 50)
-    btn2.TextSize = 20
+    btn2.TextSize = 18
     btn2.Font = Enum.Font.GothamBold
     btn2.Parent = gui
     btn2.ZIndex = 999
     Instance.new("UICorner", btn2).CornerRadius = UDim.new(1, 0)
     
-    local status2 = Instance.new("TextLabel")
-    status2.Size = UDim2.new(0, 50, 0, 14)
-    status2.Position = UDim2.new(1, -55, 0, btnY + btnGap - 18)
-    status2.BackgroundTransparency = 1
-    status2.Text = "KAPALI"
-    status2.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status2.TextSize = 7
-    status2.Font = Enum.Font.GothamBold
-    status2.TextXAlignment = Enum.TextXAlignment.Right
-    status2.Parent = gui
-    status2.ZIndex = 999
+    local st2 = Instance.new("TextLabel")
+    st2.Size = UDim2.new(0, 40, 0, 12)
+    st2.Position = UDim2.new(1, -48, 0, btnY + btnGap - 14)
+    st2.BackgroundTransparency = 1
+    st2.Text = "KAPALI"
+    st2.TextColor3 = Color3.fromRGB(255, 50, 50)
+    st2.TextSize = 6
+    st2.Font = Enum.Font.GothamBold
+    st2.TextXAlignment = Enum.TextXAlignment.Right
+    st2.Parent = gui
+    st2.ZIndex = 999
     
     btn2.MouseButton1Click:Connect(function()
         ToggleBrutal()
-        status2.Text = Mods.Brutal and "AKTİF" or "KAPALI"
-        status2.TextColor3 = Mods.Brutal and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(255, 50, 50)
+        st2.Text = Mods.Brutal and "AKTİF" or "KAPALI"
+        st2.TextColor3 = Mods.Brutal and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(255, 50, 50)
         btn2.BackgroundColor3 = Mods.Brutal and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(0, 0, 0)
         btn2.Text = Mods.Brutal and "💀🔥" or "💀"
     end)
     
-    -- INF JUMP
+    -- 3. WALLBANG
+    local btnWall = Instance.new("TextButton")
+    btnWall.Size = UDim2.new(0, 36, 0, 36)
+    btnWall.Position = UDim2.new(1, -44, 0, btnY + btnGap * 2)
+    btnWall.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btnWall.BackgroundTransparency = 0.3
+    btnWall.Text = "🧱"
+    btnWall.TextColor3 = Color3.fromRGB(255, 200, 0)
+    btnWall.TextSize = 18
+    btnWall.Font = Enum.Font.GothamBold
+    btnWall.Parent = gui
+    btnWall.ZIndex = 999
+    Instance.new("UICorner", btnWall).CornerRadius = UDim.new(1, 0)
+    
+    local stWall = Instance.new("TextLabel")
+    stWall.Size = UDim2.new(0, 40, 0, 12)
+    stWall.Position = UDim2.new(1, -48, 0, btnY + btnGap * 2 - 14)
+    stWall.BackgroundTransparency = 1
+    stWall.Text = "KAPALI"
+    stWall.TextColor3 = Color3.fromRGB(255, 50, 50)
+    stWall.TextSize = 6
+    stWall.Font = Enum.Font.GothamBold
+    stWall.TextXAlignment = Enum.TextXAlignment.Right
+    stWall.Parent = gui
+    stWall.ZIndex = 999
+    
+    btnWall.MouseButton1Click:Connect(function()
+        ToggleWallbang()
+        stWall.Text = Mods.Wallbang and "AKTİF" or "KAPALI"
+        stWall.TextColor3 = Mods.Wallbang and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 50, 50)
+        btnWall.BackgroundColor3 = Mods.Wallbang and Color3.fromRGB(150, 100, 0) or Color3.fromRGB(0, 0, 0)
+        btnWall.Text = Mods.Wallbang and "🧱⚡" or "🧱"
+    end)
+    
+    -- 4. INF JUMP
     local btn3 = Instance.new("TextButton")
-    btn3.Size = UDim2.new(0, 40, 0, 40)
-    btn3.Position = UDim2.new(1, -50, 0, btnY + btnGap * 2)
+    btn3.Size = UDim2.new(0, 36, 0, 36)
+    btn3.Position = UDim2.new(1, -44, 0, btnY + btnGap * 3)
     btn3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn3.BackgroundTransparency = 0.3
     btn3.Text = "🦘"
     btn3.TextColor3 = Color3.fromRGB(0, 255, 100)
-    btn3.TextSize = 20
+    btn3.TextSize = 18
     btn3.Font = Enum.Font.GothamBold
     btn3.Parent = gui
     btn3.ZIndex = 999
     Instance.new("UICorner", btn3).CornerRadius = UDim.new(1, 0)
     
-    local status3 = Instance.new("TextLabel")
-    status3.Size = UDim2.new(0, 50, 0, 14)
-    status3.Position = UDim2.new(1, -55, 0, btnY + btnGap * 2 - 18)
-    status3.BackgroundTransparency = 1
-    status3.Text = "KAPALI"
-    status3.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status3.TextSize = 7
-    status3.Font = Enum.Font.GothamBold
-    status3.TextXAlignment = Enum.TextXAlignment.Right
-    status3.Parent = gui
-    status3.ZIndex = 999
+    local st3 = Instance.new("TextLabel")
+    st3.Size = UDim2.new(0, 40, 0, 12)
+    st3.Position = UDim2.new(1, -48, 0, btnY + btnGap * 3 - 14)
+    st3.BackgroundTransparency = 1
+    st3.Text = "KAPALI"
+    st3.TextColor3 = Color3.fromRGB(255, 50, 50)
+    st3.TextSize = 6
+    st3.Font = Enum.Font.GothamBold
+    st3.TextXAlignment = Enum.TextXAlignment.Right
+    st3.Parent = gui
+    st3.ZIndex = 999
     
     btn3.MouseButton1Click:Connect(function()
         ToggleInfJump()
-        status3.Text = Mods.InfJump and "AKTİF" or "KAPALI"
-        status3.TextColor3 = Mods.InfJump and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
+        st3.Text = Mods.InfJump and "AKTİF" or "KAPALI"
+        st3.TextColor3 = Mods.InfJump and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 50, 50)
         btn3.BackgroundColor3 = Mods.InfJump and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(0, 0, 0)
         btn3.Text = Mods.InfJump and "🦘⚡" or "🦘"
     end)
     
-    -- SPEED
+    -- 5. SPEED
     local btn4 = Instance.new("TextButton")
-    btn4.Size = UDim2.new(0, 40, 0, 40)
-    btn4.Position = UDim2.new(1, -50, 0, btnY + btnGap * 3)
+    btn4.Size = UDim2.new(0, 36, 0, 36)
+    btn4.Position = UDim2.new(1, -44, 0, btnY + btnGap * 4)
     btn4.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn4.BackgroundTransparency = 0.3
     btn4.Text = "💨"
     btn4.TextColor3 = Color3.fromRGB(0, 200, 255)
-    btn4.TextSize = 20
+    btn4.TextSize = 18
     btn4.Font = Enum.Font.GothamBold
     btn4.Parent = gui
     btn4.ZIndex = 999
     Instance.new("UICorner", btn4).CornerRadius = UDim.new(1, 0)
     
-    local status4 = Instance.new("TextLabel")
-    status4.Size = UDim2.new(0, 50, 0, 14)
-    status4.Position = UDim2.new(1, -55, 0, btnY + btnGap * 3 - 18)
-    status4.BackgroundTransparency = 1
-    status4.Text = "KAPALI"
-    status4.TextColor3 = Color3.fromRGB(255, 50, 50)
-    status4.TextSize = 7
-    status4.Font = Enum.Font.GothamBold
-    status4.TextXAlignment = Enum.TextXAlignment.Right
-    status4.Parent = gui
-    status4.ZIndex = 999
+    local st4 = Instance.new("TextLabel")
+    st4.Size = UDim2.new(0, 40, 0, 12)
+    st4.Position = UDim2.new(1, -48, 0, btnY + btnGap * 4 - 14)
+    st4.BackgroundTransparency = 1
+    st4.Text = "KAPALI"
+    st4.TextColor3 = Color3.fromRGB(255, 50, 50)
+    st4.TextSize = 6
+    st4.Font = Enum.Font.GothamBold
+    st4.TextXAlignment = Enum.TextXAlignment.Right
+    st4.Parent = gui
+    st4.ZIndex = 999
     
     btn4.MouseButton1Click:Connect(function()
         ToggleSpeed()
-        status4.Text = Mods.Speed and "AKTİF" or "KAPALI"
-        status4.TextColor3 = Mods.Speed and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 50, 50)
+        st4.Text = Mods.Speed and "AKTİF" or "KAPALI"
+        st4.TextColor3 = Mods.Speed and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 50, 50)
         btn4.BackgroundColor3 = Mods.Speed and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(0, 0, 0)
         btn4.Text = Mods.Speed and "💨⚡" or "💨"
     end)
     
-    -- TP RAKİBE
+    -- 6. ESP
     local btn5 = Instance.new("TextButton")
-    btn5.Size = UDim2.new(0, 40, 0, 40)
-    btn5.Position = UDim2.new(1, -50, 0, btnY + btnGap * 4)
+    btn5.Size = UDim2.new(0, 36, 0, 36)
+    btn5.Position = UDim2.new(1, -44, 0, btnY + btnGap * 5)
     btn5.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn5.BackgroundTransparency = 0.3
-    btn5.Text = "🚀"
-    btn5.TextColor3 = Color3.fromRGB(255, 200, 0)
-    btn5.TextSize = 20
+    btn5.Text = "👁️"
+    btn5.TextColor3 = Color3.fromRGB(255, 100, 255)
+    btn5.TextSize = 18
     btn5.Font = Enum.Font.GothamBold
     btn5.Parent = gui
     btn5.ZIndex = 999
     Instance.new("UICorner", btn5).CornerRadius = UDim.new(1, 0)
     
+    local st5 = Instance.new("TextLabel")
+    st5.Size = UDim2.new(0, 40, 0, 12)
+    st5.Position = UDim2.new(1, -48, 0, btnY + btnGap * 5 - 14)
+    st5.BackgroundTransparency = 1
+    st5.Text = "KAPALI"
+    st5.TextColor3 = Color3.fromRGB(255, 50, 50)
+    st5.TextSize = 6
+    st5.Font = Enum.Font.GothamBold
+    st5.TextXAlignment = Enum.TextXAlignment.Right
+    st5.Parent = gui
+    st5.ZIndex = 999
+    
     btn5.MouseButton1Click:Connect(function()
-        TpToEnemy()
+        ToggleEsp()
+        st5.Text = EspActive and "AKTİF" or "KAPALI"
+        st5.TextColor3 = EspActive and Color3.fromRGB(255, 100, 255) or Color3.fromRGB(255, 50, 50)
+        btn5.BackgroundColor3 = EspActive and Color3.fromRGB(150, 0, 150) or Color3.fromRGB(0, 0, 0)
+        btn5.Text = EspActive and "👁️⚡" or "👁️"
     end)
 end
 
@@ -487,11 +526,12 @@ MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V5 HAZIR!")
+print("🔥 ULTRA MOD V6 HAZIR!")
 print("   🌀 Mevlana: 360 dönüş")
 print("   💀 Brutal: Hitbox 40x + TRIGGERBOT")
+print("   🧱 Wallbang: Duvarları deler")
 print("   🦘 Inf Jump: Sonsuz zıplama")
 print("   💨 Speed: Hızlı yürüme")
-print("   🚀 TP Rakibe: En yakın düşmana ışınlan")
-print("   📌 Sağ üstteki butonlar")
+print("   👁️ ESP: Düşmanları gör (sürekli güncellenir)")
+print("   📌 Sağ üstteki butonlar (EN YUKARIDA)")
 print("========================================")

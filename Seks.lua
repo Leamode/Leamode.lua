@@ -1,6 +1,6 @@
 -- ============================================================
--- HAMSTER LIVES - ULTRA MOD V6 (FULL FIX)
--- 360 DÖNÜŞ | HITBOX 40x | TRIGGERBOT | ESP | INF JUMP | SPEED | WALLBANG
+-- HAMSTER LIVES - ULTRA MOD V8 (ESP EKLENDİ)
+-- 360 DÖNÜŞ | HITBOX 40x | TRIGGERBOT | INF JUMP | SPEED | ESP
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -8,10 +8,9 @@ local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("🔥 ULTRA MOD V6 BAŞLADI...")
+print("🔥 ULTRA MOD V8 BAŞLADI...")
 
 -- ============================================================
 -- KONFIG
@@ -21,8 +20,7 @@ local Mods = {
     Brutal = false,
     InfJump = false,
     Speed = false,
-    Esp = false,
-    Wallbang = false
+    Esp = false
 }
 
 local MevlanaSpeed = 30
@@ -34,7 +32,6 @@ local Character = nil
 local HumanoidRootPart = nil
 local Humanoid = nil
 local EspObjects = {}
-local EspActive = false
 
 -- ============================================================
 -- KARAKTER AL
@@ -49,7 +46,7 @@ local function GetCharacter()
 end
 
 -- ============================================================
--- MEVLANA 360 DÖNÜŞ (ESKİ VERSİYON - BOZULMADI)
+-- 360 DÖNÜŞ (BOZULMADI - AYNI)
 -- ============================================================
 local function StartSpinning()
     if not Mods.Mevlana then return end
@@ -68,10 +65,11 @@ local function ToggleMevlana()
 end
 
 -- ============================================================
--- BRUTAL HITBOX + TRIGGERBOT + WALLBANG
+-- BRUTAL (HITBOX + TRIGGERBOT)
 -- ============================================================
 local function SetHitboxSize()
     if not Mods.Brutal then return end
+    
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local char = player.Character
@@ -114,14 +112,7 @@ local function IsSameTeam(player)
     return false
 end
 
--- WALLBANG: DUVAR ARKASINI DELER (WALL CHECK YOK)
-local function CanSeeTargetWallbang(targetPos)
-    -- WALLBANG AKTİFSE DUVAR KONTROLÜ YAPMA, HER ZAMAN GÖRÜR
-    if Mods.Wallbang then
-        return true
-    end
-    
-    -- NORMAL KONTROL
+local function CanSeeTarget(targetPos)
     local char = LocalPlayer.Character
     if not char then return false end
     local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -145,36 +136,65 @@ local function CanSeeTargetWallbang(targetPos)
     return true
 end
 
--- TRIGGERBOT
+local function FindClosestEnemy()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    
+    local closest = nil
+    local closestDist = math.huge
+    local pos = hrp.Position
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if IsSameTeam(player) then continue end
+            
+            local tChar = player.Character
+            if not tChar then continue end
+            
+            local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+            if not tHrp then continue end
+            
+            local tHum = tChar:FindFirstChild("Humanoid")
+            if not tHum then continue end
+            if tHum.Health <= 0 then continue end
+            
+            if not CanSeeTarget(tHrp.Position) then continue end
+            
+            local dist = (pos - tHrp.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closest = player
+            end
+        end
+    end
+    
+    return closest, closestDist
+end
+
 local function TriggerBot()
     if not Mods.Brutal then return end
+    
     local char = LocalPlayer.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            if IsSameTeam(player) then continue end
-            local tChar = player.Character
-            if not tChar then continue end
-            local tHrp = tChar:FindFirstChild("HumanoidRootPart")
-            if not tHrp then continue end
-            local tHum = tChar:FindFirstChild("Humanoid")
-            if not tHum then continue end
-            if tHum.Health <= 0 then continue end
-            
-            local dist = (hrp.Position - tHrp.Position).Magnitude
-            if not CanSeeTargetWallbang(tHrp.Position) then continue end
-            if dist < HitboxSize then
-                pcall(function()
-                    UserInputService:SetKeyDown(Enum.KeyCode.Button1)
-                    task.wait(0.05)
-                    UserInputService:SetKeyUp(Enum.KeyCode.Button1)
-                end)
-                break
-            end
-        end
+    local enemy, dist = FindClosestEnemy()
+    if not enemy then return end
+    
+    local tChar = enemy.Character
+    if not tChar then return end
+    local tHrp = tChar:FindFirstChild("HumanoidRootPart")
+    if not tHrp then return end
+    
+    if dist < HitboxSize then
+        pcall(function()
+            UserInputService:SetKeyDown(Enum.KeyCode.Button1)
+            task.wait(0.05)
+            UserInputService:SetKeyUp(Enum.KeyCode.Button1)
+        end)
     end
 end
 
@@ -190,23 +210,37 @@ local function ToggleBrutal()
 end
 
 -- ============================================================
--- WALLBANG (DUVAR ARKASI VURMA)
+-- INFINITE JUMP (HIGH JUMP + SÜREKLİ)
 -- ============================================================
-local function ToggleWallbang()
-    Mods.Wallbang = not Mods.Wallbang
-    print("🧱 WALLBANG: " .. (Mods.Wallbang and "AKTİF (Duvarları deler)" or "KAPALI"))
-end
+local JumpThread = nil
 
--- ============================================================
--- INFINITE JUMP (DÜZELTİLDİ)
--- ============================================================
 local function ToggleInfJump()
     Mods.InfJump = not Mods.InfJump
     GetCharacter()
-    if Humanoid then
-        Humanoid.JumpPower = Mods.InfJump and 100 or 50
+    
+    if JumpThread then
+        coroutine.close(JumpThread)
+        JumpThread = nil
     end
-    print("🦘 INF JUMP: " .. (Mods.InfJump and "AKTİF" or "KAPALI"))
+    
+    if Mods.InfJump then
+        if Humanoid then
+            Humanoid.JumpPower = 100
+        end
+        JumpThread = coroutine.create(function()
+            while Mods.InfJump and Humanoid and Humanoid.Parent do
+                Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                task.wait(0.01)
+            end
+        end)
+        coroutine.resume(JumpThread)
+        print("🦘 INF JUMP: AKTİF (Sürekli zıplama + High Jump)")
+    else
+        if Humanoid then
+            Humanoid.JumpPower = 50
+        end
+        print("🦘 INF JUMP: KAPALI")
+    end
 end
 
 -- ============================================================
@@ -218,20 +252,19 @@ local function ToggleSpeed()
     if Humanoid then
         Humanoid.WalkSpeed = Mods.Speed and WalkSpeed or 16
     end
-    print("💨 SPEED: " .. (Mods.Speed and "AKTİF" or "KAPALI"))
+    print("💨 SPEED: " .. (Mods.Speed and "AKTİF (" .. WalkSpeed .. " hız)" or "KAPALI"))
 end
 
 -- ============================================================
--- ESP (SÜREKLİ GÜNCELLENİR - YENİ OYUNCULARI GÖRÜR)
+-- ESP (SÜREKLİ GÜNCELLENİR)
 -- ============================================================
 local function UpdateESP()
-    -- Eski ESP'leri temizle
     for _, obj in ipairs(EspObjects) do
         pcall(function() obj:Destroy() end)
     end
     EspObjects = {}
     
-    if not EspActive then return end
+    if not Mods.Esp then return end
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
@@ -255,14 +288,14 @@ local function UpdateESP()
 end
 
 local function ToggleEsp()
-    EspActive = not EspActive
-    if not EspActive then
+    Mods.Esp = not Mods.Esp
+    if not Mods.Esp then
         for _, obj in ipairs(EspObjects) do
             pcall(function() obj:Destroy() end)
         end
         EspObjects = {}
     end
-    print("👁️ ESP: " .. (EspActive and "AKTİF" or "KAPALI"))
+    print("👁️ ESP: " .. (Mods.Esp and "AKTİF" or "KAPALI"))
 end
 
 -- ============================================================
@@ -276,14 +309,34 @@ local function MainLoop()
                 SetHitboxSize()
                 TriggerBot()
             end
-            -- ESP sürekli güncellenir
-            if EspActive then
+            if Mods.Esp then
                 UpdateESP()
             end
-            task.wait(0.3)
+            task.wait(0.1)
         end
     end)
 end
+
+-- ============================================================
+-- KARAKTER DEĞİŞİMİ
+-- ============================================================
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    GetCharacter()
+    if Mods.Brutal then SetHitboxSize() end
+    if Mods.InfJump then
+        if Humanoid then Humanoid.JumpPower = 100 end
+        if JumpThread then coroutine.close(JumpThread) end
+        JumpThread = coroutine.create(function()
+            while Mods.InfJump and Humanoid and Humanoid.Parent do
+                Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                task.wait(0.01)
+            end
+        end)
+        coroutine.resume(JumpThread)
+    end
+    if Mods.Speed and Humanoid then Humanoid.WalkSpeed = WalkSpeed end
+end)
 
 -- ============================================================
 -- MENU
@@ -300,7 +353,7 @@ local function CreateMenu()
     local btnY = 5
     local btnGap = 42
     
-    -- 1. MEVLANA
+    -- MEVLANA
     local btn1 = Instance.new("TextButton")
     btn1.Size = UDim2.new(0, 36, 0, 36)
     btn1.Position = UDim2.new(1, -44, 0, btnY)
@@ -334,7 +387,7 @@ local function CreateMenu()
         btn1.Text = Mods.Mevlana and "🌀⚡" or "🌀"
     end)
     
-    -- 2. BRUTAL (HITBOX + TRIGGER)
+    -- BRUTAL
     local btn2 = Instance.new("TextButton")
     btn2.Size = UDim2.new(0, 36, 0, 36)
     btn2.Position = UDim2.new(1, -44, 0, btnY + btnGap)
@@ -368,44 +421,10 @@ local function CreateMenu()
         btn2.Text = Mods.Brutal and "💀🔥" or "💀"
     end)
     
-    -- 3. WALLBANG
-    local btnWall = Instance.new("TextButton")
-    btnWall.Size = UDim2.new(0, 36, 0, 36)
-    btnWall.Position = UDim2.new(1, -44, 0, btnY + btnGap * 2)
-    btnWall.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btnWall.BackgroundTransparency = 0.3
-    btnWall.Text = "🧱"
-    btnWall.TextColor3 = Color3.fromRGB(255, 200, 0)
-    btnWall.TextSize = 18
-    btnWall.Font = Enum.Font.GothamBold
-    btnWall.Parent = gui
-    btnWall.ZIndex = 999
-    Instance.new("UICorner", btnWall).CornerRadius = UDim.new(1, 0)
-    
-    local stWall = Instance.new("TextLabel")
-    stWall.Size = UDim2.new(0, 40, 0, 12)
-    stWall.Position = UDim2.new(1, -48, 0, btnY + btnGap * 2 - 14)
-    stWall.BackgroundTransparency = 1
-    stWall.Text = "KAPALI"
-    stWall.TextColor3 = Color3.fromRGB(255, 50, 50)
-    stWall.TextSize = 6
-    stWall.Font = Enum.Font.GothamBold
-    stWall.TextXAlignment = Enum.TextXAlignment.Right
-    stWall.Parent = gui
-    stWall.ZIndex = 999
-    
-    btnWall.MouseButton1Click:Connect(function()
-        ToggleWallbang()
-        stWall.Text = Mods.Wallbang and "AKTİF" or "KAPALI"
-        stWall.TextColor3 = Mods.Wallbang and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 50, 50)
-        btnWall.BackgroundColor3 = Mods.Wallbang and Color3.fromRGB(150, 100, 0) or Color3.fromRGB(0, 0, 0)
-        btnWall.Text = Mods.Wallbang and "🧱⚡" or "🧱"
-    end)
-    
-    -- 4. INF JUMP
+    -- INF JUMP
     local btn3 = Instance.new("TextButton")
     btn3.Size = UDim2.new(0, 36, 0, 36)
-    btn3.Position = UDim2.new(1, -44, 0, btnY + btnGap * 3)
+    btn3.Position = UDim2.new(1, -44, 0, btnY + btnGap * 2)
     btn3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn3.BackgroundTransparency = 0.3
     btn3.Text = "🦘"
@@ -418,7 +437,7 @@ local function CreateMenu()
     
     local st3 = Instance.new("TextLabel")
     st3.Size = UDim2.new(0, 40, 0, 12)
-    st3.Position = UDim2.new(1, -48, 0, btnY + btnGap * 3 - 14)
+    st3.Position = UDim2.new(1, -48, 0, btnY + btnGap * 2 - 14)
     st3.BackgroundTransparency = 1
     st3.Text = "KAPALI"
     st3.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -436,10 +455,10 @@ local function CreateMenu()
         btn3.Text = Mods.InfJump and "🦘⚡" or "🦘"
     end)
     
-    -- 5. SPEED
+    -- SPEED
     local btn4 = Instance.new("TextButton")
     btn4.Size = UDim2.new(0, 36, 0, 36)
-    btn4.Position = UDim2.new(1, -44, 0, btnY + btnGap * 4)
+    btn4.Position = UDim2.new(1, -44, 0, btnY + btnGap * 3)
     btn4.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn4.BackgroundTransparency = 0.3
     btn4.Text = "💨"
@@ -452,7 +471,7 @@ local function CreateMenu()
     
     local st4 = Instance.new("TextLabel")
     st4.Size = UDim2.new(0, 40, 0, 12)
-    st4.Position = UDim2.new(1, -48, 0, btnY + btnGap * 4 - 14)
+    st4.Position = UDim2.new(1, -48, 0, btnY + btnGap * 3 - 14)
     st4.BackgroundTransparency = 1
     st4.Text = "KAPALI"
     st4.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -470,10 +489,10 @@ local function CreateMenu()
         btn4.Text = Mods.Speed and "💨⚡" or "💨"
     end)
     
-    -- 6. ESP
+    -- ESP
     local btn5 = Instance.new("TextButton")
     btn5.Size = UDim2.new(0, 36, 0, 36)
-    btn5.Position = UDim2.new(1, -44, 0, btnY + btnGap * 5)
+    btn5.Position = UDim2.new(1, -44, 0, btnY + btnGap * 4)
     btn5.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn5.BackgroundTransparency = 0.3
     btn5.Text = "👁️"
@@ -486,7 +505,7 @@ local function CreateMenu()
     
     local st5 = Instance.new("TextLabel")
     st5.Size = UDim2.new(0, 40, 0, 12)
-    st5.Position = UDim2.new(1, -48, 0, btnY + btnGap * 5 - 14)
+    st5.Position = UDim2.new(1, -48, 0, btnY + btnGap * 4 - 14)
     st5.BackgroundTransparency = 1
     st5.Text = "KAPALI"
     st5.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -498,23 +517,12 @@ local function CreateMenu()
     
     btn5.MouseButton1Click:Connect(function()
         ToggleEsp()
-        st5.Text = EspActive and "AKTİF" or "KAPALI"
-        st5.TextColor3 = EspActive and Color3.fromRGB(255, 100, 255) or Color3.fromRGB(255, 50, 50)
-        btn5.BackgroundColor3 = EspActive and Color3.fromRGB(150, 0, 150) or Color3.fromRGB(0, 0, 0)
-        btn5.Text = EspActive and "👁️⚡" or "👁️"
+        st5.Text = Mods.Esp and "AKTİF" or "KAPALI"
+        st5.TextColor3 = Mods.Esp and Color3.fromRGB(255, 100, 255) or Color3.fromRGB(255, 50, 50)
+        btn5.BackgroundColor3 = Mods.Esp and Color3.fromRGB(150, 0, 150) or Color3.fromRGB(0, 0, 0)
+        btn5.Text = Mods.Esp and "👁️⚡" or "👁️"
     end)
 end
-
--- ============================================================
--- KARAKTER DEĞİŞİMİ
--- ============================================================
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    GetCharacter()
-    if Mods.Brutal then SetHitboxSize() end
-    if Mods.InfJump and Humanoid then Humanoid.JumpPower = 100 end
-    if Mods.Speed and Humanoid then Humanoid.WalkSpeed = WalkSpeed end
-end)
 
 -- ============================================================
 -- BAŞLAT
@@ -526,11 +534,10 @@ MainLoop()
 
 print("")
 print("========================================")
-print("🔥 ULTRA MOD V6 HAZIR!")
+print("🔥 ULTRA MOD V8 HAZIR!")
 print("   🌀 Mevlana: 360 dönüş")
 print("   💀 Brutal: Hitbox 40x + TRIGGERBOT")
-print("   🧱 Wallbang: Duvarları deler")
-print("   🦘 Inf Jump: Sonsuz zıplama")
+print("   🦘 Inf Jump: Sürekli zıplama + High Jump")
 print("   💨 Speed: Hızlı yürüme")
 print("   👁️ ESP: Düşmanları gör (sürekli güncellenir)")
 print("   📌 Sağ üstteki butonlar (EN YUKARIDA)")

@@ -1,8 +1,96 @@
 -- ============================================================
--- HAMSTER ULTRA MOD V8.2 (TELEFON, KÜÇÜK MENÜ + ✕/⚙️)
+-- PART 1: KEY GATE (Anahtar Kontrolü)
+-- Bu script çalıştırılır, doğru key girilince Part 2'yi manuel çalıştırmanız gerekir.
 -- ============================================================
--- РАЗРАБОТЧИК: palofsc
--- ВЕРСИЯ: 8.2
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local KeyUI = nil
+
+local function CreateKeyPrompt()
+    if KeyUI then KeyUI:Destroy() end
+    KeyUI = Instance.new("ScreenGui")
+    KeyUI.Name = "KeyPrompt"
+    KeyUI.Parent = CoreGui
+    KeyUI.ResetOnSpawn = false
+    KeyUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    KeyUI.DisplayOrder = 999
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 250, 0, 130)
+    frame.Position = UDim2.new(0.5, -125, 0.5, -65)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    frame.BorderSizePixel = 0
+    frame.Parent = KeyUI
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = "PLS ENTER YOUR KEY"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+    title.Font = Enum.Font.GothamBold
+    title.Parent = frame
+
+    local inputBox = Instance.new("TextBox")
+    inputBox.Size = UDim2.new(1, -20, 0, 30)
+    inputBox.Position = UDim2.new(0, 10, 0, 40)
+    inputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    inputBox.PlaceholderText = "Key girin..."
+    inputBox.TextSize = 14
+    inputBox.Font = Enum.Font.Gotham
+    inputBox.Parent = frame
+    Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 6)
+
+    local errorLabel = Instance.new("TextLabel")
+    errorLabel.Size = UDim2.new(1, 0, 0, 20)
+    errorLabel.Position = UDim2.new(0, 0, 0, 75)
+    errorLabel.BackgroundTransparency = 1
+    errorLabel.Text = ""
+    errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+    errorLabel.TextSize = 12
+    errorLabel.Font = Enum.Font.GothamBold
+    errorLabel.Parent = frame
+
+    local confirmBtn = Instance.new("TextButton")
+    confirmBtn.Size = UDim2.new(1, -20, 0, 30)
+    confirmBtn.Position = UDim2.new(0, 10, 0, 95)
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    confirmBtn.Text = "GİRİŞ"
+    confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    confirmBtn.TextSize = 14
+    confirmBtn.Font = Enum.Font.GothamBold
+    confirmBtn.Parent = frame
+    Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 6)
+
+    local function checkKey()
+        if inputBox.Text == "OrospuErdem" then
+            pcall(function() KeyUI:Destroy() end)
+            KeyUI = nil
+            print("KEY DOĞRU! Şimdi Part 2 scriptini çalıştırın.")
+        else
+            errorLabel.Text = "YANLIŞ KEY!"
+            inputBox.Text = ""
+            inputBox:CaptureFocus()
+        end
+    end
+
+    confirmBtn.MouseButton1Click:Connect(checkKey)
+    inputBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            checkKey()
+        end
+    end)
+end
+
+CreateKeyPrompt()-- ============================================================
+-- PART 2: HAMSTER ULTRA MOD V8.2 (ANA SCRIPT)
+-- Bu scripti key doğrulandıktan sonra çalıştırın.
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -15,9 +103,6 @@ local Camera = Workspace.CurrentCamera
 
 print("🔥 ULTRA MOD V8.2 YÜKLENİYOR...")
 
--- ============================================================
--- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
--- ============================================================
 local Mods = {
     Mevlana = false,
     Fly = false,
@@ -41,13 +126,10 @@ local HumanoidRootPart = nil
 local Humanoid = nil
 local MenuVisible = true
 local MenuGui = nil
-local OpenButton = nil   -- sağ ortadaki açma butonu
+local OpenButton = nil
 local espObjects = {}
 local wallRemovedParts = {}
 
--- ============================================================
--- ВСПОМОГАТЕЛЬНЫЕ
--- ============================================================
 local function GetCharacter()
     Character = LocalPlayer.Character
     if Character then
@@ -70,9 +152,6 @@ local function GetTargets()
     return list
 end
 
--- ============================================================
--- MEVLANA (360 DÖNÜŞ, TELEPORT YOK)
--- ============================================================
 local function StartSpinning()
     if not Mods.Mevlana or not HumanoidRootPart then return end
     CurrentAngle = (CurrentAngle + MevlanaSpeed) % 360
@@ -80,9 +159,6 @@ local function StartSpinning()
     HumanoidRootPart.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
 end
 
--- ============================================================
--- FLY (KONTROLLÜ UÇUŞ)
--- ============================================================
 local flyBodyVelocity = nil
 local flyGyro = nil
 
@@ -115,9 +191,6 @@ local function UpdateFly()
     flyGyro.CFrame = CFrame.new(HumanoidRootPart.Position, HumanoidRootPart.Position + Camera.CFrame.LookVector)
 end
 
--- ============================================================
--- INFINITE JUMP + HIGH JUMP
--- ============================================================
 local function HandleJump()
     if not Mods.InfiniteJump and not Mods.HighJump then return end
     if Mods.HighJump and Humanoid then Humanoid.JumpPower = 150 elseif Humanoid then Humanoid.JumpPower = 50 end
@@ -133,9 +206,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ============================================================
--- SPEED HACK
--- ============================================================
 local function ApplySpeed()
     if not Mods.SpeedHack then
         if Humanoid then Humanoid.WalkSpeed = 16 end
@@ -146,9 +216,6 @@ local function ApplySpeed()
     end
 end
 
--- ============================================================
--- NO RECOIL
--- ============================================================
 local function ApplyNoRecoil()
     if not Mods.NoRecoil then return end
     local char = LocalPlayer.Character
@@ -161,9 +228,6 @@ local function ApplyNoRecoil()
     end
 end
 
--- ============================================================
--- AUTO CLICK
--- ============================================================
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -177,9 +241,6 @@ task.spawn(function()
     end
 end)
 
--- ============================================================
--- ESP (parlak, yenilenir, yeni oyuncuları yakalar)
--- ============================================================
 local function ClearESP()
     for _, obj in pairs(espObjects) do
         if obj and obj.Parent then obj:Destroy() end
@@ -233,9 +294,6 @@ Players.PlayerAdded:Connect(function()
     if Mods.ESP then BuildESP() end
 end)
 
--- ============================================================
--- WALL SEX (sadece ayak üstü, anında, mermi geçer)
--- ============================================================
 local function ClearWalls()
     if not Mods.WallSex then
         for _, part in pairs(wallRemovedParts) do
@@ -276,9 +334,6 @@ local function ClearWalls()
     end
 end
 
--- ============================================================
--- 1 KURŞUN 3 KİŞİ (GERÇEK: Mouse tıklamasında hasar)
--- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -299,9 +354,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ============================================================
--- BRUTAL HITBOX (15 KAT BÜYÜK, GÖRÜNMEZ)
--- ============================================================
 local function SetBrutalHitbox()
     if not Mods.BrutalHitbox then
         for _, plr in ipairs(Players:GetPlayers()) do
@@ -337,9 +389,8 @@ local function SetBrutalHitbox()
             end
         end
     end
-end-- ============================================================
--- MENÜ (sağda, kaydırılabilir, ✕ kapatır, F12 toggle)
--- ============================================================
+end
+
 local function CreateMenu()
     if MenuGui then MenuGui:Destroy() end
 
@@ -349,7 +400,6 @@ local function CreateMenu()
     MenuGui.ResetOnSpawn = false
     MenuGui.Enabled = true
 
-    -- Ana çerçeve (sağda, dar)
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 65, 1, 0)
     mainFrame.Position = UDim2.new(1, -70, 0, 0)
@@ -358,7 +408,6 @@ local function CreateMenu()
     mainFrame.Parent = MenuGui
     mainFrame.ZIndex = 999
 
-    -- ✕ KAPATMA BUTONU (sol üst)
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 22, 0, 22)
     closeBtn.Position = UDim2.new(0, 4, 0, 4)
@@ -377,10 +426,9 @@ local function CreateMenu()
         end
     end)
 
-    -- ScrollingFrame (kaydırma)
     local scroll = Instance.new("ScrollingFrame")
     scroll.Size = UDim2.new(1, 0, 1, -10)
-    scroll.Position = UDim2.new(0, 0, 0, 30)  -- closeBtn'in altından başlasın
+    scroll.Position = UDim2.new(0, 0, 0, 30)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 6
@@ -450,7 +498,6 @@ local function CreateMenu()
 
     scroll.CanvasSize = UDim2.new(0, 0, 0, currentY + 20)
 
-    -- Buton tıklama olayları
     for modRef, data in pairs(btnRefs) do
         data.btn.MouseButton1Click:Connect(function()
             Mods[modRef] = not Mods[modRef]
@@ -468,7 +515,6 @@ local function CreateMenu()
                 data.status.TextColor3 = Color3.fromRGB(255,50,50)
             end
 
-            -- Özel işlemler
             if modRef == "Fly" then
                 if aktif then EnableFly() else DisableFly() end
             end
@@ -492,21 +538,18 @@ local function CreateMenu()
                 ApplyNoRecoil()
             end
             if modRef == "AutoClick" then
-                -- zaten spawn'da çalışıyor
+                -- already running
             end
         end)
     end
 end
 
--- ============================================================
--- AÇMA BUTONU (ekranın tam ortasının en sağında)
--- ============================================================
 local function CreateOpenButton()
     if OpenButton then OpenButton:Destroy() end
 
     OpenButton = Instance.new("TextButton")
     OpenButton.Size = UDim2.new(0, 48, 0, 48)
-    OpenButton.Position = UDim2.new(1, -54, 0.5, -24)  -- sağ kenar, dikey orta
+    OpenButton.Position = UDim2.new(1, -54, 0.5, -24)
     OpenButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     OpenButton.Text = "⚙️"
     OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -515,7 +558,7 @@ local function CreateOpenButton()
     OpenButton.Parent = CoreGui
     OpenButton.ZIndex = 999
     Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(1, 0)
-    OpenButton.Visible = false  -- başlangıçta gizli (menü açık)
+    OpenButton.Visible = false
 
     OpenButton.MouseButton1Click:Connect(function()
         if MenuGui then
@@ -525,9 +568,6 @@ local function CreateOpenButton()
     end)
 end
 
--- ============================================================
--- F12 İLE MENÜ AÇ/KAPA
--- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F12 then
@@ -539,9 +579,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ============================================================
--- ANA DÖNGÜ
--- ============================================================
 RunService.Heartbeat:Connect(function(dt)
     GetCharacter()
     StartSpinning()
@@ -556,9 +593,6 @@ RunService.Heartbeat:Connect(function(dt)
     if Mods.NoRecoil then ApplyNoRecoil() end
 end)
 
--- ============================================================
--- KARAKTER DEĞİŞİMİ
--- ============================================================
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     GetCharacter()
@@ -569,13 +603,10 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     if Mods.SpeedHack then ApplySpeed() end
 end)
 
--- ============================================================
--- BAŞLAT
--- ============================================================
 task.wait(0.5)
 GetCharacter()
 CreateMenu()
-CreateOpenButton()  -- sağ ortada ⚙️ oluşur
+CreateOpenButton()
 
 print("")
 print("========================================")

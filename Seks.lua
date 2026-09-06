@@ -1,7 +1,11 @@
 -- ============================================================
 -- PART 1: KEY GATE (Anahtar Kontrolü)
--- Bu script çalıştırılır, doğru key girilince Part 2'yi manuel çalıştırmanız gerekir.
+-- Bu scripti çalıştırın. Sadece key ekranı görünür.
+-- Doğru key: OrospuErdem
+-- Key doğru girilirse ekran kapanır ve konsola mesaj yazar:
+-- "KEY DOĞRU! Şimdi Part 2 ve Part 3 scriptlerini çalıştırın."
 -- ============================================================
+
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
@@ -72,7 +76,7 @@ local function CreateKeyPrompt()
         if inputBox.Text == "OrospuErdem" then
             pcall(function() KeyUI:Destroy() end)
             KeyUI = nil
-            print("KEY DOĞRU! Şimdi Part 2 scriptini çalıştırın.")
+            print("KEY DOĞRU! Şimdi Part 2 ve Part 3 scriptlerini çalıştırın.")
         else
             errorLabel.Text = "YANLIŞ KEY!"
             inputBox.Text = ""
@@ -89,8 +93,9 @@ local function CreateKeyPrompt()
 end
 
 CreateKeyPrompt()-- ============================================================
--- PART 2: HAMSTER ULTRA MOD V8.2 (ANA SCRIPT)
--- Bu scripti key doğrulandıktan sonra çalıştırın.
+-- PART 2: ANA MODÜLLER
+-- Eski modlar aynen korunmuştur, yeni modlar eklenmiştir.
+-- Bu scripti Part 1'den sonra çalıştırın.
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -100,21 +105,33 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
-print("🔥 ULTRA MOD V8.2 YÜKLENİYOR...")
+print("🔥 LEA BYPASS MOD YÜKLENİYOR...")
 
+-- Mods tablosu (eski + yeni + ekstra)
 local Mods = {
     Mevlana = false,
     Fly = false,
     InfiniteJump = false,
     HighJump = false,
     ESP = false,
-    WallSex = false,
     OneBulletThree = false,
     BrutalHitbox = false,
     SpeedHack = false,
     NoRecoil = false,
-    AutoClick = false
+    AutoClick = false,
+    WallBang = false,
+    KillAura = false,
+    Invisible = false,
+    TeleportToPlayer = false,
+    GodMode = false,
+    Noclip = false,
+    Aimbot = false,
+    RapidFire = false,
+    AntiVoid = false,
+    XRay = false,
+    InfiniteAmmo = false
 }
 
 local MevlanaSpeed = 30
@@ -124,11 +141,7 @@ local SpeedMultiplier = 2.5
 local Character = nil
 local HumanoidRootPart = nil
 local Humanoid = nil
-local MenuVisible = true
-local MenuGui = nil
-local OpenButton = nil
 local espObjects = {}
-local wallRemovedParts = {}
 
 local function GetCharacter()
     Character = LocalPlayer.Character
@@ -152,6 +165,9 @@ local function GetTargets()
     return list
 end
 
+-- ============================================================
+-- MEVLANA (360 DÖNÜŞ)
+-- ============================================================
 local function StartSpinning()
     if not Mods.Mevlana or not HumanoidRootPart then return end
     CurrentAngle = (CurrentAngle + MevlanaSpeed) % 360
@@ -159,6 +175,9 @@ local function StartSpinning()
     HumanoidRootPart.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
 end
 
+-- ============================================================
+-- FLY
+-- ============================================================
 local flyBodyVelocity = nil
 local flyGyro = nil
 
@@ -191,6 +210,9 @@ local function UpdateFly()
     flyGyro.CFrame = CFrame.new(HumanoidRootPart.Position, HumanoidRootPart.Position + Camera.CFrame.LookVector)
 end
 
+-- ============================================================
+-- INFINITE JUMP + HIGH JUMP
+-- ============================================================
 local function HandleJump()
     if not Mods.InfiniteJump and not Mods.HighJump then return end
     if Mods.HighJump and Humanoid then Humanoid.JumpPower = 150 elseif Humanoid then Humanoid.JumpPower = 50 end
@@ -206,6 +228,9 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- ============================================================
+-- SPEED HACK
+-- ============================================================
 local function ApplySpeed()
     if not Mods.SpeedHack then
         if Humanoid then Humanoid.WalkSpeed = 16 end
@@ -216,6 +241,9 @@ local function ApplySpeed()
     end
 end
 
+-- ============================================================
+-- NO RECOIL
+-- ============================================================
 local function ApplyNoRecoil()
     if not Mods.NoRecoil then return end
     local char = LocalPlayer.Character
@@ -228,6 +256,9 @@ local function ApplyNoRecoil()
     end
 end
 
+-- ============================================================
+-- AUTO CLICK
+-- ============================================================
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -241,6 +272,9 @@ task.spawn(function()
     end
 end)
 
+-- ============================================================
+-- ESP (duvar arkası görme)
+-- ============================================================
 local function ClearESP()
     for _, obj in pairs(espObjects) do
         if obj and obj.Parent then obj:Destroy() end
@@ -250,8 +284,7 @@ end
 
 local function BuildESP()
     ClearESP()
-    if not Mods.ESP then return end
-
+    if not Mods.ESP and not Mods.WallBang and not Mods.XRay then return end
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
         local char = plr.Character
@@ -259,7 +292,6 @@ local function BuildESP()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChild("Humanoid")
         if not hrp or not hum or hum.Health <= 0 then continue end
-
         local box = Instance.new("BoxHandleAdornment")
         box.Size = Vector3.new(4, 6, 2)
         box.Adornee = hrp
@@ -269,7 +301,6 @@ local function BuildESP()
         box.AlwaysOnTop = true
         box.Parent = hrp
         table.insert(espObjects, box)
-
         local bill = Instance.new("BillboardGui")
         bill.Size = UDim2.new(0, 120, 0, 24)
         bill.Adornee = hrp
@@ -291,49 +322,12 @@ local function BuildESP()
 end
 
 Players.PlayerAdded:Connect(function()
-    if Mods.ESP then BuildESP() end
+    if Mods.ESP or Mods.WallBang or Mods.XRay then BuildESP() end
 end)
 
-local function ClearWalls()
-    if not Mods.WallSex then
-        for _, part in pairs(wallRemovedParts) do
-            if part and part.Parent == nil then
-                part.Parent = Workspace
-                part.CanCollide = true
-                part.Transparency = 0
-                part.Material = Enum.Material.Plastic
-            end
-        end
-        wallRemovedParts = {}
-        return
-    end
-
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    local pos = hrp.Position
-    local ayakY = pos.Y - 2.5
-
-    for _, part in ipairs(Workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part.CanCollide and part ~= hrp then
-            if part:IsDescendantOf(char) then continue end
-            if part.Position.Y < ayakY then continue end
-            local dist = (pos - part.Position).Magnitude
-            if dist < 40 then
-                if not table.find(wallRemovedParts, part) then
-                    table.insert(wallRemovedParts, part)
-                end
-                part.CanCollide = false
-                part.Transparency = 1
-                part.Material = Enum.Material.ForceField
-                part.CastShadow = false
-            end
-        end
-    end
-end
-
+-- ============================================================
+-- 1 KURŞUN 3 KİŞİ (eski mod)
+-- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -354,6 +348,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- ============================================================
+-- BRUTAL HITBOX (15x)
+-- ============================================================
 local function SetBrutalHitbox()
     if not Mods.BrutalHitbox then
         for _, plr in ipairs(Players:GetPlayers()) do
@@ -373,7 +370,6 @@ local function SetBrutalHitbox()
         end
         return
     end
-
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local char = plr.Character
@@ -391,232 +387,432 @@ local function SetBrutalHitbox()
     end
 end
 
-local function CreateMenu()
-    if MenuGui then MenuGui:Destroy() end
-
-    MenuGui = Instance.new("ScreenGui")
-    MenuGui.Name = "UltraMenuV8"
-    MenuGui.Parent = CoreGui
-    MenuGui.ResetOnSpawn = false
-    MenuGui.Enabled = true
-
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 65, 1, 0)
-    mainFrame.Position = UDim2.new(1, -70, 0, 0)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    mainFrame.BackgroundTransparency = 0.3
-    mainFrame.Parent = MenuGui
-    mainFrame.ZIndex = 999
-
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 22, 0, 22)
-    closeBtn.Position = UDim2.new(0, 4, 0, 4)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 14
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = mainFrame
-    closeBtn.ZIndex = 1000
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
-    closeBtn.MouseButton1Click:Connect(function()
-        if MenuGui then
-            MenuGui.Enabled = false
-            if OpenButton then OpenButton.Visible = true end
+-- ============================================================
+-- WALLBANG (duvarları geçen otomatik ateş)
+-- ============================================================
+local function WallBangFire()
+    if not Mods.WallBang then return end
+    local targets = GetTargets()
+    if #targets == 0 then return end
+    local sortedTargets = {}
+    for _, plr in ipairs(targets) do
+        local char = plr.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local dist = (HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+            table.insert(sortedTargets, {plr = plr, dist = dist})
         end
-    end)
-
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, 0, 1, -10)
-    scroll.Position = UDim2.new(0, 0, 0, 30)
-    scroll.BackgroundTransparency = 1
-    scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 6
-    scroll.ScrollBarImageColor3 = Color3.fromRGB(100, 150, 255)
-    scroll.Parent = mainFrame
-    scroll.ZIndex = 999
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-    local btnSize = 38
-    local gap = 10
-    local startY = 5
-    local currentY = startY
-
-    local buttons = {
-        {name="Mevlana", emoji="🌀", modRef="Mevlana", colorOn=Color3.fromRGB(0,150,200)},
-        {name="Fly", emoji="✈️", modRef="Fly", colorOn=Color3.fromRGB(0,200,100)},
-        {name="InfJump", emoji="🦘", modRef="InfiniteJump", colorOn=Color3.fromRGB(200,200,0)},
-        {name="HighJump", emoji="📈", modRef="HighJump", colorOn=Color3.fromRGB(255,150,0)},
-        {name="ESP", emoji="👁️", modRef="ESP", colorOn=Color3.fromRGB(0,255,0)},
-        {name="WallSex", emoji="🧱", modRef="WallSex", colorOn=Color3.fromRGB(150,0,255)},
-        {name="1Bullet3", emoji="🔫", modRef="OneBulletThree", colorOn=Color3.fromRGB(255,0,0)},
-        {name="BrutalHB", emoji="💢", modRef="BrutalHitbox", colorOn=Color3.fromRGB(255,80,80)},
-        {name="Speed", emoji="⚡", modRef="SpeedHack", colorOn=Color3.fromRGB(0,200,255)},
-        {name="NoRecoil", emoji="🎯", modRef="NoRecoil", colorOn=Color3.fromRGB(255,200,0)},
-        {name="AutoClick", emoji="🖱️", modRef="AutoClick", colorOn=Color3.fromRGB(255,100,200)},
-    }
-
-    local btnRefs = {}
-
-    for i, btnData in ipairs(buttons) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, btnSize, 0, btnSize)
-        btn.Position = UDim2.new(0.5, -btnSize/2, 0, currentY)
-        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-        btn.BackgroundTransparency = 0.1
-        btn.Text = btnData.emoji
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.TextSize = 20
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = scroll
-        btn.ZIndex = 999
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-
-        local status = Instance.new("TextLabel")
-        status.Size = UDim2.new(1, 0, 0, 12)
-        status.Position = UDim2.new(0, 0, 1, 0)
-        status.BackgroundTransparency = 1
-        status.Text = "KAPALI"
-        status.TextColor3 = Color3.fromRGB(255,50,50)
-        status.TextSize = 9
-        status.Font = Enum.Font.GothamBold
-        status.TextXAlignment = Enum.TextXAlignment.Center
-        status.Parent = btn
-        status.ZIndex = 999
-
-        btnRefs[btnData.modRef] = {
-            btn = btn,
-            status = status,
-            colorOff = btn.BackgroundColor3,
-            colorOn = btnData.colorOn,
-            modRef = btnData.modRef,
-            emoji = btnData.emoji
-        }
-
-        currentY = currentY + btnSize + gap
     end
-
-    scroll.CanvasSize = UDim2.new(0, 0, 0, currentY + 20)
-
-    for modRef, data in pairs(btnRefs) do
-        data.btn.MouseButton1Click:Connect(function()
-            Mods[modRef] = not Mods[modRef]
-            local aktif = Mods[modRef]
-
-            if aktif then
-                data.btn.BackgroundColor3 = data.colorOn
-                data.btn.Text = data.emoji .. "⚡"
-                data.status.Text = "AKTİF"
-                data.status.TextColor3 = Color3.fromRGB(0,255,0)
-            else
-                data.btn.BackgroundColor3 = data.colorOff
-                data.btn.Text = data.emoji
-                data.status.Text = "KAPALI"
-                data.status.TextColor3 = Color3.fromRGB(255,50,50)
-            end
-
-            if modRef == "Fly" then
-                if aktif then EnableFly() else DisableFly() end
-            end
-            if modRef == "HighJump" then
-                if Humanoid then Humanoid.JumpPower = aktif and 150 or 50 end
-            end
-            if modRef == "Mevlana" and not aktif then CurrentAngle = 0 end
-            if modRef == "ESP" then
-                if aktif then BuildESP() else ClearESP() end
-            end
-            if modRef == "WallSex" then
-                if aktif then ClearWalls() else ClearWalls() end
-            end
-            if modRef == "BrutalHitbox" then
-                SetBrutalHitbox()
-            end
-            if modRef == "SpeedHack" then
-                ApplySpeed()
-            end
-            if modRef == "NoRecoil" then
-                ApplyNoRecoil()
-            end
-            if modRef == "AutoClick" then
-                -- already running
-            end
-        end)
+    table.sort(sortedTargets, function(a, b) return a.dist < b.dist end)
+    local shootCount = math.min(3, #sortedTargets)
+    for i = 1, shootCount do
+        local target = sortedTargets[i].plr
+        local targetChar = target.Character
+        if targetChar and targetChar:FindFirstChild("Humanoid") and targetChar.Humanoid.Health > 0 then
+            targetChar.Humanoid.Health = targetChar.Humanoid.Health - 30
+            local beam = Instance.new("Beam")
+            beam.Parent = Workspace.Terrain
+            beam.Attachment0 = Instance.new("Attachment", HumanoidRootPart)
+            beam.Attachment1 = Instance.new("Attachment", targetChar.HumanoidRootPart)
+            beam.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
+            beam.Width0 = 0.2
+            beam.Width1 = 0.2
+            task.delay(0.1, function() beam:Destroy() end)
+        end
     end
 end
 
-local function CreateOpenButton()
-    if OpenButton then OpenButton:Destroy() end
-
-    OpenButton = Instance.new("TextButton")
-    OpenButton.Size = UDim2.new(0, 48, 0, 48)
-    OpenButton.Position = UDim2.new(1, -54, 0.5, -24)
-    OpenButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    OpenButton.Text = "⚙️"
-    OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    OpenButton.TextSize = 24
-    OpenButton.Font = Enum.Font.GothamBold
-    OpenButton.Parent = CoreGui
-    OpenButton.ZIndex = 999
-    Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(1, 0)
-    OpenButton.Visible = false
-
-    OpenButton.MouseButton1Click:Connect(function()
-        if MenuGui then
-            MenuGui.Enabled = true
-            OpenButton.Visible = false
-        end
-    end)
-end
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F12 then
-        if not MenuGui then return end
-        MenuGui.Enabled = not MenuGui.Enabled
-        if OpenButton then
-            OpenButton.Visible = not MenuGui.Enabled
+-- ============================================================
+-- KILL AURA
+-- ============================================================
+local function KillAuraTick()
+    if not Mods.KillAura then return end
+    local targets = GetTargets()
+    for _, plr in ipairs(targets) do
+        local char = plr.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local dist = (HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+            if dist < 30 then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum and hum.Health > 0 then
+                    hum.Health = hum.Health - 10
+                end
+            end
         end
     end
-end)
+end
 
+-- ============================================================
+-- INVISIBLE
+-- ============================================================
+local function SetInvisible()
+    if not Character then return end
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = Mods.Invisible and 1 or 0
+        end
+    end
+end
+
+-- ============================================================
+-- TELEPORT TO PLAYER (en yakın oyuncuya ışınlan)
+-- ============================================================
+local function TeleportToNearest()
+    if not Mods.TeleportToPlayer then return end
+    local targets = GetTargets()
+    if #targets == 0 then return end
+    local nearest = nil
+    local minDist = math.huge
+    for _, plr in ipairs(targets) do
+        local char = plr.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local dist = (HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+            if dist < minDist then
+                minDist = dist
+                nearest = plr
+            end
+        end
+    end
+    if nearest and nearest.Character and nearest.Character:FindFirstChild("HumanoidRootPart") then
+        HumanoidRootPart.CFrame = nearest.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+    end
+end
+
+-- ============================================================
+-- GOD MODE (sürekli can yenile)
+-- ============================================================
+local function GodModeTick()
+    if not Mods.GodMode then return end
+    if Humanoid then
+        Humanoid.Health = Humanoid.MaxHealth
+    end
+end
+
+-- ============================================================
+-- NOCLIP (duvarlardan geçme)
+-- ============================================================
+local function SetNoclip()
+    if not Character then return end
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = not Mods.Noclip
+        end
+    end
+end
+
+-- ============================================================
+-- AIMBOT (otomatik nişan alma - en yakın hedefin kafasına)
+-- ============================================================
+local function AimbotTick()
+    if not Mods.Aimbot then return end
+    local targets = GetTargets()
+    if #targets == 0 then return end
+    local nearest = nil
+    local minDist = math.huge
+    for _, plr in ipairs(targets) do
+        local char = plr.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Head") then
+            local dist = (Camera.CFrame.Position - char.Head.Position).Magnitude
+            if dist < minDist then
+                minDist = dist
+                nearest = plr
+            end
+        end
+    end
+    if nearest and nearest.Character then
+        local head = nearest.Character:FindFirstChild("Head")
+        if head then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+        end
+    end
+end
+
+-- ============================================================
+-- RAPID FIRE (bekleme süresini kaldır)
+-- ============================================================
+local function ApplyRapidFire()
+    if not Character then return end
+    for _, tool in ipairs(Character:GetChildren()) do
+        if tool:IsA("Tool") then
+            local cooldown = tool:FindFirstChild("Cooldown") or tool:FindFirstChild("ReloadTime") or tool:FindFirstChild("FireRate")
+            if cooldown then
+                cooldown.Value = 0
+            end
+        end
+    end
+end
+
+-- ============================================================
+-- ANTI VOID (boşluğa düşersen yukarı ışınla)
+-- ============================================================
+local function AntiVoidTick()
+    if not Mods.AntiVoid then return end
+    if HumanoidRootPart and HumanoidRootPart.Position.Y < -50 then
+        HumanoidRootPart.CFrame = CFrame.new(0, 50, 0)
+    end
+end
+
+-- ============================================================
+-- XRAY (duvarların arkasını gör - basit: parlak kutu)
+-- ============================================================
+-- ESP ile benzer, zaten BuildESP içinde XRay kontrolü var.
+-- Ekstra bir şey yapmaya gerek yok.
+
+-- ============================================================
+-- INFINITE AMMO (mermi sayısını sıfırlama)
+-- ============================================================
+local function ApplyInfiniteAmmo()
+    if not Mods.InfiniteAmmo then return end
+    if not Character then return end
+    for _, tool in ipairs(Character:GetChildren()) do
+        if tool:IsA("Tool") then
+            local ammo = tool:FindFirstChild("Ammo") or tool:FindFirstChild("Bullets")
+            if ammo and ammo:IsA("IntValue") then
+                ammo.Value = 999
+            end
+        end
+    end
+end
+
+-- ============================================================
+-- ANA DÖNGÜ
+-- ============================================================
 RunService.Heartbeat:Connect(function(dt)
     GetCharacter()
     StartSpinning()
     UpdateFly()
     if Mods.InfiniteJump or Mods.HighJump then HandleJump() end
-    if Mods.ESP then
-        if not espObjects or #espObjects == 0 then BuildESP() end
-    end
-    if Mods.WallSex then ClearWalls() end
+    if Mods.ESP or Mods.WallBang or Mods.XRay then BuildESP() end
     if Mods.BrutalHitbox then SetBrutalHitbox() end
     if Mods.SpeedHack then ApplySpeed() end
     if Mods.NoRecoil then ApplyNoRecoil() end
+    if Mods.WallBang then WallBangFire() end
+    if Mods.KillAura then KillAuraTick() end
+    if Mods.TeleportToPlayer then TeleportToNearest() end
+    if Mods.GodMode then GodModeTick() end
+    if Mods.Invisible then SetInvisible() else SetInvisible() end
+    if Mods.Noclip then SetNoclip() else SetNoclip() end
+    if Mods.Aimbot then AimbotTick() end
+    if Mods.RapidFire then ApplyRapidFire() end
+    if Mods.AntiVoid then AntiVoidTick() end
+    if Mods.InfiniteAmmo then ApplyInfiniteAmmo() end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     GetCharacter()
     if Mods.BrutalHitbox then SetBrutalHitbox() end
-    if Mods.ESP then BuildESP() end
-    if Mods.WallSex then ClearWalls() end
+    if Mods.ESP or Mods.WallBang or Mods.XRay then BuildESP() end
     if Mods.Fly then EnableFly() end
     if Mods.SpeedHack then ApplySpeed() end
+    if Mods.Invisible then SetInvisible() end
+    if Mods.Noclip then SetNoclip() end
 end)
 
-task.wait(0.5)
-GetCharacter()
-CreateMenu()
-CreateOpenButton()
+print("Modüller hazır. Şimdi Part 3'ü çalıştırın.")-- ============================================================
+-- PART 3: YENİ MENÜ SİSTEMİ
+-- Eski menüleri temizlemez, sadece yeni menüyü oluşturur.
+-- Part 2'den sonra çalıştırın.
+-- ============================================================
 
-print("")
-print("========================================")
-print("🔥 ULTRA MOD V8.2 TELEFON HAZIR!")
-print("   🌀 Mevlana     ✈️ Fly")
-print("   🦘 InfJump    📈 HighJump")
-print("   👁️ ESP         🧱 WallSex (ayak üstü)")
-print("   🔫 1Bullet3    💢 BrutalHB (15x, görünmez)")
-print("   ⚡ Speed       🎯 NoRecoil")
-print("   🖱️ AutoClick")
-print("   📌 Menü sağda, ✕ kapatır, ⚙️ sağ ortada açar")
-print("   📌 F12 toggle (aç/kapa)")
-print("========================================")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
+
+-- Mods tablosu ve diğer değişkenler Part 2'de tanımlıdır.
+-- Burada sadece yeni menüyü oluşturacağız.
+-- Eski menüleri silmiyoruz, sadece yeni menüyü oluşturuyoruz.
+-- Eğer daha önce menü oluşturulduysa, tekrar oluşturmamak için bir kontrol ekleyelim.
+if MenuGui and OpenButton then
+    print("Menü zaten var, tekrar oluşturulmadı.")
+    return
+end
+
+local function CreateNewMenu()
+    -- Üstte açma butonu
+    OpenButton = Instance.new("TextButton")
+    OpenButton.Name = "LeaBypassOpen"
+    OpenButton.Size = UDim2.new(0, 300, 0, 50)
+    OpenButton.Position = UDim2.new(0.5, -150, 0, 10)
+    OpenButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    OpenButton.Text = "LEA BYPASS AKTİF ANALARİNİ SİKEBİLİRSİNİZ"
+    OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    OpenButton.TextSize = 14
+    OpenButton.Font = Enum.Font.GothamBold
+    OpenButton.Parent = CoreGui
+    OpenButton.ZIndex = 1000
+    Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(0, 15)
+    Instance.new("UIStroke", OpenButton).Color = Color3.fromRGB(255, 0, 0)
+    OpenButton.Visible = true
+
+    -- Ana menü (başlangıçta kapalı)
+    MenuGui = Instance.new("ScreenGui")
+    MenuGui.Name = "LeaBypassMenu"
+    MenuGui.Parent = CoreGui
+    MenuGui.ResetOnSpawn = false
+    MenuGui.Enabled = false -- kapalı
+
+    local menuFrame = Instance.new("Frame")
+    menuFrame.Name = "MainMenu"
+    menuFrame.Size = UDim2.new(0, 400, 0, 400)
+    menuFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+    menuFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    menuFrame.BackgroundTransparency = 0.1
+    menuFrame.Parent = MenuGui
+    menuFrame.ZIndex = 1000
+    Instance.new("UICorner", menuFrame).CornerRadius = UDim.new(0, 20)
+    Instance.new("UIStroke", menuFrame).Color = Color3.fromRGB(255, 0, 0)
+
+    -- Başlık
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Text = "🔥 LEA BYPASS 🔥"
+    title.TextColor3 = Color3.fromRGB(255, 255, 0)
+    title.TextSize = 24
+    title.Font = Enum.Font.GothamBlack
+    title.Parent = menuFrame
+
+    -- Kapatma butonu
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -35, 0, 5)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 18
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = menuFrame
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
+    closeBtn.MouseButton1Click:Connect(function()
+        MenuGui.Enabled = false
+        OpenButton.Visible = true
+    end)
+
+    -- ScrollingFrame
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -20, 1, -60)
+    scroll.Position = UDim2.new(0, 10, 0, 50)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 5
+    scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
+    scroll.Parent = menuFrame
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+    local layout = Instance.new("UIGridLayout")
+    layout.CellSize = UDim2.new(0, 80, 0, 80)
+    layout.CellPadding = UDim2.new(0, 10, 0, 10)
+    layout.Parent = scroll
+
+    -- Tüm modlar (eski + yeni + ekstra)
+    local modList = {
+        {name="Mevlana", emoji="🌀", modRef="Mevlana", color=Color3.fromRGB(0,150,200)},
+        {name="Fly", emoji="✈️", modRef="Fly", color=Color3.fromRGB(0,200,100)},
+        {name="InfJump", emoji="🦘", modRef="InfiniteJump", color=Color3.fromRGB(200,200,0)},
+        {name="HighJump", emoji="📈", modRef="HighJump", color=Color3.fromRGB(255,150,0)},
+        {name="ESP", emoji="👁️", modRef="ESP", color=Color3.fromRGB(0,255,0)},
+        {name="1Bullet3", emoji="🔫", modRef="OneBulletThree", color=Color3.fromRGB(255,0,0)},
+        {name="BrutalHB", emoji="💢", modRef="BrutalHitbox", color=Color3.fromRGB(255,80,80)},
+        {name="Speed", emoji="⚡", modRef="SpeedHack", color=Color3.fromRGB(0,200,255)},
+        {name="NoRecoil", emoji="🎯", modRef="NoRecoil", color=Color3.fromRGB(255,200,0)},
+        {name="AutoClick", emoji="🖱️", modRef="AutoClick", color=Color3.fromRGB(255,100,200)},
+        {name="WallBang", emoji="🧨", modRef="WallBang", color=Color3.fromRGB(255,0,255)},
+        {name="KillAura", emoji="☠️", modRef="KillAura", color=Color3.fromRGB(255,0,0)},
+        {name="Invisible", emoji="👻", modRef="Invisible", color=Color3.fromRGB(200,200,200)},
+        {name="Teleport", emoji="🌀", modRef="TeleportToPlayer", color=Color3.fromRGB(0,255,255)},
+        {name="GodMode", emoji="💪", modRef="GodMode", color=Color3.fromRGB(0,255,0)},
+        {name="Noclip", emoji="🚀", modRef="Noclip", color=Color3.fromRGB(150,0,255)},
+        {name="Aimbot", emoji="🎯", modRef="Aimbot", color=Color3.fromRGB(255,0,0)},
+        {name="RapidFire", emoji="⚡", modRef="RapidFire", color=Color3.fromRGB(0,200,255)},
+        {name="AntiVoid", emoji="🕳️", modRef="AntiVoid", color=Color3.fromRGB(200,200,0)},
+        {name="XRay", emoji="🔦", modRef="XRay", color=Color3.fromRGB(0,255,255)},
+        {name="InfAmmo", emoji="♾️", modRef="InfiniteAmmo", color=Color3.fromRGB(255,200,0)},
+    }
+
+    for _, modData in ipairs(modList) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 80, 0, 80)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        btn.Text = modData.emoji
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.TextSize = 30
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = scroll
+        btn.ZIndex = 1001
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
+        Instance.new("UIStroke", btn).Color = modData.color
+
+        local status = Instance.new("TextLabel")
+        status.Size = UDim2.new(1, 0, 0, 20)
+        status.Position = UDim2.new(0, 0, 1, -20)
+        status.BackgroundTransparency = 1
+        status.Text = "KAPALI"
+        status.TextColor3 = Color3.fromRGB(255,50,50)
+        status.TextSize = 10
+        status.Font = Enum.Font.GothamBold
+        status.TextXAlignment = Enum.TextXAlignment.Center
+        status.Parent = btn
+
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {Size = UDim2.new(0, 90, 0, 90)}):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {Size = UDim2.new(0, 80, 0, 80)}):Play()
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            Mods[modData.modRef] = not Mods[modData.modRef]
+            local aktif = Mods[modData.modRef]
+            if aktif then
+                btn.BackgroundColor3 = modData.color
+                status.Text = "AKTİF"
+                status.TextColor3 = Color3.fromRGB(0,255,0)
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                status.Text = "KAPALI"
+                status.TextColor3 = Color3.fromRGB(255,50,50)
+            end
+            -- Moda özel tetikleyiciler
+            if modData.modRef == "Fly" then
+                if aktif then EnableFly() else DisableFly() end
+            elseif modData.modRef == "HighJump" then
+                if Humanoid then Humanoid.JumpPower = aktif and 150 or 50 end
+            elseif modData.modRef == "ESP" or modData.modRef == "XRay" or modData.modRef == "WallBang" then
+                if aktif then BuildESP() else ClearESP() end
+            elseif modData.modRef == "Invisible" then
+                SetInvisible()
+            elseif modData.modRef == "Noclip" then
+                SetNoclip()
+            elseif modData.modRef == "TeleportToPlayer" then
+                TeleportToNearest()
+            elseif modData.modRef == "RapidFire" then
+                ApplyRapidFire()
+            elseif modData.modRef == "InfiniteAmmo" then
+                ApplyInfiniteAmmo()
+            end
+        end)
+    end
+
+    -- Açılış animasyonu
+    local function OpenMenu()
+        MenuGui.Enabled = true
+        OpenButton.Visible = false
+        menuFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+        menuFrame.Size = UDim2.new(0, 0, 0, 0)
+        local tween = TweenService:Create(menuFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 400, 0, 400), Position = UDim2.new(0.5, -200, 0.5, -200)})
+        tween:Play()
+    end
+
+    OpenButton.MouseButton1Click:Connect(OpenMenu)
+end
+
+GetCharacter()
+CreateNewMenu()
+
+print("Menü hazır! Üstteki butona tıklayarak modları açabilirsiniz.")

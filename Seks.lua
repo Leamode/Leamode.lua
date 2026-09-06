@@ -1,9 +1,7 @@
 -- ============================================================
--- PART 1: KEY GATE (Anahtar Kontrolü)
--- Bu scripti çalıştırın. Sadece key ekranı görünür.
+-- PART 1: KEY GATE + DISCORD
 -- Doğru key: OrospuErdem
--- Key doğru girilirse ekran kapanır ve konsola mesaj yazar:
--- "KEY DOĞRU! Şimdi Part 2 ve Part 3 scriptlerini çalıştırın."
+-- Discord linki kopyalanabilir.
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -23,8 +21,8 @@ local function CreateKeyPrompt()
     KeyUI.DisplayOrder = 999
 
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 250, 0, 130)
-    frame.Position = UDim2.new(0.5, -125, 0.5, -65)
+    frame.Size = UDim2.new(0, 260, 0, 180)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -90)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     frame.BorderSizePixel = 0
     frame.Parent = KeyUI
@@ -72,6 +70,29 @@ local function CreateKeyPrompt()
     confirmBtn.Parent = frame
     Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 6)
 
+    -- Discord butonu
+    local discordBtn = Instance.new("TextButton")
+    discordBtn.Size = UDim2.new(1, -20, 0, 25)
+    discordBtn.Position = UDim2.new(0, 10, 0, 135)
+    discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    discordBtn.Text = "💬 Discord'a Katıl"
+    discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    discordBtn.TextSize = 12
+    discordBtn.Font = Enum.Font.GothamBold
+    discordBtn.Parent = frame
+    Instance.new("UICorner", discordBtn).CornerRadius = UDim.new(0, 6)
+
+    discordBtn.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard("https://discord.gg/jBEJUesC")
+            discordBtn.Text = "✅ Link Kopyalandı!"
+            task.wait(1)
+            discordBtn.Text = "💬 Discord'a Katıl"
+        else
+            print("Discord linki: https://discord.gg/jBEJUesC")
+        end
+    end)
+
     local function checkKey()
         if inputBox.Text == "OrospuErdem" then
             pcall(function() KeyUI:Destroy() end)
@@ -93,9 +114,7 @@ local function CreateKeyPrompt()
 end
 
 CreateKeyPrompt()-- ============================================================
--- PART 2: ANA MODÜLLER
--- Eski modlar aynen korunmuştur, yeni modlar eklenmiştir.
--- Bu scripti Part 1'den sonra çalıştırın.
+-- PART 2: ANA MODÜLLER (Eski modlar korunmuş, yeni modlar eklenmiş)
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -109,7 +128,6 @@ local TweenService = game:GetService("TweenService")
 
 print("🔥 LEA BYPASS MOD YÜKLENİYOR...")
 
--- Mods tablosu (eski + yeni + ekstra)
 local Mods = {
     Mevlana = false,
     Fly = false,
@@ -165,9 +183,7 @@ local function GetTargets()
     return list
 end
 
--- ============================================================
--- MEVLANA (360 DÖNÜŞ)
--- ============================================================
+-- Mevlana
 local function StartSpinning()
     if not Mods.Mevlana or not HumanoidRootPart then return end
     CurrentAngle = (CurrentAngle + MevlanaSpeed) % 360
@@ -175,9 +191,7 @@ local function StartSpinning()
     HumanoidRootPart.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(CurrentAngle), 0)
 end
 
--- ============================================================
--- FLY
--- ============================================================
+-- Fly
 local flyBodyVelocity = nil
 local flyGyro = nil
 
@@ -210,9 +224,7 @@ local function UpdateFly()
     flyGyro.CFrame = CFrame.new(HumanoidRootPart.Position, HumanoidRootPart.Position + Camera.CFrame.LookVector)
 end
 
--- ============================================================
--- INFINITE JUMP + HIGH JUMP
--- ============================================================
+-- Jump
 local function HandleJump()
     if not Mods.InfiniteJump and not Mods.HighJump then return end
     if Mods.HighJump and Humanoid then Humanoid.JumpPower = 150 elseif Humanoid then Humanoid.JumpPower = 50 end
@@ -228,9 +240,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ============================================================
--- SPEED HACK
--- ============================================================
+-- Speed
 local function ApplySpeed()
     if not Mods.SpeedHack then
         if Humanoid then Humanoid.WalkSpeed = 16 end
@@ -241,9 +251,7 @@ local function ApplySpeed()
     end
 end
 
--- ============================================================
--- NO RECOIL
--- ============================================================
+-- No Recoil
 local function ApplyNoRecoil()
     if not Mods.NoRecoil then return end
     local char = LocalPlayer.Character
@@ -256,9 +264,7 @@ local function ApplyNoRecoil()
     end
 end
 
--- ============================================================
--- AUTO CLICK
--- ============================================================
+-- Auto Click
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -272,9 +278,7 @@ task.spawn(function()
     end
 end)
 
--- ============================================================
--- ESP (duvar arkası görme)
--- ============================================================
+-- ESP
 local function ClearESP()
     for _, obj in pairs(espObjects) do
         if obj and obj.Parent then obj:Destroy() end
@@ -325,9 +329,7 @@ Players.PlayerAdded:Connect(function()
     if Mods.ESP or Mods.WallBang or Mods.XRay then BuildESP() end
 end)
 
--- ============================================================
--- 1 KURŞUN 3 KİŞİ (eski mod)
--- ============================================================
+-- 1 Bullet 3
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -348,9 +350,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ============================================================
--- BRUTAL HITBOX (15x)
--- ============================================================
+-- Brutal Hitbox
 local function SetBrutalHitbox()
     if not Mods.BrutalHitbox then
         for _, plr in ipairs(Players:GetPlayers()) do
@@ -387,9 +387,7 @@ local function SetBrutalHitbox()
     end
 end
 
--- ============================================================
--- WALLBANG (duvarları geçen otomatik ateş)
--- ============================================================
+-- WallBang
 local function WallBangFire()
     if not Mods.WallBang then return end
     local targets = GetTargets()
@@ -421,9 +419,7 @@ local function WallBangFire()
     end
 end
 
--- ============================================================
--- KILL AURA
--- ============================================================
+-- Kill Aura
 local function KillAuraTick()
     if not Mods.KillAura then return end
     local targets = GetTargets()
@@ -441,9 +437,7 @@ local function KillAuraTick()
     end
 end
 
--- ============================================================
--- INVISIBLE
--- ============================================================
+-- Invisible
 local function SetInvisible()
     if not Character then return end
     for _, part in ipairs(Character:GetDescendants()) do
@@ -453,9 +447,7 @@ local function SetInvisible()
     end
 end
 
--- ============================================================
--- TELEPORT TO PLAYER (en yakın oyuncuya ışınlan)
--- ============================================================
+-- Teleport to Player
 local function TeleportToNearest()
     if not Mods.TeleportToPlayer then return end
     local targets = GetTargets()
@@ -477,9 +469,7 @@ local function TeleportToNearest()
     end
 end
 
--- ============================================================
--- GOD MODE (sürekli can yenile)
--- ============================================================
+-- God Mode
 local function GodModeTick()
     if not Mods.GodMode then return end
     if Humanoid then
@@ -487,9 +477,7 @@ local function GodModeTick()
     end
 end
 
--- ============================================================
--- NOCLIP (duvarlardan geçme)
--- ============================================================
+-- Noclip
 local function SetNoclip()
     if not Character then return end
     for _, part in ipairs(Character:GetDescendants()) do
@@ -499,9 +487,7 @@ local function SetNoclip()
     end
 end
 
--- ============================================================
--- AIMBOT (otomatik nişan alma - en yakın hedefin kafasına)
--- ============================================================
+-- Aimbot
 local function AimbotTick()
     if not Mods.Aimbot then return end
     local targets = GetTargets()
@@ -526,9 +512,7 @@ local function AimbotTick()
     end
 end
 
--- ============================================================
--- RAPID FIRE (bekleme süresini kaldır)
--- ============================================================
+-- Rapid Fire
 local function ApplyRapidFire()
     if not Character then return end
     for _, tool in ipairs(Character:GetChildren()) do
@@ -541,9 +525,7 @@ local function ApplyRapidFire()
     end
 end
 
--- ============================================================
--- ANTI VOID (boşluğa düşersen yukarı ışınla)
--- ============================================================
+-- Anti Void
 local function AntiVoidTick()
     if not Mods.AntiVoid then return end
     if HumanoidRootPart and HumanoidRootPart.Position.Y < -50 then
@@ -551,15 +533,7 @@ local function AntiVoidTick()
     end
 end
 
--- ============================================================
--- XRAY (duvarların arkasını gör - basit: parlak kutu)
--- ============================================================
--- ESP ile benzer, zaten BuildESP içinde XRay kontrolü var.
--- Ekstra bir şey yapmaya gerek yok.
-
--- ============================================================
--- INFINITE AMMO (mermi sayısını sıfırlama)
--- ============================================================
+-- Infinite Ammo
 local function ApplyInfiniteAmmo()
     if not Mods.InfiniteAmmo then return end
     if not Character then return end
@@ -573,9 +547,7 @@ local function ApplyInfiniteAmmo()
     end
 end
 
--- ============================================================
--- ANA DÖNGÜ
--- ============================================================
+-- Main Loop
 RunService.Heartbeat:Connect(function(dt)
     GetCharacter()
     StartSpinning()
@@ -609,9 +581,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 print("Modüller hazır. Şimdi Part 3'ü çalıştırın.")-- ============================================================
--- PART 3: YENİ MENÜ SİSTEMİ
--- Eski menüleri temizlemez, sadece yeni menüyü oluşturur.
--- Part 2'den sonra çalıştırın.
+-- PART 3: DÜZELTİLMİŞ MENÜ
+-- Ekranın üstünde açma butonu, F12 ile de açılır.
+-- Cihaz algılar ve konumlandırır.
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -623,21 +595,25 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 
--- Mods tablosu ve diğer değişkenler Part 2'de tanımlıdır.
--- Burada sadece yeni menüyü oluşturacağız.
--- Eski menüleri silmiyoruz, sadece yeni menüyü oluşturuyoruz.
--- Eğer daha önce menü oluşturulduysa, tekrar oluşturmamak için bir kontrol ekleyelim.
+-- Değişkenler Part 2'den gelir (aynı ortamda çalıştırılmalıdır)
 if MenuGui and OpenButton then
     print("Menü zaten var, tekrar oluşturulmadı.")
     return
 end
 
+-- Ekran boyutunu algıla
+local viewportSize = Camera.ViewportSize
+
+-- Buton boyutu
+local buttonWidth = math.clamp(viewportSize.X * 0.6, 200, 500)
+local buttonHeight = 50
+
 local function CreateNewMenu()
     -- Üstte açma butonu
     OpenButton = Instance.new("TextButton")
     OpenButton.Name = "LeaBypassOpen"
-    OpenButton.Size = UDim2.new(0, 300, 0, 50)
-    OpenButton.Position = UDim2.new(0.5, -150, 0, 10)
+    OpenButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+    OpenButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, 10)
     OpenButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
     OpenButton.Text = "LEA BYPASS AKTİF ANALARİNİ SİKEBİLİRSİNİZ"
     OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -710,7 +686,7 @@ local function CreateNewMenu()
     layout.CellPadding = UDim2.new(0, 10, 0, 10)
     layout.Parent = scroll
 
-    -- Tüm modlar (eski + yeni + ekstra)
+    -- Mod listesi
     local modList = {
         {name="Mevlana", emoji="🌀", modRef="Mevlana", color=Color3.fromRGB(0,150,200)},
         {name="Fly", emoji="✈️", modRef="Fly", color=Color3.fromRGB(0,200,100)},
@@ -810,9 +786,22 @@ local function CreateNewMenu()
     end
 
     OpenButton.MouseButton1Click:Connect(OpenMenu)
+
+    -- F12 ile aç/kapa
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.F12 then
+            if MenuGui.Enabled then
+                MenuGui.Enabled = false
+                OpenButton.Visible = true
+            else
+                OpenMenu()
+            end
+        end
+    end)
 end
 
 GetCharacter()
 CreateNewMenu()
 
-print("Menü hazır! Üstteki butona tıklayarak modları açabilirsiniz.")
+print("Menü hazır! Üstteki butona veya F12'ye basarak açabilirsiniz.")

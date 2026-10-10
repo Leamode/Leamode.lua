@@ -18,7 +18,7 @@ print("🔥 ULTRA MOD V8 BAŞLADI...")
 local Mods = {
     Mevlana = false,
     Brutal = false,
-    InfJump = false,
+    InfJump = true,
     Speed = false,
     Esp = false
 }

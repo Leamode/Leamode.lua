@@ -1,4 +1,47 @@
--- ============================================================
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local correctKey = "burakkalperdem"
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "KeySystem"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(300, 160)
+frame.Position = UDim2.new(0.5, -150, 0.5, -80)
+frame.Parent = gui
+
+local input = Instance.new("TextBox")
+input.Size = UDim2.new(1, -30, 0, 40)
+input.Position = UDim2.fromOffset(15, 20)
+input.PlaceholderText = "Key gir..."
+input.Text = ""
+input.Parent = frame
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -30, 0, 35)
+button.Position = UDim2.fromOffset(15, 75)
+button.Text = "VERIFY KEY"
+button.Parent = frame
+
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -30, 0, 25)
+status.Position = UDim2.fromOffset(15, 115)
+status.Text = ""
+status.Parent = frame
+
+button.Activated:Connect(function()
+    if input.Text == correctKey then
+        status.Text = "Key doğru!"
+        gui:Destroy()
+
+        -- Kendi oyununun başlatma kodunu buraya koy.
+    else
+        status.Text = "Yanlış key!"
+        input.Text = ""
+    end
+end)-- ============================================================
 -- HAMSTER LIVES - ULTRA MOD V8 (ESP EKLENDİ)
 -- 360 DÖNÜŞ | HITBOX 40x | TRIGGERBOT | INF JUMP | SPEED | ESP
 -- ============================================================

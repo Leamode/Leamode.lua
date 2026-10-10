@@ -39,7 +39,7 @@ button.Activated:Connect(function()
         -- Kendi oyununun başlatma kodunu buraya koy.
     else
         status.Text = "Yanlış key!"
-        input.Text = ""
+        input.Text = "yarak"
     end
 end)-- ============================================================
 -- HAMSTER LIVES - ULTRA MOD V8 (ESP EKLENDİ)

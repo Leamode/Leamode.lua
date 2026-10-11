@@ -1,4 +1,96 @@
--- ============================================================
+-- LocalScript olarak kullan
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "WarningScreen"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(340, 170)
+frame.Position = UDim2.fromScale(0.5, 0.5)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+local message = Instance.new("TextLabel")
+message.Size = UDim2.new(1, -24, 0, 95)
+message.Position = UDim2.fromOffset(12, 8)
+message.BackgroundTransparency = 1
+message.Text = "BU SCRİPTİ KULLANAN HERKES OBEZ OLDUĞUNU KABUL ETMEK ZORUNDADİR"
+message.TextColor3 = Color3.fromRGB(255, 90, 90)
+message.TextWrapped = true
+message.TextScaled = true
+message.Font = Enum.Font.GothamBold
+message.Parent = frame
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -40, 0, 42)
+button.Position = UDim2.new(0, 20, 1, -52)
+button.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+button.Text = "KABUL EDİYORUM"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = frame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 8)
+buttonCorner.Parent = button
+
+local accepted = false
+
+button.Activated:Connect(function()
+    if accepted then return end
+    accepted = true
+
+    local tween = TweenService:Create(
+        frame,
+        TweenInfo.new(0.25),
+        {BackgroundTransparency = 1}
+    )
+    tween:Play()
+
+    for _, object in ipairs(frame:GetDescendants()) do
+        if object:IsA("TextLabel") or object:IsA("TextButton") then
+            TweenService:Create(
+                object,
+                TweenInfo.new(0.25),
+                {TextTransparency = 1}
+            ):Play()
+        end
+    end
+
+    tween.Completed:Wait()
+    gui:Destroy()
+end)
+
+task.spawn(function()
+    for i = 1, 4 do
+        task.wait(10)
+
+        if accepted or not gui.Parent then
+            break
+        end
+
+        local newSize = frame.Size
+        frame.Size = UDim2.new(
+            newSize.X.Scale,
+            newSize.X.Offset * 2,
+            newSize.Y.Scale,
+            newSize.Y.Offset * 2
+        )
+    end
+end)-- ============================================================
 -- HAMSTER LIVES - ULTRA MOD V8 (ESP EKLENDÄ°)
 -- 360 DÃ–NÃœÅž | HITBOX 40x | TRIGGERBOT | INF JUMP | SPEED | ESP
 -- ============================================================
